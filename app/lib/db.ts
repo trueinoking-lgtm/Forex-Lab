@@ -40,3 +40,39 @@ export function dailyReports() {
 export function strategyProfile(name: string) {
   return db.prepare(`SELECT * FROM BacktestRun WHERE strategy=? ORDER BY generated_at DESC`).all(name);
 }
+export function markets(): any[] {
+  return db.prepare(`SELECT * FROM Market ORDER BY asset_class, symbol`).all();
+}
+export function marketProfile(symbol: string): any {
+  const m = db.prepare(`SELECT * FROM Market WHERE symbol=?`).get(symbol);
+  if (!m) return null;
+  const runs = db.prepare(`SELECT s.strategy, s.pair, s.asset_class, s.is_external, r.score,
+    r.robustness, s.oos_return, s.sharpe, s.max_drawdown, s.profit_factor, s.win_rate,
+    s.trade_count, s.beats_bh
+    FROM BacktestRun s LEFT JOIN StrategyScore r ON r.run_id=s.id WHERE s.pair=?
+    ORDER BY r.score DESC`).all(symbol);
+  return { market: m, runs };
+}
+export function externalImports() {
+  return db.prepare(`SELECT ei.*, ir.score, ir.re_costed_return, ir.our_cost_bps,
+    ir.cost_gap_bps, ir.robustness FROM ExternalImport ei
+    LEFT JOIN ImportReScore ir ON ir.import_id=ei.id
+    ORDER BY ir.score DESC, ei.imported_at DESC`).all();
+}
+export function crossMarketMatrix(limit = 5): Record<string, any[]> {
+  // top re-scored external + native strategies per asset class
+  const rows: any[] = db.prepare(`SELECT s.asset_class AS asset_class, s.strategy, s.pair,
+    r.score, r.robustness, s.oos_return, s.is_external, s.source
+    FROM BacktestRun s LEFT JOIN StrategyScore r ON r.run_id=s.id
+    WHERE s.asset_class IS NOT NULL
+    ORDER BY s.asset_class, r.score DESC`).all();
+  const map: Record<string, any[]> = {};
+  for (const r of rows) {
+    const k = r.asset_class || "unknown";
+    (map[k] ||= []).push(r);
+  }
+  // keep top `limit` per class
+  for (const k of Object.keys(map)) map[k] = map[k].slice(0, limit);
+  return map;
+}
+

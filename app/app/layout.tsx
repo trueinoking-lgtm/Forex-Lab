@@ -7,6 +7,8 @@ const nav = [
   ["/", "Overview"], ["/rankings", "Strategy Rankings"], ["/strategy-profile", "Strategy Profile"],
   ["/signals", "Trade Signals"], ["/paper-trades", "Paper Trades"], ["/journal", "Decision Journal"],
   ["/performance", "Performance"], ["/rules", "Rules"], ["/reports", "Reports"],
+  ["/markets", "Markets"], ["/market-profile", "Market Profile"],
+  ["/imports", "External Imports"], ["/cross-market", "Cross-Market Matrix"],
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

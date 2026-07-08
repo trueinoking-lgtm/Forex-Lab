@@ -1,0 +1,36 @@
+[
+  {
+    "source": "tradingview",
+    "strategy_name": "TV EMA 50/200 Trend",
+    "symbol": "EURUSD",
+    "trades": 96,
+    "net_profit_pct": 38.4,
+    "percent_profitable": 58,
+    "profit_factor": 1.62,
+    "max_drawdown_pct": 9.2,
+    "sharpe": 1.18,
+    "commission_bps": 0
+  },
+  {
+    "source": "tradingview",
+    "strategy_name": "TV RSI Pullback Gold",
+    "symbol": "XAUUSD",
+    "trades": 71,
+    "net_profit_pct": 54.1,
+    "percent_profitable": 61,
+    "profit_factor": 1.9,
+    "max_drawdown_pct": 14.5,
+    "sharpe": 1.35
+  },
+  {
+    "source": "tradingview",
+    "strategy_name": "TV London Breakout BTC",
+    "symbol": "BTCUSD",
+    "trades": 40,
+    "net_profit_pct": 120.0,
+    "percent_profitable": 55,
+    "profit_factor": 2.1,
+    "max_drawdown_pct": 33.0,
+    "sharpe": 1.9
+  }
+]

@@ -81,3 +81,49 @@ test("engine config still forbids live + regime enum wired", () => {
   assert.ok(/REGIMES\s*=\s*\(/.test(sig));
   assert.ok(/def validate_regime/.test(sig));
 });
+
+// ---- v1.2 multi-market research hub ----
+test("v1.2 schema adds Market, ExternalImport, ImportReScore + run flags", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  for (const t of ["Market", "ExternalImport", "ImportReScore"]) {
+    assert.ok(sql.includes(`CREATE TABLE IF NOT EXISTS ${t}`), `missing ${t}`);
+  }
+  assert.ok(/asset_class TEXT DEFAULT 'forex'/.test(sql));
+  assert.ok(/is_external INTEGER NOT NULL DEFAULT 0/.test(sql));
+  assert.ok(/ExternalImport[\s\S]*is_external INTEGER NOT NULL DEFAULT 1/.test(sql));
+});
+
+test("crypto research mode is disabled by default in seed", () => {
+  const seed = readFileSync(join(__dirname, "seed_markets.mjs"), "utf8");
+  assert.ok(/BTCUSD[\s\S]*enabled: 0/.test(seed) || /symbol: "BTCUSD"[\s\S]*?enabled: 0/.test(seed));
+  assert.ok(/ETHUSD[\s\S]*enabled: 0/.test(seed) || /symbol: "ETHUSD"[\s\S]*?enabled: 0/.test(seed));
+});
+
+test("import_external.mjs performs no live execution (no order/execute/broker code)", () => {
+  const src = readFileSync(join(__dirname, "import_external.mjs"), "utf8");
+  assert.ok(!/place_order|execute_trade|broker_password|live_order|api_key|secret/.test(src));
+});
+
+test("engine re-scores external imports with OUR cost model (source-of-truth)", () => {
+  // The re_score path must reduce an external no-cost return by our spread/slippage.
+  const imp = readFileSync(join(root, "engine", "src", "imports.py"), "utf8");
+  assert.ok(/def re_score/.test(imp));
+  assert.ok(/our_total_bps|our_cost_bps|cost_gap_bps/.test(imp));
+  assert.ok(/validate_import/.test(imp)); // fail-loud on fake data
+  assert.ok(/_MAX_ABS_RETURN/.test(imp)); // rejects impossible returns
+});
+
+test("external import labeling: re-scored rows are always is_external=1", () => {
+  const imp = readFileSync(join(root, "engine", "src", "imports.py"), "utf8");
+  assert.ok(/"is_external": True/.test(imp) || /sc\["is_external"\] = True/.test(imp));
+  const loader = readFileSync(join(__dirname, "import_external.mjs"), "utf8");
+  assert.ok(/is_external[\s\S]*?,1\)/.test(loader)); // ExternalImport.is_external=1 on insert
+});
+
+test("market universe source file defines metadata fields", () => {
+  const mk = readFileSync(join(root, "engine", "src", "markets.py"), "utf8");
+  for (const f of ["asset_class", "symbol", "session", "spread_model", "volatility_profile", "data_source"]) {
+    assert.ok(mk.includes(f), `markets.py missing ${f}`);
+  }
+  assert.ok(/UNIVERSE/.test(mk));
+});

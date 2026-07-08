@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS BacktestRun (
   sharpe REAL, max_drawdown REAL, profit_factor REAL,
   win_rate REAL, trade_count INTEGER, beats_bh INTEGER,
   is_demo INTEGER NOT NULL DEFAULT 0,
+  asset_class TEXT DEFAULT 'forex',
+  is_external INTEGER NOT NULL DEFAULT 0,
+  source TEXT,
   FOREIGN KEY(strategy) REFERENCES Strategy(name)
 );
 
@@ -137,4 +140,53 @@ CREATE TABLE IF NOT EXISTS SchedulerLock (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   locked_at TEXT NOT NULL,
   owner TEXT NOT NULL
+);
+
+-- v1.2: multi-market research hub -----------------------------------------------
+CREATE TABLE IF NOT EXISTS Market (
+  symbol TEXT PRIMARY KEY,
+  asset_class TEXT NOT NULL,
+  session TEXT NOT NULL,
+  spread_model TEXT NOT NULL,
+  volatility_profile TEXT NOT NULL,
+  data_source TEXT,
+  default_spread_bps REAL NOT NULL,
+  default_slippage_bps REAL NOT NULL DEFAULT 1.0,
+  name TEXT,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  note TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ExternalImport (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  imported_at TEXT NOT NULL,
+  source_file TEXT,
+  source TEXT NOT NULL,            -- tradingview | traderdev | generic
+  strategy_name TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  asset_class TEXT,
+  trades INTEGER,
+  external_net_return REAL,
+  external_win_rate REAL,
+  external_profit_factor REAL,
+  external_max_drawdown REAL,
+  external_sharpe REAL,
+  external_reported_spread_bps REAL,
+  is_external INTEGER NOT NULL DEFAULT 1   -- always 1: external idea source
+);
+
+CREATE TABLE IF NOT EXISTS ImportReScore (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  import_id INTEGER NOT NULL,
+  scored_at TEXT NOT NULL,
+  strategy_label TEXT NOT NULL,     -- e.g. "TV EMA [tradingview]"
+  symbol TEXT NOT NULL,
+  asset_class TEXT,
+  score REAL,
+  robustness REAL,
+  re_costed_return REAL,
+  our_cost_bps REAL,
+  cost_gap_bps REAL,
+  external_net_return REAL,
+  FOREIGN KEY(import_id) REFERENCES ExternalImport(id)
 );

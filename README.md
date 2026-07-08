@@ -124,3 +124,63 @@ Best OOS score: `ema_crossover` (41.9). Over this window, buy-and-hold still
 beat every active strategy — the harness correctly reports that, rather than
 overstating edge. The scoring + robustness penalty is doing its job: strategies
 that only win in one lucky window are down-weighted.
+
+---
+
+## v1.2 — Multi-Market Research Hub
+
+Aether Forex Lab is now a **multi-market research hub**: forex majors + gold
+research mode live, crypto research mode present-but-disabled until enabled.
+
+### Market universe + metadata
+Every market carries structured metadata so the engine applies the right cost
+model, session filter and data source:
+
+| field | meaning |
+|---|---|
+| `asset_class` | forex / metal / crypto / index / equity |
+| `symbol` | instrument (EURUSD, XAUUSD, BTCUSD…) |
+| `session` | fx_major / london / ny / 24h / commodity |
+| `spread_model` | fixed_bps / variable / commission |
+| `volatility_profile` | low / medium / high / extreme |
+| `data_source` | yfinance ticker or `csv` |
+
+Run `npm run seed:markets` to populate the `Market` table. Crypto (BTCUSD,
+ETHUSD) is seeded with `enabled=0` — research-later.
+
+### External research imports (idea sources only)
+Three adapters normalize external results into one shape, **validate**
+(fail-loud on fake/implausible numbers), **label `is_external=1`**, then
+**re-score with OUR spread, slippage, walk-forward and paper rules** before
+they can enter the lab:
+
+- `tradingview` — TradingView / PineScript strategy reports
+- `traderdev` — trader.dev / MCP backtest result import (if available)
+- `generic` — generic backtest result via JSON/CSV
+
+```bash
+npm run import:external ../engine/data/sample_imports_tradingview.json
+npm run import:external ../engine/data/sample_imports_traderdev.json
+npm run import:external ../engine/data/sample_imports_generic.csv
+```
+
+**Source-of-truth contract:** the external headline return is NEVER trusted
+as-is. `engine/src/imports.py::re_score()` charges the gap between the
+external cost model and OUR per-asset-class default (override wins), so an
+imported strategy can only rank if it survives our costs and robustness.
+
+### Pages added
+- `/markets` — universe + filter by asset class
+- `/market-profile?symbol=XAUUSD` — per-market metadata + researched strategies
+- `/imports` — re-scored external strategies (ext. return → our re-score)
+- `/cross-market` — top strategies per asset class, native + external side by side
+
+### Safety (unchanged)
+Paper-only by default. No live execution. No broker credentials. No private
+keys. External platforms are idea sources only; this lab is the source of truth.
+
+### Tests
+- Engine (`pytest`): market universe, import validation, external labeling,
+  re-scoring cost-model override, no-live-execution guarantee (39 pass).
+- App (`npm test`): schema tables, crypto-disabled seed, import loader has no
+  order/execute/broker code, re-score source-of-truth, labeling (14 pass).

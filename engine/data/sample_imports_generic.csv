@@ -1,0 +1,4 @@
+source,strategy_name,symbol,trades,net_return,win_rate,profit_factor,max_drawdown,sharpe,spread_bps
+generic,RSI Momentum AUDUSD,AUDUSD,84,0.17,0.56,1.45,-0.08,0.88,2
+generic,Breakout USDJPY,USDJPY,63,0.09,0.52,1.3,-0.06,0.71,3
+generic,Gold Session Fade,XAUUSD,77,0.29,0.6,1.7,-0.11,1.2,5

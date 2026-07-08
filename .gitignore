@@ -9,6 +9,9 @@ node_modules/
 .next/
 out/
 
+# Engine generated results (rebuilt by CLIs)
+engine/results/
+
 # Local data / runtime
 app/forex_lab.db
 *.log
