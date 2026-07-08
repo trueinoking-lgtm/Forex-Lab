@@ -30,7 +30,14 @@ export default function CrossMarketMatrixPage() {
                   <td style={td}><strong>{r.score?.toFixed?.(1)}</strong></td>
                   <td style={td}>{r.robustness?.toFixed?.(3)}</td>
                   <td style={td}>{r.oos_return?.toFixed?.(3)}</td>
-                  <td style={td}>{r.is_external ? `✅ ext (${r.source})` : "native"}</td>
+                  <td style={td}>
+                    {r.is_external
+                      ? `✅ ext (${r.source})`
+                      : "native"}
+                    {r.is_external && r.re_costed_return != null
+                      ? ` · re-costed ${r.re_costed_return.toFixed(3)}`
+                      : ""}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS BacktestRun (
   strategy TEXT NOT NULL,
   pair TEXT NOT NULL,
   timeframe TEXT NOT NULL,
+  run_date TEXT NOT NULL DEFAULT (date('now')),
   generated_at TEXT NOT NULL,
   oos_return REAL, in_sample_return REAL, bh_oos_return REAL,
   sharpe REAL, max_drawdown REAL, profit_factor REAL,
@@ -31,7 +32,8 @@ CREATE TABLE IF NOT EXISTS BacktestRun (
   asset_class TEXT DEFAULT 'forex',
   is_external INTEGER NOT NULL DEFAULT 0,
   source TEXT,
-  FOREIGN KEY(strategy) REFERENCES Strategy(name)
+  FOREIGN KEY(strategy) REFERENCES Strategy(name),
+  UNIQUE(strategy, pair, run_date)
 );
 
 CREATE TABLE IF NOT EXISTS StrategyScore (
@@ -51,8 +53,10 @@ CREATE TABLE IF NOT EXISTS Signal (
   direction INTEGER,
   entry REAL, stop_loss REAL, take_profit REAL,
   signal_score REAL, regime TEXT,
+  units REAL,               -- risk-sized position size from risk_check
   generated_at TEXT NOT NULL,
   status TEXT DEFAULT 'pending',
+  UNIQUE(pair, strategy, generated_at),
   FOREIGN KEY(strategy) REFERENCES Strategy(name)
 );
 
@@ -73,6 +77,7 @@ CREATE TABLE IF NOT EXISTS PaperTrade (
   direction INTEGER,
   entry REAL, stop_loss REAL, take_profit REAL,
   risk_pct REAL,
+  units REAL,               -- risk-sized position size from risk_check
   opened_at TEXT NOT NULL,
   status TEXT DEFAULT 'open',
   exit_price REAL, exit_at TEXT,
@@ -93,11 +98,13 @@ CREATE TABLE IF NOT EXISTS OutcomeReview (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   paper_trade_id INTEGER NOT NULL,
   reviewed_at TEXT NOT NULL,
+  review_date TEXT NOT NULL DEFAULT (date('now')),
   horizon TEXT,           -- '1h','4h','24h','final'
   price_at_review REAL,
   outcome TEXT,           -- 'win','loss','open'
   note TEXT,
-  FOREIGN KEY(paper_trade_id) REFERENCES PaperTrade(id)
+  FOREIGN KEY(paper_trade_id) REFERENCES PaperTrade(id),
+  UNIQUE(paper_trade_id, horizon, review_date)
 );
 
 CREATE TABLE IF NOT EXISTS RuleSet (

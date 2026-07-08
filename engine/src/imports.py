@@ -213,7 +213,13 @@ def re_score(r: ImportedResult, override_spread_bps: Optional[float] = None,
     ext_total_bps = (r.reported_spread_bps or 0) + (r.reported_slippage_bps or 0)
 
     cost_gap_bps = max(0.0, our_total_bps - ext_total_bps)   # we never credit them
-    # per-trade cost charge approximated over trade count
+    # Heuristic: round-trip cost is charged per trade. We approximate the
+    # realized cost as (cost_gap_bps/10000) * trade_count * 0.5 — the 0.5
+    # reflects that not every trade realizes the full gap and avoids over-
+    # punishing strategies with very high trade counts. This is a deliberate,
+    # documented approximation: external results have no per-bar series, so we
+    # cannot re-run them tick-by-tick; re-costing the headline return is the
+    # best available correction and is conservative (never credits external cost).
     adj_return = r.net_return - (cost_gap_bps / 10000.0) * max(r.trades, 1) * 0.5
     adj_return = float(np.clip(adj_return, -0.99, 10.0))
 

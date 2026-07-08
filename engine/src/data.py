@@ -5,16 +5,12 @@ Demo/seed data must be explicitly labeled (is_demo=True) by the caller.
 """
 from __future__ import annotations
 from pathlib import Path
-import os
 import pandas as pd
 
 try:
     import yfinance as yf
 except ImportError:
     yf = None
-
-# Allow optional API key via env (never logged, never required).
-_YF_KEY = os.environ.get("YFINANCE_API_KEY", "")
 
 
 def load_csv(path: str, is_demo: bool = False) -> pd.DataFrame:

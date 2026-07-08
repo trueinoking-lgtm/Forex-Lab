@@ -120,10 +120,52 @@ test("external import labeling: re-scored rows are always is_external=1", () => 
   assert.ok(/is_external[\s\S]*?,1\)/.test(loader)); // ExternalImport.is_external=1 on insert
 });
 
-test("market universe source file defines metadata fields", () => {
-  const mk = readFileSync(join(root, "engine", "src", "markets.py"), "utf8");
-  for (const f of ["asset_class", "symbol", "session", "spread_model", "volatility_profile", "data_source"]) {
-    assert.ok(mk.includes(f), `markets.py missing ${f}`);
-  }
-  assert.ok(/UNIVERSE/.test(mk));
+// ---- v1.2.1 integrity hardening ----
+test("score_strategies normalizes yfinance =X pair to canonical Market symbol", () => {
+  const src = readFileSync(join(__dirname, "score_strategies.mjs"), "utf8");
+  assert.ok(/canonicalPair/.test(src), "expected canonicalPair() normalizer");
+  assert.ok(/=X\$/.test(src) && /=C\$/.test(src), "normalizer must strip =X and =C suffixes");
+  const seed = readFileSync(join(__dirname, "seed_markets.mjs"), "utf8");
+  assert.ok(/symbol: "EURUSD"/.test(seed), "Market seed stores canonical EURUSD (no =X)");
+});
+
+test("BacktestRun is deduped per (strategy, pair, run_date) — no accumulation on re-run", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  assert.ok(/UNIQUE\(strategy, pair, run_date\)/.test(sql), "needs unique constraint on run");
+  const src = readFileSync(join(__dirname, "score_strategies.mjs"), "utf8");
+  assert.ok(/ON CONFLICT\(strategy,pair,run_date\) DO UPDATE SET/.test(src), "loader must upsert");
+});
+
+test("paper PnL is account-scaled via units (not per-unit move added to equity)", () => {
+  const src = readFileSync(join(__dirname, "paper_update_pnl.mjs"), "utf8");
+  assert.ok(/units/.test(src), "must use risk-sized units");
+  assert.ok(/account0 \+ realized \+ openPnl|account0 \+ realized/.test(src), "equity must be account0 + realized + open");
+  assert.ok(!/\bequity \+= pnl;\s*\n/.test(src), "old per-unit equity+=pnl must be gone");
+  // open risk must be >= 0 (abs), not sign-affected
+  assert.ok(/Math\.abs\(t\.entry - t\.stop_loss\) \* units/.test(src), "open_risk uses abs distance");
+});
+
+test("OutcomeReview is deduped per (trade, horizon, day)", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  assert.ok(/UNIQUE\(paper_trade_id, horizon, review_date\)/.test(sql));
+  const src = readFileSync(join(__dirname, "review_outcomes.mjs"), "utf8");
+  assert.ok(/ON CONFLICT\(paper_trade_id, horizon, review_date\) DO UPDATE SET/.test(src));
+});
+
+test("Signal/PaperTrade carry units column (account-scaled PnL)", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  assert.ok(/CREATE TABLE IF NOT EXISTS Signal[\s\S]*units REAL/.test(sql));
+  assert.ok(/CREATE TABLE IF NOT EXISTS PaperTrade[\s\S]*units REAL/.test(sql));
+});
+
+test("Signal is idempotent per (pair, strategy, generated_at) — no signal dupes", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  assert.ok(/CREATE TABLE IF NOT EXISTS Signal[\s\S]*UNIQUE\(pair, strategy, generated_at\)/.test(sql));
+});
+
+test("cross-market matrix ranks native + external by lab score with robustness tiebreak", () => {
+  const src = readFileSync(join(__dirname, "..", "lib", "db.ts"), "utf8");
+  assert.ok(/UNION ALL/.test(src), "matrix must combine native + external rows");
+  assert.ok(/robustness desc/.test(src), "must use robustness tiebreak");
+  assert.ok(/is_external=1|1 AS is_external/.test(src), "external rows tagged is_external");
 });

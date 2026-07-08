@@ -60,19 +60,33 @@ export function externalImports() {
     ORDER BY ir.score DESC, ei.imported_at DESC`).all();
 }
 export function crossMarketMatrix(limit = 5): Record<string, any[]> {
-  // top re-scored external + native strategies per asset class
-  const rows: any[] = db.prepare(`SELECT s.asset_class AS asset_class, s.strategy, s.pair,
-    r.score, r.robustness, s.oos_return, s.is_external, s.source
+  // Fair cross-market ranking: native (BacktestRun) AND re-scored external
+  // (ImportReScore) strategies, ranked by the lab's composite score but with a
+  // robustness tiebreak so an external headline (e.g. +38%) that our cost model
+  // re-costs down does not auto-win purely on nominal return magnitude.
+  // Source of truth: the lab score. External rows are tagged is_external=1.
+  const rows: any[] = db.prepare(`
+    SELECT s.asset_class AS asset_class, s.strategy, s.pair, r.score,
+           r.robustness, s.oos_return, s.is_external, s.source, NULL AS re_costed_return
     FROM BacktestRun s LEFT JOIN StrategyScore r ON r.run_id=s.id
     WHERE s.asset_class IS NOT NULL
-    ORDER BY s.asset_class, r.score DESC`).all();
+    UNION ALL
+    SELECT ei.asset_class AS asset_class, ir.strategy_label AS strategy, ei.symbol AS pair,
+           ir.score, ir.robustness, ir.re_costed_return AS oos_return, 1 AS is_external,
+           ei.source, ir.re_costed_return
+    FROM ExternalImport ei JOIN ImportReScore ir ON ir.import_id=ei.id
+  `).all();
   const map: Record<string, any[]> = {};
   for (const r of rows) {
     const k = r.asset_class || "unknown";
     (map[k] ||= []).push(r);
   }
-  // keep top `limit` per class
-  for (const k of Object.keys(map)) map[k] = map[k].slice(0, limit);
+  // rank within each class by score desc, robustness desc (robustness tiebreak)
+  for (const k of Object.keys(map)) {
+    map[k].sort((a, b) =>
+      (b.score ?? 0) - (a.score ?? 0) || (b.robustness ?? 0) - (a.robustness ?? 0));
+    map[k] = map[k].slice(0, limit);
+  }
   return map;
 }
 

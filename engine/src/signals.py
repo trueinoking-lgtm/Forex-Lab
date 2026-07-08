@@ -35,6 +35,7 @@ class PaperSignal:
     signal_score: float
     regime: str
     timestamp: str
+    units: float = 0.0      # risk-sized position size from risk_check
 
     def to_dict(self):
         return asdict(self)

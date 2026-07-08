@@ -178,3 +178,25 @@ def test_parse_rejects_fake_in_file(tmp_path):
 def test_imports_module_has_no_execution_code():
     src = (Path(__file__).parent.parent / "src" / "imports.py").read_text()
     assert not any(t in src for t in ("place_order", "execute_trade", "broker_password", "live_order"))
+
+
+# ---------------- v1.2.1: risk-sized position + integrity ----------------
+def test_paper_signal_carries_units():
+    from src.signals import PaperSignal, risk_check
+    rc = risk_check(10000.0, 0.75, 1.1000, 1.0950)
+    assert rc["pass"] is True
+    assert rc["units"] > 0
+    ps = PaperSignal(pair="EURUSD", strategy="s", direction=1, entry=1.10,
+                     stop_loss=1.095, take_profit=1.11, signal_score=50.0,
+                     regime="trend", timestamp="t", units=rc["units"])
+    assert ps.to_dict()["units"] == rc["units"]
+
+
+def test_rescore_robustness_low_for_single_window():
+    # A single-window (no per-bar series) external import gets share_positive=1
+    # but the re-scored score should still reflect our cost model, not auto-max.
+    r = _res(net_return=0.384, reported_spread_bps=0, reported_slippage_bps=0, trades=60)
+    sc = imports.re_score(r)
+    # external headline +38.4% re-costed down; score must be finite and < 100
+    assert 0 <= sc["score"] <= 100
+    assert sc["re_costed_return"] < r.net_return

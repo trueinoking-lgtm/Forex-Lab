@@ -77,14 +77,17 @@ def main():
             journal.append({"strategy": name, "action": "skip",
                             "reason": f"risk_check failed: {rc['reason']}"})
             continue
+        units = rc.get("units", 0.0)
         psig = signals.PaperSignal(
             pair=symbol, strategy=name, direction=direction, entry=round(a, 5),
             stop_loss=sl, take_profit=tp, signal_score=sig_score,
-            regime=regime, timestamp=str(pd.Timestamp.now(tz="UTC")))
+            regime=regime, timestamp=str(pd.Timestamp.now(tz="UTC")),
+            units=units)
         out_signals.append(psig.to_dict())
         journal.append({"strategy": name, "action": "paper_signal",
                         "direction": direction, "entry": a, "sl": sl, "tp": tp,
-                        "signal_score": sig_score, "reason": "passed risk + regime"})
+                        "units": units, "signal_score": sig_score,
+                        "reason": "passed risk + regime"})
 
     out = {"generated_at": str(pd.Timestamp.now(tz="UTC")), "pair": symbol,
            "regime": regime, "close": round(a, 5), "paper_only": True,
