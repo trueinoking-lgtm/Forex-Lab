@@ -1,0 +1,20 @@
+# Python
+engine/.venv/
+engine/__pycache__/
+engine/*.pyc
+__pycache__/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Local data / runtime
+app/forex_lab.db
+*.log
+.DS_Store
+
+# Secrets (never commit)
+.env
+.env.local
+*.env

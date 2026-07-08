@@ -1,0 +1,35 @@
+{
+  "name": "aether-forex-lab",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:migrate": "node scripts/db_migrate.mjs",
+    "seed": "node scripts/seed.mjs",
+    "import:prices": "node scripts/import_prices.mjs",
+    "backtest": "cd ../engine && .venv/bin/python run_backtest.py",
+    "score:strategies": "node scripts/score_strategies.mjs",
+    "monitor:signals": "cd ../engine && .venv/bin/python run_signals.py",
+    "paper:update-pnl": "node scripts/paper_update_pnl.mjs",
+    "review:outcomes": "node scripts/review_outcomes.mjs",
+    "update:rules": "node scripts/update_rules.mjs",
+    "report:daily": "node scripts/report_daily.mjs",
+    "report:payload": "node scripts/report_payload.mjs",
+    "daily:run": "node scripts/daily_loop.mjs",
+    "test": "node --test scripts/*.test.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "next": "14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/better-sqlite3": "^7.6.0"
+  }
+}

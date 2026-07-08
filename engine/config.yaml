@@ -1,0 +1,36 @@
+paper_only: true
+allow_live_orders: false
+account: 10000.0
+data:
+  source: yfinance
+  symbol: "EURUSD=X"
+  timeframe: "1d"
+  lookback_days: 1095
+  cache_dir: "data"
+  pairs: ["AUDUSD=X"]
+cost:
+  fee_bps: 0
+  slippage_bps: 1
+  spread_bps: 2
+backtest:
+  initial_capital: 10000.0
+  periods_per_year: 252
+  risk_free_rate: 0.0
+  walk_forward:
+    train_days: 252
+    test_days: 30
+    step_days: 30
+  min_trades: 8
+signals:
+  active: true
+  risk_pct: 0.75
+  sl_mult: 2.0
+  tp_mult: 3.0
+  min_signal_score: 40.0
+  regime_gate: true
+  account: 10000.0
+telegram:
+  chat_id: "-1004463137373"
+  reports_topic: 39
+  alerts_topic: 38
+  ideas_topic: 34
