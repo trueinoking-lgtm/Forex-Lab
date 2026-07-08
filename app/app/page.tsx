@@ -1,4 +1,5 @@
 import { topStrategies, paperTrades, pnlSnapshots } from "@/lib/db";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -6,49 +7,73 @@ export default function OverviewPage() {
   const top = topStrategies(5);
   const trades = paperTrades();
   const pnl = pnlSnapshots();
-  const open = trades.filter((t) => (t as any).status === "open").length;
+  const open = trades.filter((t: any) => t.status === "open").length;
+  const best = top[0];
+
   return (
-    <div>
-      <h1 style={{ color: "#5eead4" }}>Overview</h1>
-      <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
-        <Card label="Top strategy" value={top[0] ? top[0].strategy : "—"} />
-        <Card label="Best OOS score" value={top[0] ? top[0].score.toFixed(1) : "—"} />
-        <Card label="Open paper trades" value={String(open)} />
-        <Card label="PnL snapshots" value={String(pnl.length)} />
+    <div className="animate-in">
+      <h1>Multi-Market Research Hub</h1>
+      <p className="lead">
+        A local-first forex research and paper-trading dashboard. Walk-forward–scored
+        strategies across <span className="mono">forex</span>,{" "}
+        <span className="mono">metals</span> and <span className="mono">crypto</span> — with
+        external ideas re-scored under our own spread, slippage and robustness rules.
+        Paper-only. No live execution, ever.
+      </p>
+
+      <div className="stat-grid stagger">
+        <div className="stat">
+          <div className="label">Top strategy</div>
+          <div className="value">{best ? best.strategy : "—"}</div>
+        </div>
+        <div className="stat">
+          <div className="label">Best OOS score</div>
+          <div className="value accent">{best ? best.score.toFixed(1) : "—"}</div>
+        </div>
+        <div className="stat">
+          <div className="label">Open paper trades</div>
+          <div className="value">{String(open)}</div>
+        </div>
+        <div className="stat">
+          <div className="label">PnL snapshots</div>
+          <div className="value">{String(pnl.length)}</div>
+        </div>
       </div>
-      <h2 style={{ color: "#93c5fd" }}>Top strategies</h2>
+
+      <h2 className="animate-rise">Top strategies</h2>
       <Table rows={top} />
     </div>
   );
 }
-function Card({ label, value }: { label: string; value: string }) {
+
+function Table({ rows }: { rows: any[] }) {
+  if (!rows.length)
+    return (
+      <p className="muted">No data yet — run <span className="mono">npm run backtest &amp;&amp; npm run score:strategies</span>.</p>
+    );
   return (
-    <div style={{ background: "#111827", border: "1px solid #1f2937", borderRadius: 8, padding: "14px 18px", minWidth: 150 }}>
-      <div style={{ fontSize: 12, color: "#9ca3af" }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 600 }}>{value}</div>
+    <div className="panel glass animate-rise" style={{ padding: 0, overflow: "hidden" }}>
+      <table className="data">
+        <thead>
+          <tr>
+            <th>strategy</th><th>pair</th><th>score</th>
+            <th>oos</th><th>sharpe</th><th>DD</th><th>robust</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{r.strategy}</td>
+              <td className="mono">{r.pair}</td>
+              <td className="num">{r.score?.toFixed?.(1)}</td>
+              <td className="num">{r.oos_return?.toFixed?.(3)}</td>
+              <td className="num">{r.sharpe?.toFixed?.(2)}</td>
+              <td className="num">{r.max_drawdown?.toFixed?.(3)}</td>
+              <td className="num">{r.robustness?.toFixed?.(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
-function Table({ rows }: { rows: any[] }) {
-  if (!rows.length) return <p style={{ color: "#9ca3af" }}>No data yet — run backtest + score:strategies.</p>;
-  return (
-    <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
-      <thead><tr style={{ color: "#9ca3af", textAlign: "left" }}>
-        <th style={th}>strategy</th><th style={th}>pair</th><th style={th}>score</th>
-        <th style={th}>oos</th><th style={th}>sharpe</th><th style={th}>DD</th><th style={th}>robust</th>
-      </tr></thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
-            <td style={td}>{r.strategy}</td><td style={td}>{r.pair}</td>
-            <td style={td}>{r.score?.toFixed?.(1)}</td><td style={td}>{r.oos_return?.toFixed?.(3)}</td>
-            <td style={td}>{r.sharpe?.toFixed?.(2)}</td><td style={td}>{r.max_drawdown?.toFixed?.(3)}</td>
-            <td style={td}>{r.robustness?.toFixed?.(2)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-const th: React.CSSProperties = { padding: "8px 10px" };
-const td: React.CSSProperties = { padding: "8px 10px" };
