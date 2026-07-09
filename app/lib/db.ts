@@ -74,7 +74,12 @@ export function crossMarketMatrix(limit = 5): Record<string, any[]> {
     SELECT ei.asset_class AS asset_class, ir.strategy_label AS strategy, ei.symbol AS pair,
            ir.score, ir.robustness, ir.re_costed_return AS oos_return, 1 AS is_external,
            ei.source, ir.re_costed_return
-    FROM ExternalImport ei JOIN ImportReScore ir ON ir.import_id=ei.id
+    FROM ImportReScore ir JOIN ExternalImport ei ON ei.id = ir.import_id
+    WHERE ir.id IN (
+      SELECT MAX(ir2.id) FROM ImportReScore ir2
+      JOIN ExternalImport ei2 ON ei2.id = ir2.import_id
+      GROUP BY ei2.source, ir2.strategy_label, ei2.symbol
+    )
   `).all();
   const map: Record<string, any[]> = {};
   for (const r of rows) {

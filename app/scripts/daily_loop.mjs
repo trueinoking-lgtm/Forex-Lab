@@ -1,8 +1,10 @@
 // scripts/daily_loop.mjs — full paper-research loop scheduler (safe).
 //
 // Steps (in order):
+//   0. import:external   (re-score external IDEA SOURCES under OUR rules, BEFORE
+//                         native scoring so the lab is the single source of truth)
 //   1. backtest          (Python engine — walk-forward + scoring)
-//   2. score:strategies  (load scores into SQLite)
+//   2. score:strategies  (load native scores into SQLite)
 //   3. monitor:signals   (generate paper signals, risk-gated)
 //   4. paper:update-pnl  (snapshot PnL, close on SL/TP)
 //   5. review:outcomes   (review open trades 1h/4h/24h/final)
@@ -18,7 +20,8 @@
 //   - Data/API failures: engine raises (no fake fallback) — propagated here.
 import db, { log, redact } from "./db.mjs";
 import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { dirname, join, basename } from "path";
+import { existsSync } from "fs";
 import { spawnSync } from "child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -81,7 +84,23 @@ function main() {
   acquireLock();
   const warnings = [];
   try {
-    // 1-7
+    // 0. import:external — re-score external IDEA SOURCES under OUR rules, BEFORE
+    //    native scoring so the lab remains the single source of truth. Idempotent
+    //    per (source, strategy, symbol, day) — safe to re-run daily.
+    const EXTERNAL_SEEDS = [
+      join(ENGINE, "data", "sample_imports_tradingview.json"),
+      join(ENGINE, "data", "sample_imports_traderdev.json"),
+      join(ENGINE, "data", "sample_imports_generic.csv"),
+    ];
+    for (const seed of EXTERNAL_SEEDS) {
+      if (!existsSync(seed)) {
+        log(`[daily_loop] · import:external: seed missing, skipped (${seed})`);
+        continue;
+      }
+      const summary = runStep("import:external", "node", APP, ["scripts/import_external.mjs", seed]);
+      log(`[daily_loop] ✓ import:external (${basename(seed)}): ${summary}`);
+    }
+    // 1-7 native pipeline
     const steps = [
       ["backtest", join(ENGINE, ".venv", "bin", "python"), ENGINE, ["run_backtest.py"]],
       ["score:strategies", "node", APP, ["scripts/score_strategies.mjs"]],

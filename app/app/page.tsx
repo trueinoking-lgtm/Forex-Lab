@@ -1,4 +1,4 @@
-import { topStrategies, paperTrades, pnlSnapshots } from "@/lib/db";
+import { topStrategies, paperTrades, pnlSnapshots, externalImports } from "@/lib/db";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +7,7 @@ export default function OverviewPage() {
   const top = topStrategies(5);
   const trades = paperTrades();
   const pnl = pnlSnapshots();
+  const ext = externalImports();
   const open = trades.filter((t: any) => t.status === "open").length;
   const best = top[0];
 
@@ -20,6 +21,11 @@ export default function OverviewPage() {
         external ideas re-scored under our own spread, slippage and robustness rules.
         Paper-only. No live execution, ever.
       </p>
+
+      <div className="legend">
+        <span className="badge native">Native · lab walk-forward</span>
+        <span className="badge ext">External seed · re-scored by Aether</span>
+      </div>
 
       <div className="stat-grid stagger">
         <div className="stat">
@@ -35,8 +41,8 @@ export default function OverviewPage() {
           <div className="value">{String(open)}</div>
         </div>
         <div className="stat">
-          <div className="label">PnL snapshots</div>
-          <div className="value">{String(pnl.length)}</div>
+          <div className="label">External seeds</div>
+          <div className="value">{String(ext.length)}</div>
         </div>
       </div>
 

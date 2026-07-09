@@ -1,51 +1,67 @@
-import { crossMarketMatrix } from "@/lib/db";
+import { crossMarketMatrix, externalImports } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export default function CrossMarketMatrixPage() {
   const matrix = crossMarketMatrix(5);
   const classes = Object.keys(matrix);
+  const extCount = externalImports().length;
   return (
-    <div>
-      <h1 style={{ color: "#5eead4" }}>Strategy Cross-Market Matrix</h1>
-      <p style={{ color: "#9ca3af" }}>
+    <div className="animate-in">
+      <h1>Strategy Cross-Market Matrix</h1>
+      <p className="lead">
         Top strategies per asset class, ranked by our composite score. Native and
         re-scored external strategies appear together — the lab score is the only
         ranking that counts, regardless of where an idea originated.
       </p>
+
+      <div className="legend">
+        <span className="badge native">Native · lab walk-forward</span>
+        <span className="badge ext">External seed · re-scored by Aether</span>
+        <span className="badge" style={{ color: "var(--text-muted)" }}>
+          {extCount} external seed{extCount === 1 ? "" : "s"} loaded
+        </span>
+      </div>
+
       {classes.length === 0 ? (
-        <p style={{ color: "#9ca3af" }}>No scored strategies yet. Run backtests and imports first.</p>
-      ) : classes.map((cls) => (
-        <div key={cls} style={{ marginBottom: 28 }}>
-          <h2 style={{ color: "#93c5fd", textTransform: "uppercase" }}>{cls}</h2>
-          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
-            <thead><tr style={{ color: "#9ca3af", textAlign: "left" }}>
-              <th style={th}>strategy</th><th style={th}>symbol</th><th style={th}>score</th>
-              <th style={th}>robustness</th><th style={th}>oos</th><th style={th}>type</th>
-            </tr></thead>
-            <tbody>
-              {matrix[cls].map((r: any, i: number) => (
-                <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
-                  <td style={td}>{r.strategy}</td>
-                  <td style={td}>{r.pair}</td>
-                  <td style={td}><strong>{r.score?.toFixed?.(1)}</strong></td>
-                  <td style={td}>{r.robustness?.toFixed?.(3)}</td>
-                  <td style={td}>{r.oos_return?.toFixed?.(3)}</td>
-                  <td style={td}>
-                    {r.is_external
-                      ? `✅ ext (${r.source})`
-                      : "native"}
-                    {r.is_external && r.re_costed_return != null
-                      ? ` · re-costed ${r.re_costed_return.toFixed(3)}`
-                      : ""}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+        <p className="muted">No scored strategies yet. Run backtests and imports first.</p>
+      ) : (
+        classes.map((cls) => (
+          <div key={cls} style={{ marginBottom: 28 }}>
+            <h2 className="mono" style={{ textTransform: "uppercase", color: "var(--accent-2)" }}>{cls}</h2>
+            <div className="panel glass" style={{ padding: 0, overflow: "hidden" }}>
+              <table className="data">
+                <thead>
+                  <tr>
+                    <th>strategy</th><th>symbol</th><th>score</th>
+                    <th>robustness</th><th>oos</th><th>type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrix[cls].map((r: any, i: number) => (
+                    <tr key={i}>
+                      <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{r.strategy}</td>
+                      <td className="mono">{r.pair}</td>
+                      <td className="num"><strong>{r.score?.toFixed?.(1)}</strong></td>
+                      <td className="num">{r.robustness?.toFixed?.(3)}</td>
+                      <td className="num">{r.oos_return?.toFixed?.(3)}</td>
+                      <td>
+                        {r.is_external ? (
+                          <span className="badge ext" title="Re-scored under Aether's spread/slippage/robustness rules">
+                            ext · {r.source}
+                            {r.re_costed_return != null ? ` · ${r.re_costed_return.toFixed(3)}` : ""}
+                          </span>
+                        ) : (
+                          <span className="badge native">native</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }
-const th: React.CSSProperties = { padding: "8px 10px" };
-const td: React.CSSProperties = { padding: "8px 10px" };

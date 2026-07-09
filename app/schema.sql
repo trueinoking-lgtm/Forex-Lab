@@ -167,6 +167,7 @@ CREATE TABLE IF NOT EXISTS Market (
 CREATE TABLE IF NOT EXISTS ExternalImport (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   imported_at TEXT NOT NULL,
+  imported_date TEXT DEFAULT (date('now')),   -- v1.2.3: day-bucket for idempotent daily re-import
   source_file TEXT,
   source TEXT NOT NULL,            -- tradingview | traderdev | generic
   strategy_name TEXT NOT NULL,

@@ -169,3 +169,86 @@ test("cross-market matrix ranks native + external by lab score with robustness t
   assert.ok(/robustness desc/.test(src), "must use robustness tiebreak");
   assert.ok(/is_external=1|1 AS is_external/.test(src), "external rows tagged is_external");
 });
+
+// ---- v1.2.3: external import daily-loop integration + no-bypass guarantees ----
+
+test("import:external is wired into daily_loop BEFORE score:strategies", () => {
+  const loop = readFileSync(join(__dirname, "daily_loop.mjs"), "utf8");
+  const importIdx = loop.indexOf("import:external");
+  const scoreIdx = loop.indexOf("score:strategies");
+  assert.ok(importIdx > 0, "daily_loop must run import:external");
+  assert.ok(scoreIdx > 0, "daily_loop must run score:strategies");
+  assert.ok(importIdx < scoreIdx, "import:external must run before score:strategies");
+  // external seeds come from the engine idea-source sample files, not native backtest
+  assert.ok(/sample_imports_(tradingview|traderdev|generic)/.test(loop),
+    "daily_loop must point import:external at external idea-source files");
+});
+
+test("import:external re-scores under OUR rules and NEVER writes the native score tables", () => {
+  // The loader must persist ONLY to ExternalImport + ImportReScore. It must not
+  // insert into BacktestRun or StrategyScore (those are native-only, walk-forward).
+  const loader = readFileSync(join(__dirname, "import_external.mjs"), "utf8");
+  assert.ok(/INSERT INTO ExternalImport/.test(loader));
+  assert.ok(/INSERT INTO ImportReScore/.test(loader));
+  assert.ok(!/INSERT INTO (BacktestRun|StrategyScore)/.test(loader),
+    "external import must not pollute native score tables — lab score stays source of truth");
+});
+
+test("external re-score path always reduces external return by OUR cost (no bypass)", () => {
+  // Proof at the engine level: re_score re-costs the external headline and the
+  // lab 'score' is derived from the re-costed return, never the raw external one.
+  const imp = readFileSync(join(root, "engine", "src", "imports.py"), "utf8");
+  assert.ok(/def re_score/.test(imp));
+  assert.ok(/adj_return = r\.net_return - /.test(imp),
+    "re_score must subtract our cost gap from the external return");
+  assert.ok(/sc\["is_external"\] = True/.test(imp));
+  assert.ok(/sc\["re_costed_return"\] = round\(adj_return/.test(imp),
+    "the lab score is built from re_costed_return, not the external net_return");
+  // the loader stores score from re_score output, not the external headline
+  const loader = readFileSync(join(__dirname, "import_external.mjs"), "utf8");
+  assert.ok(/insReScore\.run\([\s\S]*?r\.score/.test(loader),
+    "ImportReScore.score must come from re_score (r.score), not external net_return");
+});
+
+test("no external import can create live orders or broker execution", () => {
+  const targets = [
+    join(__dirname, "import_external.mjs"),
+    join(root, "engine", "import_external.py"),
+    join(root, "engine", "src", "imports.py"),
+  ];
+  // Forbidden = actual order-execution CALLS / dangerous config ASSIGNMENTS.
+  // NOTE: `allow_live_orders` / `live_order` substrings appear ONLY inside the
+  // safety guard that REFUSES imports when live orders are enabled — that is
+  // the protection, not a violation, so we match call-form tokens only.
+  const FORBIDDEN = /place_order\s*\(|execute_trade\s*\(|broker_password|broker_order_id\s*\(|live_order\s*\(|allow_live_orders:\s*true|paper_only:\s*false/;
+  for (const f of targets) {
+    const txt = readFileSync(f, "utf8");
+    assert.ok(!FORBIDDEN.test(txt), `forbidden live/broker token in ${f}`);
+  }
+  // daily_loop's import step invokes ONLY import_external.mjs (no order path)
+  const loop = readFileSync(join(__dirname, "daily_loop.mjs"), "utf8");
+  const runIdx = loop.indexOf('runStep("import:external"');
+  assert.ok(runIdx > 0, "daily_loop must call import:external via runStep");
+  const scoreIdx = loop.indexOf("score:strategies", runIdx);
+  const seg = loop.slice(runIdx, scoreIdx);
+  assert.ok(/scripts\/import_external\.mjs/.test(seg), "import step must call import_external.mjs");
+  assert.ok(!/place_order|execute_trade|broker/.test(seg), "import step has no live/broker call");
+});
+
+test("import:external is idempotent per (source, strategy, symbol, day)", () => {
+  // Loader must de-dupe same-day re-imports so the daily loop can't stack rows.
+  const loader = readFileSync(join(__dirname, "import_external.mjs"), "utf8");
+  assert.ok(/imported_date/.test(loader), "loader must bucket by imported_date");
+  assert.ok(/SELECT id FROM ExternalImport\s+WHERE source=\? AND strategy_name=\? AND symbol=\? AND imported_date=\?/.test(loader),
+    "loader must look up existing same-day import before inserting");
+  assert.ok(/DELETE FROM ImportReScore WHERE import_id=/.test(loader),
+    "loader must replace re-score rows for the same import");
+});
+
+test("ExternalImport schema carries imported_date for daily idempotency", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  assert.ok(/CREATE TABLE IF NOT EXISTS ExternalImport[\s\S]*imported_date/.test(sql));
+  // db_migrate must add the column to existing DBs
+  const mig = readFileSync(join(__dirname, "db_migrate.mjs"), "utf8");
+  assert.ok(/addColumn\("ExternalImport", "imported_date"/.test(mig));
+});

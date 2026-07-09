@@ -255,6 +255,8 @@ table.data tbody tr:last-child td { border-bottom: none; }
 .badge.ok { color: var(--success); background: var(--success-bg); }
 .badge.warn { color: var(--warning); background: var(--warning-bg); }
 
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 22px; }
+
 /* ---------------- Surface grid (research hubs) ---------------- */
 .surface-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
 .surface-card { padding: 20px; border-radius: var(--radius-lg); display: block; text-decoration: none; color: inherit; }
