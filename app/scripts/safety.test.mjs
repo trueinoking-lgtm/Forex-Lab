@@ -252,3 +252,112 @@ test("ExternalImport schema carries imported_date for daily idempotency", () => 
   const mig = readFileSync(join(__dirname, "db_migrate.mjs"), "utf8");
   assert.ok(/addColumn\("ExternalImport", "imported_date"/.test(mig));
 });
+
+// ---- v1.3: Market Trend Intelligence layer ----
+
+test("v1.3 schema adds MarketTrendSnapshot, TrendPrediction, TrendReviewLesson", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  for (const t of ["MarketTrendSnapshot", "TrendPrediction", "TrendReviewLesson"]) {
+    assert.ok(sql.includes(`CREATE TABLE IF NOT EXISTS ${t}`), `missing ${t}`);
+  }
+});
+
+test("trend prediction REQUIRES an invalidation price (NOT NULL + loader guard)", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  // schema-level: invalidation_price is NOT NULL on TrendPrediction
+  assert.ok(/CREATE TABLE IF NOT EXISTS TrendPrediction[\s\S]*invalidation_price REAL NOT NULL/.test(sql),
+    "TrendPrediction.invalidation_price must be NOT NULL");
+  // loader-level: rows without an invalidation are skipped, never trusted
+  const loader = readFileSync(join(__dirname, "trend_ingest.mjs"), "utf8");
+  assert.ok(/invalidation_price == null/.test(loader),
+    "ingest must skip predictions lacking an invalidation price");
+});
+
+test("prediction is stored BEFORE outcome (outcome fields nullable, loader omits them)", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  // outcome fields exist but are nullable (no NOT NULL) so a prediction is
+  // recorded first and reviewed later.
+  assert.ok(/TrendPrediction[\s\S]*outcome_price REAL,/.test(sql));
+  assert.ok(/TrendPrediction[\s\S]*was_correct INTEGER,/.test(sql));
+  const loader = readFileSync(join(__dirname, "trend_ingest.mjs"), "utf8");
+  // the INSERT must NOT set outcome_price / was_correct / reviewed_at
+  assert.ok(/INSERT INTO TrendPrediction[\s\S]*?VALUES/.test(loader));
+  assert.ok(!/INSERT INTO TrendPrediction[\s\S]*?(outcome_price|was_correct|reviewed_at)[\s\S]*?VALUES/.test(loader),
+    "ingest must insert predictions without outcome fields (stored before review)");
+});
+
+test("outcome review CANNOT overwrite the original prediction fields", () => {
+  const review = readFileSync(join(__dirname, "review_trends.mjs"), "utf8");
+  // the review UPDATE must touch ONLY outcome/review columns
+  const m = review.match(/UPDATE TrendPrediction\s+SET([\s\S]*?)WHERE/);
+  assert.ok(m, "review must UPDATE TrendPrediction");
+  const setClause = m[1];
+  for (const col of ["outcome_price", "outcome_direction", "was_correct", "reviewed_at"]) {
+    assert.ok(setClause.includes(col), `review should set ${col}`);
+  }
+  for (const forbidden of ["predicted_direction", "confidence_score", "invalidation_price",
+    "prediction_time", "entry_context_json", "horizon", "symbol"]) {
+    assert.ok(!setClause.includes(forbidden),
+      `review must NOT overwrite original prediction field ${forbidden}`);
+  }
+});
+
+test("review loop compares against three naive baselines", () => {
+  const review = readFileSync(join(__dirname, "review_trends.mjs"), "utf8");
+  assert.ok(/prevCandle/.test(review), "baseline (a) follow previous candle");
+  assert.ok(/noChange/.test(review), "baseline (b) assume no change");
+  assert.ok(/emaTrend/.test(review), "baseline (c) follow EMA trend");
+  assert.ok(/TrendReviewLesson/.test(review), "misses must be stored as lessons");
+});
+
+test("uncertain label is allowed AND encouraged (vocab present in schema + page)", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  assert.ok(/regime TEXT NOT NULL,\s*--\s*trend \| range \| volatile \| uncertain/.test(sql),
+    "regime vocab must include uncertain");
+  const page = readFileSync(join(__dirname, "..", "app", "market-trends", "page.tsx"), "utf8");
+  assert.ok(/uncertain/.test(page), "trends page must surface the uncertain label");
+});
+
+test("NO certainty language in trend UI or scripts", () => {
+  const certainty = /\b(guaranteed|risk[- ]free|100%\s+(sure|certain)|will\s+(rise|fall|reach)|sure\s+thing)\b/i;
+  const files = [
+    join(__dirname, "..", "app", "market-trends", "page.tsx"),
+    join(__dirname, "trend_ingest.mjs"),
+    join(__dirname, "review_trends.mjs"),
+  ];
+  for (const f of files) {
+    const txt = readFileSync(f, "utf8");
+    assert.ok(!certainty.test(txt), `certainty language found in ${f}`);
+  }
+});
+
+test("trend intelligence performs NO live execution (no order/broker code)", () => {
+  const files = [
+    join(__dirname, "trend_ingest.mjs"),
+    join(__dirname, "review_trends.mjs"),
+    join(root, "engine", "run_trends.py"),
+    join(root, "engine", "src", "trend.py"),
+  ];
+  for (const f of files) {
+    const txt = readFileSync(f, "utf8");
+    assert.ok(!/place_order|execute_trade|broker_password|create_order|submit_order|position_size/.test(txt),
+      `forbidden execution token in ${f}`);
+  }
+});
+
+test("trend engine refuses to run if live orders are enabled", () => {
+  const rt = readFileSync(join(root, "engine", "run_trends.py"), "utf8");
+  assert.ok(/paper_only/.test(rt) && /allow_live_orders/.test(rt));
+  assert.ok(/Refusing/.test(rt), "run_trends must refuse when paper_only false / live allowed");
+});
+
+test("trends are wired into the daily loop AFTER scoring, review after outcomes", () => {
+  const loop = readFileSync(join(__dirname, "daily_loop.mjs"), "utf8");
+  const scoreIdx = loop.indexOf("score:strategies");
+  const detectIdx = loop.indexOf("trends:detect");
+  const ingestIdx = loop.indexOf("trends:ingest");
+  const reviewIdx = loop.indexOf("review:trends");
+  assert.ok(detectIdx > scoreIdx, "trends:detect runs after score:strategies (needs fresh history)");
+  assert.ok(ingestIdx > detectIdx, "trends:ingest runs after detect");
+  assert.ok(reviewIdx > ingestIdx, "review:trends runs after ingest");
+});

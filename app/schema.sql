@@ -198,3 +198,59 @@ CREATE TABLE IF NOT EXISTS ImportReScore (
   external_net_return REAL,
   FOREIGN KEY(import_id) REFERENCES ExternalImport(id)
 );
+
+-- v1.3: Market Trend Intelligence layer ---------------------------------------
+-- Probabilistic, evidence-based trend detection. NO certainty claims. Every
+-- prediction stores an invalidation price and is later reviewed against actuals
+-- AND naive baselines. The lab never executes; this is research intelligence only.
+
+CREATE TABLE IF NOT EXISTS MarketTrendSnapshot (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  symbol TEXT NOT NULL,
+  timeframe TEXT NOT NULL,
+  detected_at TEXT NOT NULL,
+  regime TEXT NOT NULL,         -- trend | range | volatile | uncertain
+  direction TEXT NOT NULL,      -- bullish | bearish | sideways | uncertain
+  trend_strength REAL,
+  momentum_score REAL,
+  volatility_score REAL,
+  confidence_score REAL,
+  best_strategy TEXT,
+  invalidation_price REAL,
+  reasons_json TEXT,            -- evidence list (JSON array of strings)
+  risks_json TEXT,              -- risk list (JSON array of strings)
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(symbol, timeframe, detected_at)
+);
+
+CREATE TABLE IF NOT EXISTS TrendPrediction (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  symbol TEXT NOT NULL,
+  timeframe TEXT NOT NULL,
+  prediction_time TEXT NOT NULL,
+  horizon TEXT NOT NULL,        -- 1h | 4h | 1d
+  predicted_direction TEXT NOT NULL,  -- bullish | bearish | sideways | uncertain
+  confidence_score REAL,
+  entry_context_json TEXT,
+  invalidation_price REAL NOT NULL,   -- required: prediction is invalidated if hit
+  -- review fields (populated by the review loop ONLY; original prediction never edited)
+  outcome_price REAL,
+  outcome_direction TEXT,
+  was_correct INTEGER,
+  reviewed_at TEXT,
+  UNIQUE(symbol, timeframe, prediction_time, horizon)
+);
+
+CREATE TABLE IF NOT EXISTS TrendReviewLesson (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  prediction_id INTEGER NOT NULL,
+  reviewed_at TEXT NOT NULL,
+  horizon TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  predicted_direction TEXT,
+  outcome_direction TEXT,
+  was_correct INTEGER,
+  baseline_miss TEXT,   -- which naive baseline(s) it failed vs, else NULL
+  lesson TEXT,
+  FOREIGN KEY(prediction_id) REFERENCES TrendPrediction(id)
+);

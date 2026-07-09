@@ -95,3 +95,45 @@ export function crossMarketMatrix(limit = 5): Record<string, any[]> {
   return map;
 }
 
+// ---- v1.3: Market Trend Intelligence -----------------------------------------
+export function latestTrendSnapshots(): any[] {
+  // one latest snapshot per (symbol, timeframe) — the most recent detected_at.
+  return db.prepare(`
+    SELECT s.* FROM MarketTrendSnapshot s
+    JOIN (SELECT symbol, timeframe, MAX(detected_at) md FROM MarketTrendSnapshot
+          GROUP BY symbol, timeframe) m
+      ON m.symbol=s.symbol AND m.timeframe=s.timeframe AND m.md=s.detected_at
+    ORDER BY s.symbol
+  `).all();
+}
+
+export function latestPredictionFor(symbol: string, horizon: string): any | null {
+  // most recent prediction for a symbol+horizon, with its review if any.
+  return db.prepare(`
+    SELECT * FROM TrendPrediction
+    WHERE symbol=? AND horizon=?
+    ORDER BY prediction_time DESC LIMIT 1
+  `).get(symbol, horizon);
+}
+
+export function trendAccuracyBy(groupCols: string[]): any[] {
+  // accuracy grouped by arbitrary columns (symbol / timeframe / horizon).
+  // Only counts reviewed predictions (was_correct is not null).
+  const cols = groupCols.map((c) => `tp.${c}`).join(", ");
+  return db.prepare(`
+    SELECT ${cols},
+           COUNT(*) AS n,
+           SUM(CASE WHEN tp.was_correct=1 THEN 1 ELSE 0 END) AS correct,
+           ROUND(AVG(tp.confidence_score), 3) AS avg_confidence,
+           ROUND(100.0 * SUM(CASE WHEN tp.was_correct=1 THEN 1 ELSE 0 END) / COUNT(*), 1) AS accuracy_pct
+    FROM TrendPrediction tp
+    WHERE tp.was_correct IS NOT NULL
+    GROUP BY ${cols}
+    ORDER BY accuracy_pct DESC
+  `).all();
+}
+
+export function recentTrendLessons(limit = 20): any[] {
+  return db.prepare(`SELECT * FROM TrendReviewLesson ORDER BY reviewed_at DESC LIMIT ?`).all(limit);
+}
+

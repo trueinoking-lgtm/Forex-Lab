@@ -112,6 +112,15 @@ function main() {
       const summary = runStep(name, cmd, cwd, args);
       log(`[daily_loop] ✓ ${name}: ${summary}`);
     }
+    // trend-intel pipeline (v1.3): detect from fresh scores, ingest, then review
+    // predictions whose horizon has elapsed. Research-only; never executes.
+    const trendDetect = runStep("trends:detect", join(ENGINE, ".venv", "bin", "python"),
+      ENGINE, ["run_trends.py"]);
+    log(`[daily_loop] ✓ trends:detect: ${trendDetect}`);
+    const trendIngest = runStep("trends:ingest", "node", APP, ["scripts/trend_ingest.mjs"]);
+    log(`[daily_loop] ✓ trends:ingest: ${trendIngest}`);
+    const trendReview = runStep("review:trends", "node", APP, ["scripts/review_trends.mjs"]);
+    log(`[daily_loop] ✓ review:trends: ${trendReview}`);
     // 6. update:rules (optional, evidence-based overrides)
     if (ruleOverrides.length) {
       for (const ov of ruleOverrides) {

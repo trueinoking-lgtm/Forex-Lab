@@ -8,6 +8,7 @@ const NAV = [
   ["/performance", "Performance"], ["/rules", "Rules"], ["/reports", "Reports"],
   ["/markets", "Markets"], ["/market-profile", "Market Profile"],
   ["/imports", "External Imports"], ["/cross-market", "Cross-Market Matrix"],
+  ["/market-trends", "Market Trends"],
 ];
 
 export default function Nav() {
