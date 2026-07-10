@@ -351,6 +351,83 @@ test("trend engine refuses to run if live orders are enabled", () => {
   assert.ok(/Refusing/.test(rt), "run_trends must refuse when paper_only false / live allowed");
 });
 
+test("demo execution: schema hard-locks broker_mode to demo (no live)", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  assert.ok(/CREATE TABLE IF NOT EXISTS DemoExecutionOrder[\s\S]*?CHECK \(broker_mode = 'demo'\)/.test(sql),
+    "DemoExecutionOrder must CHECK broker_mode='demo'");
+  assert.ok(/CREATE TABLE IF NOT EXISTS ExecutionControl[\s\S]*?CHECK \(broker_mode = 'demo'\)/.test(sql),
+    "ExecutionControl must CHECK broker_mode='demo'");
+});
+
+test("demo execution: stop_loss and take_profit are NOT NULL (required)", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  const block = sql.slice(sql.indexOf("CREATE TABLE IF NOT EXISTS DemoExecutionOrder"));
+  assert.ok(/stop_loss REAL NOT NULL/.test(block), "stop_loss required");
+  assert.ok(/take_profit REAL NOT NULL/.test(block), "take_profit required");
+});
+
+test("demo execution: secrets are never stored (no secret columns, redacted raw)", () => {
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  const block = sql.slice(sql.indexOf("CREATE TABLE IF NOT EXISTS DemoExecutionOrder"),
+                          sql.indexOf("CREATE TABLE IF NOT EXISTS ExecutionJournal"));
+  assert.ok(!/password|secret|api_key|token/.test(block),
+    "DemoExecutionOrder must not store broker secrets");
+  assert.ok(/raw_response_redacted_json/.test(block), "only redacted raw stored");
+});
+
+test("demo execution: guards reject live mode, missing SL/TP, missing risk, no paper signal", () => {
+  const g = readFileSync(join(root, "engine", "src", "execution", "guards.py"), "utf8");
+  assert.ok(/broker_mode != "demo"/.test(g), "live mode rejected");
+  assert.ok(/allow_live_orders/.test(g) && /demo-only bridge refuses/.test(g), "ALLOW_LIVE_ORDERS enforced");
+  assert.ok(/missing stop_loss/.test(g), "missing SL rejected");
+  assert.ok(/missing take_profit/.test(g), "missing TP rejected");
+  assert.ok(/risk_check/.test(g), "deterministic risk engine required");
+  assert.ok(/no parent paper Signal/.test(g), "paper signal required");
+  assert.ok(/open demo trades .* cap/.test(g), "max open demo trades enforced");
+  assert.ok(/kill switch/.test(g), "kill switch enforced");
+});
+
+test("demo execution: mock adapter is the default and always works", () => {
+  const f = readFileSync(join(root, "engine", "src", "execution", "factory.py"), "utf8");
+  assert.ok(/name = \(name or "mock"\)/.test(f) || /default 'mock'/.test(f), "mock is the default");
+  assert.ok(/deriv_mt5/.test(f) && /oanda_practice/.test(f), "real adapters selectable by name");
+  const mock = readFileSync(join(root, "engine", "src", "execution", "mock_adapter.py"), "utf8");
+  assert.ok(/class MockDemoAdapter/.test(mock), "mock adapter present");
+});
+
+test("demo execution: real adapters fail loud without credentials", () => {
+  const deriv = readFileSync(join(root, "engine", "src", "execution", "deriv_mt5.py"), "utf8");
+  const oanda = readFileSync(join(root, "engine", "src", "execution", "oanda_practice.py"), "utf8");
+  assert.ok(/RuntimeError[\s\S]*?credentials missing/.test(deriv), "deriv fails without creds");
+  assert.ok(/RuntimeError[\s\S]*?credentials missing/.test(oanda), "oanda fails without creds");
+  assert.ok(/api-fxpractice\.oanda\.com/.test(oanda), "oanda targets practice host only");
+});
+
+test("demo execution: CLI refuses when allow_live_orders is true", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/ALLOW_LIVE_ORDERS=true/.test(cli), "run_execution checks ALLOW_LIVE_ORDERS");
+  assert.ok(/kill switch engaged/.test(cli), "run_execution honours kill switch");
+  assert.ok(/broker_mode != 'demo'/.test(cli), "run_execution checks broker_mode");
+});
+
+test("demo execution: npm scripts wired for check/order/update/journal/kill-switch", () => {
+  const pkg = readFileSync(join(__dirname, "..", "package.json"), "utf8");
+  for (const s of ["execution:check", "execution:demo-order", "execution:update",
+                   "execution:journal", "execution:kill-switch"]) {
+    assert.ok(pkg.includes(`"${s}"`), `missing npm script ${s}`);
+  }
+});
+
+test("demo execution: page surfaces broker mode + kill switch status", () => {
+  const page = readFileSync(join(__dirname, "..", "app", "demo-execution", "page.tsx"), "utf8");
+  assert.ok(/broker_mode/.test(page), "page shows broker mode");
+  assert.ok(/kill switch/i.test(page), "page shows kill switch status");
+  assert.ok(/open demo/i.test(page), "page shows open positions");
+  assert.ok(/rejected/i.test(page), "page shows rejected orders");
+  assert.ok(/spread/i.test(page), "page shows spread-at-entry");
+  assert.ok(/paper vs demo/i.test(page), "page shows paper vs demo PnL");
+});
+
 test("trends are wired into the daily loop AFTER scoring, review after outcomes", () => {
   const loop = readFileSync(join(__dirname, "daily_loop.mjs"), "utf8");
   const scoreIdx = loop.indexOf("score:strategies");

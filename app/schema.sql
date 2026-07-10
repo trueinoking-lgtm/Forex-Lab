@@ -241,6 +241,59 @@ CREATE TABLE IF NOT EXISTS TrendPrediction (
   UNIQUE(symbol, timeframe, prediction_time, horizon)
 );
 
+-- ===== v1.3.1 Demo Execution bridge (paper forward-testing only) =====
+-- No live trading. broker_mode is ALWAYS 'demo'. Secrets are NEVER stored here
+-- (env vars only). raw_response is redacted before insert.
+CREATE TABLE IF NOT EXISTS DemoExecutionOrder (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  signal_id INTEGER,
+  broker TEXT NOT NULL,
+  broker_mode TEXT NOT NULL DEFAULT 'demo',   -- hard-locked to 'demo'
+  symbol TEXT NOT NULL,
+  side TEXT NOT NULL,                           -- buy | sell
+  requested_entry REAL,
+  filled_entry REAL,
+  stop_loss REAL NOT NULL,
+  take_profit REAL NOT NULL,
+  units REAL,
+  requested_at TEXT NOT NULL,
+  filled_at TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',        -- pending|filled|rejected|closed|skipped
+  rejection_reason TEXT,
+  spread_at_entry REAL,
+  slippage REAL,
+  raw_response_redacted_json TEXT,
+  FOREIGN KEY(signal_id) REFERENCES Signal(id),
+  CHECK (broker_mode = 'demo')                  -- DB-level: live can never be stored
+);
+
+CREATE TABLE IF NOT EXISTS ExecutionJournal (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  demo_order_id INTEGER NOT NULL,
+  signal_id INTEGER,
+  expected_paper_entry REAL,
+  actual_demo_entry REAL,
+  expected_paper_pnl REAL,
+  actual_demo_pnl REAL,
+  slippage REAL,
+  spread REAL,
+  latency_ms REAL,
+  was_execution_acceptable INTEGER,             -- 0|1|NULL(undecided)
+  lesson_json TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY(demo_order_id) REFERENCES DemoExecutionOrder(id)
+);
+
+-- Kill switch + broker mode control. Single-row singleton (id=1).
+CREATE TABLE IF NOT EXISTS ExecutionControl (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  kill_switch INTEGER NOT NULL DEFAULT 0,        -- 1 => refuse all demo orders
+  broker_mode TEXT NOT NULL DEFAULT 'demo',
+  max_open_demo_trades INTEGER NOT NULL DEFAULT 5,
+  updated_at TEXT NOT NULL,
+  CHECK (broker_mode = 'demo')                   -- never live
+);
+
 CREATE TABLE IF NOT EXISTS TrendReviewLesson (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   prediction_id INTEGER NOT NULL,

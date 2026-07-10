@@ -137,3 +137,39 @@ export function recentTrendLessons(limit = 20): any[] {
   return db.prepare(`SELECT * FROM TrendReviewLesson ORDER BY reviewed_at DESC LIMIT ?`).all(limit);
 }
 
+// ===== Demo Execution bridge (v1.3.1) =====
+export interface ExecutionControlRow {
+  id: number; kill_switch: number; broker_mode: string;
+  max_open_demo_trades: number; updated_at: string;
+}
+export function executionControl(): ExecutionControlRow {
+  return db.prepare(`SELECT * FROM ExecutionControl WHERE id=1`).get() as ExecutionControlRow;
+}
+export function demoOrders(limit = 100): any[] {
+  return db.prepare(`SELECT * FROM DemoExecutionOrder ORDER BY requested_at DESC LIMIT ?`).all(limit);
+}
+export function openDemoPositions(): any[] {
+  return db.prepare(`SELECT * FROM DemoExecutionOrder WHERE status='filled' ORDER BY filled_at DESC`).all();
+}
+export function rejectedDemoOrders(): any[] {
+  return db.prepare(`SELECT id, signal_id, broker, symbol, side, requested_entry, rejection_reason, requested_at
+                     FROM DemoExecutionOrder WHERE status='rejected' ORDER BY requested_at DESC`).all();
+}
+export function spreadAtEntryRows(): any[] {
+  return db.prepare(`SELECT id, symbol, side, requested_entry, filled_entry, spread_at_entry, slippage, filled_at
+                     FROM DemoExecutionOrder WHERE status='filled' AND spread_at_entry IS NOT NULL
+                     ORDER BY filled_at DESC`).all();
+}
+export function executionJournals(limit = 100): any[] {
+  return db.prepare(`SELECT * FROM ExecutionJournal ORDER BY created_at DESC LIMIT ?`).all(limit);
+}
+export function paperVsDemo(limit = 100): any[] {
+  // join orders -> journal to compare expected (paper) vs actual (demo) pnl.
+  return db.prepare(`
+    SELECT j.id, j.demo_order_id, j.expected_paper_pnl, j.actual_demo_pnl,
+           j.slippage, j.spread, j.was_execution_acceptable, o.symbol, o.side
+    FROM ExecutionJournal j JOIN DemoExecutionOrder o ON o.id = j.demo_order_id
+    ORDER BY j.created_at DESC LIMIT ?
+  `).all(limit);
+}
+

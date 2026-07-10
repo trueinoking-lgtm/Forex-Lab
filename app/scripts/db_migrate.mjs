@@ -55,5 +55,10 @@ function ensureTrendPredictionUnique() {
 }
 ensureTrendPredictionUnique();
 
+// v1.3.1: seed the single-row ExecutionControl singleton (safe to re-run).
+db.prepare(`INSERT OR IGNORE INTO ExecutionControl
+  (id, kill_switch, broker_mode, max_open_demo_trades, updated_at)
+  VALUES (1, 0, 'demo', 5, datetime('now'))`).run();
+
 console.log("[db:migrate] schema applied ->", dbPath);
 db.close();
