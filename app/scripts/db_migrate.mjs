@@ -60,5 +60,66 @@ db.prepare(`INSERT OR IGNORE INTO ExecutionControl
   (id, kill_switch, broker_mode, max_open_demo_trades, updated_at)
   VALUES (1, 0, 'demo', 5, datetime('now'))`).run();
 
+// v1.3.1 lifecycle proof: extend ExecutionJournal with broker/broker_mode/run_id/
+// price_exit (guard + idempotent; safe to re-run).
+function addJournalColumn(col, def) {
+  const cols = db.prepare("PRAGMA table_info(ExecutionJournal)").all().map((c) => c.name);
+  if (!cols.includes(col)) {
+    db.exec(`ALTER TABLE ExecutionJournal ADD COLUMN ${col} ${def}`);
+  }
+}
+addJournalColumn("broker", "TEXT NOT NULL DEFAULT 'mock'");
+addJournalColumn("broker_mode", "TEXT NOT NULL DEFAULT 'demo'");
+addJournalColumn("run_id", "TEXT");
+addJournalColumn("price_exit", "REAL");
+
+// v1.3.1 ensure ExecutionJournal carries the never-live CHECK (broker_mode='demo').
+// ALTER cannot add a CHECK, so rebuild the table in place (idempotent + row-preserving).
+function ensureJournalNeverLiveCheck() {
+  const cur = db.prepare("SELECT sql FROM sqlite_master WHERE name='ExecutionJournal'").get();
+  if (cur && cur.sql.includes("CHECK (broker_mode = 'demo')")) return; // already present
+  db.exec(`
+    PRAGMA foreign_keys=OFF;
+    BEGIN;
+    CREATE TABLE ExecutionJournal_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      demo_order_id INTEGER NOT NULL,
+      signal_id INTEGER,
+      broker TEXT NOT NULL DEFAULT 'mock',
+      broker_mode TEXT NOT NULL DEFAULT 'demo',
+      run_id TEXT,
+      expected_paper_entry REAL,
+      actual_demo_entry REAL,
+      price_exit REAL,
+      expected_paper_pnl REAL,
+      actual_demo_pnl REAL,
+      slippage REAL,
+      spread REAL,
+      latency_ms REAL,
+      was_execution_acceptable INTEGER,
+      lesson_json TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(demo_order_id) REFERENCES DemoExecutionOrder(id),
+      CHECK (broker_mode = 'demo')
+    );
+    INSERT INTO ExecutionJournal_new
+      (id, demo_order_id, signal_id, broker, broker_mode, run_id,
+       expected_paper_entry, actual_demo_entry, price_exit,
+       expected_paper_pnl, actual_demo_pnl, slippage, spread, latency_ms,
+       was_execution_acceptable, lesson_json, created_at)
+    SELECT id, demo_order_id, signal_id,
+           COALESCE(broker,'mock'), COALESCE(broker_mode,'demo'), run_id,
+           expected_paper_entry, actual_demo_entry, price_exit,
+           expected_paper_pnl, actual_demo_pnl, slippage, spread, latency_ms,
+           was_execution_acceptable, lesson_json, created_at
+    FROM ExecutionJournal;
+    DROP TABLE ExecutionJournal;
+    ALTER TABLE ExecutionJournal_new RENAME TO ExecutionJournal;
+    COMMIT;
+    PRAGMA foreign_keys=ON;
+  `);
+}
+ensureJournalNeverLiveCheck();
+
 console.log("[db:migrate] schema applied ->", dbPath);
 db.close();

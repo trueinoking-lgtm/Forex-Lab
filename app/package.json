@@ -23,6 +23,7 @@
     "execution:demo-order": "cd ../engine && .venv/bin/python run_execution.py demo-order",
     "execution:update": "cd ../engine && .venv/bin/python run_execution.py update --adapter mock",
     "execution:journal": "cd ../engine && .venv/bin/python run_execution.py journal",
+    "execution:mock-lifecycle": "cd ../engine && .venv/bin/python run_execution.py mock-lifecycle",
     "execution:kill-switch": "cd ../engine && .venv/bin/python run_execution.py kill-switch",
     "update:rules": "node scripts/update_rules.mjs",
     "report:daily": "node scripts/report_daily.mjs",

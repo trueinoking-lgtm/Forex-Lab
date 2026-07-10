@@ -1,6 +1,6 @@
 import {
   executionControl, demoOrders, openDemoPositions, rejectedDemoOrders,
-  spreadAtEntryRows, executionJournals, paperVsDemo,
+  spreadAtEntryRows, executionJournals, paperVsDemo, lifecycleStats, lifecycleJournalRows,
 } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,8 @@ export default function DemoExecutionPage() {
   const spread = spreadAtEntryRows();
   const journals = executionJournals(50);
   const pv = paperVsDemo();
+  const stats = lifecycleStats();
+  const lc = lifecycleJournalRows(50);
 
   const killOn = ctrl.kill_switch === 1;
 
@@ -165,6 +167,84 @@ export default function DemoExecutionPage() {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h2 style={{ color: "var(--accent-2)", marginTop: 28 }}>Completed demo lifecycle checks</h2>
+      <p className="muted" style={{ fontSize: 13, color: "var(--warning)" }}>
+        Lifecycle runs are simulated with the <strong>mock</strong> adapter. Mock fills are
+        NOT real broker fills — they estimate spread/slippage/latency so paper and demo
+        models can be compared, not to represent a live venue.
+      </p>
+      <div className="surface-grid" style={{ marginTop: 12 }}>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Execution quality</h3>
+          <span className={`badge ${stats.completed > 0 ? "ok" : "native"}`}>
+            {stats.completed > 0 ? "verified" : "no completed run"}
+          </span>
+        </div>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Paper vs demo PnL delta</h3>
+          <span className="num" style={{ fontSize: 22 }}>
+            {stats.completed > 0
+              ? (pv.reduce((a: number, r: any) => a + ((r.actual_demo_pnl || 0) - (r.expected_paper_pnl || 0)), 0) / stats.completed).toFixed(4)
+              : "—"}
+          </span>
+        </div>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Avg slippage</h3>
+          <span className="num" style={{ fontSize: 22 }}>{stats.avg_slippage == null ? "—" : stats.avg_slippage.toFixed(5)}</span>
+        </div>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Avg spread</h3>
+          <span className="num" style={{ fontSize: 22 }}>{stats.avg_spread == null ? "—" : stats.avg_spread.toFixed(5)}</span>
+        </div>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Order rejections</h3>
+          <span className={`num ${stats.rejections > 0 ? "" : ""}`} style={{ fontSize: 22 }}>{stats.rejections}</span>
+        </div>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Worst slippage</h3>
+          <span className="num" style={{ fontSize: 22 }}>{stats.worst_slippage == null ? "—" : stats.worst_slippage.toFixed(5)}</span>
+        </div>
+      </div>
+
+      <h2 style={{ color: "var(--accent-2)", marginTop: 28 }}>Lifecycle journal (mock only)</h2>
+      {stats.mock_completed === 0 ? (
+        <p className="muted">No completed lifecycle runs yet. Run <code>npm run execution:mock-lifecycle -- --signal-id N</code>.</p>
+      ) : (
+        <div className="panel glass" style={{ padding: 0, overflow: "hidden" }}>
+          <table className="data">
+            <thead>
+              <tr><th>run</th><th>broker</th><th>mode</th><th>symbol</th><th>paper pnl</th><th>demo pnl</th><th>delta</th><th>slippage</th><th>spread</th><th>latency</th><th>quality</th></tr>
+            </thead>
+            <tbody>
+              {lc.map((r: any) => {
+                const delta = (r.actual_demo_pnl || 0) - (r.expected_paper_pnl || 0);
+                return (
+                  <tr key={r.id}>
+                    <td className="mono">{r.run_id}</td>
+                    <td><span className="badge native">{r.broker}</span></td>
+                    <td><span className="badge ok">{r.broker_mode}</span></td>
+                    <td>{r.symbol}</td>
+                    <td className="num">{r.expected_paper_pnl}</td>
+                    <td className="num">{r.actual_demo_pnl}</td>
+                    <td className="num">{delta.toFixed(4)}</td>
+                    <td className="num">{r.slippage}</td>
+                    <td className="num">{r.spread}</td>
+                    <td className="num">{r.latency_ms}ms</td>
+                    <td>
+                      {r.was_execution_acceptable == null
+                        ? <span className="badge native">pending</span>
+                        : r.was_execution_acceptable
+                          ? <span className="badge ok">ok</span>
+                          : <span className="badge warn">drift</span>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

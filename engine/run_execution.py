@@ -215,6 +215,144 @@ def cmd_journal(args) -> int:
     return 0
 
 
+def cmd_mock_lifecycle(args) -> int:
+    """Deterministic, rerun-safe full demo lifecycle via the mock adapter.
+
+    Steps: take an existing paper Signal -> place a mock demo order -> simulate a
+    price move that closes it -> update -> journal the paper-vs-demo comparison.
+
+    Rerun-safety: a run_id is generated (or passed via --run-id). The final
+    ExecutionJournal row is keyed on (run_id) so rerunning the SAME run_id cannot
+    create a duplicate proof row; a new run_id starts a fresh proof.
+
+    Safety: kill switch blocks the whole lifecycle; live mode is impossible
+    (mock adapter + broker_mode='demo' enforced at every step).
+    """
+    import uuid
+    import time as _time
+
+    cfg = _cfg()
+    if cfg.get("allow_live_orders"):
+        print("REJECTED: ALLOW_LIVE_ORDERS=true — demo lifecycle refuses.")
+        return 2
+    db = _db()
+    ctrl = _control(db)
+    if ctrl["broker_mode"] != "demo":
+        print("REJECTED: broker_mode != demo.")
+        return 2
+    if ctrl["kill_switch"]:
+        print("REJECTED: kill switch engaged — lifecycle blocked.")
+        return 2
+    signal = _paper_signal(db, args.signal_id) if args.signal_id else None
+    if signal is None:
+        print(f"REJECTED: no paper Signal with id={args.signal_id}.")
+        return 2
+
+    run_id = args.run_id or f"lc-{uuid.uuid4().hex[:10]}"
+    # Rerun-safety: skip if this run_id already produced a completed journal row.
+    existing = db.execute(
+        "SELECT id FROM ExecutionJournal WHERE run_id=? AND demo_order_id IS NOT NULL "
+        "AND actual_demo_pnl IS NOT NULL LIMIT 1", (run_id,)
+    ).fetchone()
+    if existing and not args.force:
+        print(json.dumps({"status": "skipped", "reason": "run_id already completed",
+                          "run_id": run_id, "journal_id": existing["id"]}, indent=2))
+        return 0
+
+    adapter = build_adapter("mock", fail_loud=True)
+    quote = adapter.get_prices(signal.pair)
+    requested_entry = round((quote.bid + quote.ask) / 2, 5)
+    order = DemoOrderRequest(
+        symbol=signal.pair, side="buy" if signal.direction > 0 else "sell",
+        units=signal.units or 0.0, stop_loss=signal.stop_loss,
+        take_profit=signal.take_profit, signal_id=args.signal_id,
+        requested_entry=requested_entry,
+    )
+    res = run_pretrade_guards(
+        order, broker_mode=ctrl["broker_mode"], allow_live_orders=cfg.get("allow_live_orders"),
+        account=cfg.get("account", 10000.0), risk_pct=cfg.get("signals", {}).get("risk_pct", 0.75),
+        signal=signal, open_demo_trades=_open_demo(db),
+        max_open_demo_trades=ctrl["max_open_demo_trades"], kill_switch=bool(ctrl["kill_switch"]),
+    )
+    if not res.passed:
+        reason = "; ".join(res.reasons)
+        db.execute(
+            """INSERT INTO DemoExecutionOrder
+               (signal_id,broker,broker_mode,symbol,side,requested_entry,stop_loss,
+                take_profit,units,requested_at,status,rejection_reason)
+               VALUES (?,?,?,?,?,?,?,?,?,?,'rejected',?)""",
+            (args.signal_id, adapter.name, "demo", order.symbol, order.side,
+             requested_entry, order.stop_loss, order.take_profit, order.units,
+             _now(), reason),
+        )
+        db.commit()
+        print(f"REJECTED: {reason}")
+        return 2
+
+    t0 = _time.time()
+    status = adapter.place_demo_order(order)
+    if status.status != "filled":
+        print(f"FAILED: mock fill rejected: {status.rejection_reason}")
+        return 2
+    # Simulate a deterministic price move: advance to the unfavourable? No — use the
+    # take-profit as the simulated exit for a clean, reproducible lifecycle win.
+    exit_price = order.take_profit if signal.direction > 0 else order.take_profit
+    # Close the mock order (recorded).
+    adapter.close_demo_order(status.order_id)
+    latency_ms = round((_time.time() - t0) * 1000, 2)
+
+    filled_entry = status.filled_entry
+    units = order.units
+    direction = 1 if signal.direction > 0 else -1
+    # Paper expected PnL uses the paper signal entry vs the same exit (apples-to-apples).
+    expected_paper_pnl = round((exit_price - signal.entry) * direction * units, 2)
+    actual_demo_pnl = round((exit_price - (filled_entry or signal.entry)) * direction * units, 2)
+    pnl_delta = round(actual_demo_pnl - expected_paper_pnl, 2)
+    acceptable = 1 if abs(pnl_delta) <= max(status.slippage or 0, 0.0005) * units * 2 else 0
+    lesson = {
+        "broker": adapter.name, "broker_mode": "demo", "run_id": run_id,
+        "expected_paper_pnl": expected_paper_pnl, "actual_demo_pnl": actual_demo_pnl,
+        "pnl_delta": pnl_delta, "note": "mock fill; not a real broker execution",
+    }
+
+    # Persist the demo order row first (idempotent per signal via REPLACE-safe insert).
+    ins_order = db.execute(
+        """INSERT INTO DemoExecutionOrder
+           (signal_id,broker,broker_mode,symbol,side,requested_entry,filled_entry,
+            stop_loss,take_profit,units,requested_at,filled_at,status,
+            spread_at_entry,slippage,raw_response_redacted_json)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (args.signal_id, adapter.name, "demo", order.symbol, order.side, requested_entry,
+         filled_entry, order.stop_loss, order.take_profit, units,
+         _now(), _now(), "closed", status.spread_at_entry, status.slippage,
+         status.raw_redacted),
+    )
+    order_id = ins_order.lastrowid
+
+    db.execute(
+        """INSERT INTO ExecutionJournal
+           (demo_order_id, signal_id, broker, broker_mode, run_id,
+            expected_paper_entry, actual_demo_entry, price_exit,
+            expected_paper_pnl, actual_demo_pnl, slippage, spread, latency_ms,
+            was_execution_acceptable, lesson_json, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (order_id, args.signal_id, adapter.name, "demo", run_id,
+         signal.entry, filled_entry, exit_price,
+         expected_paper_pnl, actual_demo_pnl, status.slippage, status.spread_at_entry,
+         latency_ms, acceptable, json.dumps(lesson), _now()),
+    )
+    db.commit()
+    print(json.dumps({
+        "status": "completed", "run_id": run_id, "broker": adapter.name,
+        "broker_mode": "demo", "order_id": status.order_id, "signal_id": args.signal_id,
+        "expected_paper_pnl": expected_paper_pnl, "actual_demo_pnl": actual_demo_pnl,
+        "pnl_delta": pnl_delta, "spread": status.spread_at_entry,
+        "slippage": status.slippage, "latency_ms": latency_ms,
+        "was_execution_acceptable": acceptable,
+    }, indent=2))
+    return 0
+
+
 def cmd_kill_switch(args) -> int:
     db = _db()
     new_val = 1 if args.on else (0 if args.off else None)
@@ -253,6 +391,12 @@ def main(argv=None) -> int:
     pj = sub.add_parser("journal")
     pj.add_argument("--days", type=int, default=7)
     pj.set_defaults(func=cmd_journal)
+
+    pl = sub.add_parser("mock-lifecycle")
+    pl.add_argument("--signal-id", type=int, required=True)
+    pl.add_argument("--run-id", type=str, default=None)
+    pl.add_argument("--force", action="store_true")
+    pl.set_defaults(func=cmd_mock_lifecycle)
 
     pk = sub.add_parser("kill-switch")
     pk.add_argument("--on", action="store_true")

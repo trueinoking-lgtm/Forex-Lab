@@ -192,3 +192,145 @@ def test_real_adapters_unavailable_without_creds():
         build_adapter("oanda_practice", fail_loud=True)
     # fail_loud=False falls back to mock
     assert isinstance(build_adapter("oanda_practice", fail_loud=False), MockDemoAdapter)
+
+
+# ===== Full demo lifecycle (mock) =====
+def test_lifecycle_creates_journal_row():
+    import sqlite3
+    from run_execution import (
+        _db, _control, _paper_signal, cmd_mock_lifecycle, _now,
+    )
+    # We drive the lifecycle via the CLI function directly using a temp signal row.
+    db = _db()
+    # ensure a paper Signal exists (reuse id if present)
+    sid = 1
+    cur = db.execute("SELECT id FROM Signal WHERE id=? AND status='paper'", (sid,)).fetchone()
+    if not cur:
+        db.execute(
+            "INSERT INTO Signal (id,pair,strategy,direction,entry,stop_loss,take_profit,"
+            "status,signal_score,regime,generated_at,units) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (sid, "EURUSD", "rsi", 1, 1.1000, 1.0950, 1.1050, "paper", 60.0, "trend",
+             "2026-07-10T00:00:00", 2000.0),
+        )
+        db.commit()
+    # run the lifecycle with a fixed run_id
+    rc = cmd_mock_lifecycle(_args(signal_id=sid, run_id="test-lc-1"))
+    assert rc == 0
+    row = db.execute(
+        "SELECT * FROM ExecutionJournal WHERE run_id=? AND actual_demo_pnl IS NOT NULL",
+        ("test-lc-1",),
+    ).fetchone()
+    assert row is not None, "journal row must be written"
+    # paper + demo pnl present
+    assert row["expected_paper_pnl"] is not None
+    assert row["actual_demo_pnl"] is not None
+    # spread/slippage/latency recorded
+    assert row["slippage"] is not None
+    assert row["spread"] is not None
+    assert row["latency_ms"] is not None
+    # clearly labelled mock + demo
+    assert row["broker"] == "mock"
+    assert row["broker_mode"] == "demo"
+
+
+def test_lifecycle_rerun_same_run_id_no_duplicate():
+    from run_execution import _db, cmd_mock_lifecycle
+    db = _db()
+    before = db.execute(
+        "SELECT COUNT(*) c FROM ExecutionJournal WHERE run_id='test-lc-1'",
+    ).fetchone()["c"]
+    rc = cmd_mock_lifecycle(_args(signal_id=1, run_id="test-lc-1"))
+    after = db.execute(
+        "SELECT COUNT(*) c FROM ExecutionJournal WHERE run_id='test-lc-1'",
+    ).fetchone()["c"]
+    assert rc == 0
+    assert after == before, "rerun of same run_id must not duplicate proof row"
+    # a new run_id should create a new row
+    rc2 = cmd_mock_lifecycle(_args(signal_id=1, run_id="test-lc-2"))
+    assert rc2 == 0
+    after2 = db.execute(
+        "SELECT COUNT(*) c FROM ExecutionJournal WHERE run_id='test-lc-2'",
+    ).fetchone()["c"]
+    assert after2 == 1
+
+
+def test_kill_switch_blocks_lifecycle():
+    from run_execution import _db, _control, cmd_mock_lifecycle
+    db = _db()
+    db.execute("UPDATE ExecutionControl SET kill_switch=1 WHERE id=1")
+    db.commit()
+    try:
+        rc = cmd_mock_lifecycle(_args(signal_id=1, run_id="test-lc-kill"))
+        assert rc == 2, "kill switch must block lifecycle"
+        row = db.execute(
+            "SELECT * FROM ExecutionJournal WHERE run_id='test-lc-kill'"
+        ).fetchone()
+        assert row is None, "no journal row when blocked"
+    finally:
+        db.execute("UPDATE ExecutionControl SET kill_switch=0 WHERE id=1")
+        db.commit()
+
+
+def test_paper_pnl_not_overwritten_by_broker_response():
+    """Expected paper PnL is computed from the paper signal, independent of the
+    fill. Even if the broker response implied a different number, the stored
+    expected_paper_pnl must equal the paper-model value."""
+    from run_execution import _db, cmd_mock_lifecycle, _paper_signal
+    db = _db()
+    s = _paper_signal(db, 1)
+    # manually compute expected paper pnl the way the CLI does
+    units = s.units or 0.0
+    direction = 1 if s.direction > 0 else -1
+    exit_price = s.take_profit
+    expected = round((exit_price - s.entry) * direction * units, 2)
+    rc = cmd_mock_lifecycle(_args(signal_id=1, run_id="test-lc-pnl"))
+    assert rc == 0
+    row = db.execute(
+        "SELECT expected_paper_pnl FROM ExecutionJournal WHERE run_id='test-lc-pnl'"
+    ).fetchone()
+    assert row["expected_paper_pnl"] == expected
+
+
+def test_no_secrets_in_journal_or_raw_response():
+    from run_execution import _db, cmd_mock_lifecycle
+    db = _db()
+    rc = cmd_mock_lifecycle(_args(signal_id=1, run_id="test-lc-secret2"))
+    assert rc == 0
+    row = db.execute(
+        "SELECT * FROM ExecutionJournal WHERE run_id='test-lc-secret2'"
+    ).fetchone()
+    assert row is not None
+    blob = (row["lesson_json"] or "")
+    for secret in ("password", "token", "api_key", "PRACTICE", "secret="):
+        assert secret.lower() not in blob.lower(), f"leak of {secret}"
+    # the order row's raw response also has no secret
+    orow = db.execute(
+        "SELECT raw_response_redacted_json FROM DemoExecutionOrder WHERE id=?",
+        (row["demo_order_id"],),
+    ).fetchone()
+    roblob = orow["raw_response_redacted_json"] or ""
+    assert "password" not in roblob.lower()
+
+
+def test_live_broker_mode_impossible_in_journal():
+    """ExecutionJournal has CHECK (broker_mode='demo'); attempting to insert live
+    must be rejected by SQLite."""
+    import sqlite3
+    from run_execution import _db
+    db = _db()
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute(
+            "INSERT INTO ExecutionJournal (demo_order_id, broker, broker_mode, "
+            "created_at, actual_demo_pnl) VALUES (?,?,?,?,?)",
+            (1, "mock", "live", "2026-07-10T00:00:00", 0.0),
+        )
+
+
+def _args(**kw):
+    class A:
+        pass
+    a = A()
+    a.signal_id = kw.get("signal_id")
+    a.run_id = kw.get("run_id")
+    a.force = kw.get("force", False)
+    return a

@@ -428,6 +428,64 @@ test("demo execution: page surfaces broker mode + kill switch status", () => {
   assert.ok(/paper vs demo/i.test(page), "page shows paper vs demo PnL");
 });
 
+test("demo execution: lifecycle is deterministic and rerun-safe per run_id", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/run_id = args.run_id or/.test(cli), "run_id must be stable per run");
+  assert.ok(/already completed/.test(cli) && /skipped/.test(cli),
+    "same run_id must skip instead of duplicating proof rows");
+  assert.ok(/uuid/.test(cli), "new run_id generated when not supplied");
+});
+
+test("demo execution: mock lifecycle writes journal with paper+demo PnL, spread, slippage, latency", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/expected_paper_pnl/.test(cli) && /actual_demo_pnl/.test(cli),
+    "journal row must record expected + actual pnl");
+  assert.ok(/slippage/.test(cli) && /spread/.test(cli) && /latency_ms/.test(cli),
+    "journal must record slippage, spread, latency");
+  assert.ok(/build_adapter\("mock"/.test(cli), "lifecycle must use the mock adapter");
+  assert.ok(/broker_mode[=:]['"]demo['"]/.test(cli), "lifecycle must be labelled demo");
+  assert.ok(/not a real broker execution/.test(cli), "must label as simulated");
+});
+
+test("demo execution: close before final PnL journal is required", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/close_demo_order/.test(cli), "lifecycle must close the order before journaling");
+  assert.ok(/actual_demo_pnl IS NOT NULL/.test(cli), "journal requires a filled/closed pnl");
+});
+
+test("demo execution: paper PnL cannot be overwritten by broker response", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/expected_paper_pnl = round\(\(exit_price - signal\.entry\)/.test(cli),
+    "paper PnL computed from paper signal, not the fill");
+});
+
+test("demo execution: kill switch blocks lifecycle execution", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/kill switch engaged — lifecycle blocked/.test(cli),
+    "mock-lifecycle must refuse when kill_switch is set");
+});
+
+test("demo execution: no secrets in journal or raw response", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/raw_redacted/.test(cli), "only redacted raw stored on order");
+  assert.ok(/lesson_json/.test(cli) && /note.*mock/.test(cli), "lesson_json stored, no secrets");
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  const jblock = sql.slice(sql.indexOf("CREATE TABLE IF NOT EXISTS ExecutionJournal"),
+                           sql.indexOf("CREATE TABLE IF NOT EXISTS ExecutionControl"));
+  assert.ok(!/password|secret|api_key|token/.test(jblock),
+    "ExecutionJournal must not store broker secrets");
+});
+
+test("demo execution: daily report separates mock execution quality from real broker demo", () => {
+  const rep = readFileSync(join(__dirname, "report_daily.mjs"), "utf8");
+  assert.ok(/Demo execution quality/.test(rep), "report has execution quality block");
+  assert.ok(/MOCK \(simulated, not a real venue\)/.test(rep), "mock clearly separated from real");
+  assert.ok(/REAL DEMO BROKER/.test(rep), "real demo broker labelled separately");
+  assert.ok(/kill-switch/.test(rep) || /kill switch/.test(rep), "report shows kill switch status");
+  assert.ok(/worst_slip/.test(rep), "report shows worst slippage");
+  assert.ok(/paper-vs-demo/.test(rep) || /mismatch/.test(rep), "report shows paper-vs-demo mismatch");
+});
+
 test("trends are wired into the daily loop AFTER scoring, review after outcomes", () => {
   const loop = readFileSync(join(__dirname, "daily_loop.mjs"), "utf8");
   const scoreIdx = loop.indexOf("score:strategies");

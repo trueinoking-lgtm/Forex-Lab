@@ -173,3 +173,43 @@ export function paperVsDemo(limit = 100): any[] {
   `).all(limit);
 }
 
+// ===== Demo lifecycle quality (v1.3.1) =====
+export interface LifecycleStats {
+  completed: number;
+  rejections: number;
+  avg_slippage: number | null;
+  avg_spread: number | null;
+  worst_slippage: number | null;
+  mock_completed: number;
+  real_completed: number;
+}
+export function lifecycleStats(): LifecycleStats {
+  const completed = db.prepare(
+    `SELECT COUNT(*) c, AVG(j.slippage) avg_slip, AVG(j.spread) avg_spr,
+            MAX(j.slippage) worst_slip,
+            SUM(CASE WHEN j.broker='mock' THEN 1 ELSE 0 END) mock_c,
+            SUM(CASE WHEN j.broker<>'mock' THEN 1 ELSE 0 END) real_c
+     FROM ExecutionJournal j WHERE j.actual_demo_pnl IS NOT NULL`
+  ).get() as any;
+  const rej = db.prepare(
+    `SELECT COUNT(*) c FROM DemoExecutionOrder WHERE status='rejected'`
+  ).get() as any;
+  return {
+    completed: completed.c || 0,
+    rejections: rej.c || 0,
+    avg_slippage: completed.avg_slip ?? null,
+    avg_spread: completed.avg_spr ?? null,
+    worst_slippage: completed.worst_slip ?? null,
+    mock_completed: completed.mock_c || 0,
+    real_completed: completed.real_c || 0,
+  };
+}
+export function lifecycleJournalRows(limit = 50): any[] {
+  return db.prepare(`
+    SELECT j.*, o.symbol, o.side, o.broker, o.broker_mode, o.status AS order_status
+    FROM ExecutionJournal j JOIN DemoExecutionOrder o ON o.id = j.demo_order_id
+    ORDER BY j.created_at DESC LIMIT ?
+  `).all(limit);
+}
+
+

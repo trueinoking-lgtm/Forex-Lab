@@ -271,8 +271,12 @@ CREATE TABLE IF NOT EXISTS ExecutionJournal (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   demo_order_id INTEGER NOT NULL,
   signal_id INTEGER,
+  broker TEXT NOT NULL DEFAULT 'mock',        -- adapter used (mock|deriv_mt5|oanda_practice)
+  broker_mode TEXT NOT NULL DEFAULT 'demo',   -- always 'demo'
+  run_id TEXT,                                 -- lifecycle run id (idempotency key)
   expected_paper_entry REAL,
   actual_demo_entry REAL,
+  price_exit REAL,                             -- simulated/actual exit price for the demo fill
   expected_paper_pnl REAL,
   actual_demo_pnl REAL,
   slippage REAL,
@@ -281,7 +285,8 @@ CREATE TABLE IF NOT EXISTS ExecutionJournal (
   was_execution_acceptable INTEGER,             -- 0|1|NULL(undecided)
   lesson_json TEXT,
   created_at TEXT NOT NULL,
-  FOREIGN KEY(demo_order_id) REFERENCES DemoExecutionOrder(id)
+  FOREIGN KEY(demo_order_id) REFERENCES DemoExecutionOrder(id),
+  CHECK (broker_mode = 'demo')                  -- never live
 );
 
 -- Kill switch + broker mode control. Single-row singleton (id=1).
