@@ -31,7 +31,8 @@ from pydantic import BaseModel
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bridge_validation import (  # noqa: E402
     check_demo_trade_mode, validate_price_geometry, is_stale_signal,
-    DEFAULT_SIGNAL_MAX_AGE_MINUTES,
+    DEFAULT_SIGNAL_MAX_AGE_MINUTES, normalize_volume, VolumeInfo,
+    execute_demo_order,
 )
 
 app = FastAPI(title="Aether Forex Lab — Remote MT5 Bridge (DEMO ONLY)")
@@ -254,10 +255,29 @@ def place(req: OrderReq, _=Depends(_require_auth)):
     reason = validate_price_geometry(req.side, price, req.stop_loss, req.take_profit)
     if reason:
         return {"status": "rejected", "rejection_reason": reason, "broker_mode": "demo"}
+    # --- volume normalization (forex units -> MT5 lots) ---
+    sinfo = mt5.symbol_info(m)
+    if not sinfo:
+        return {"status": "rejected", "rejection_reason": f"no symbol_info for {m}",
+                "broker_mode": "demo"}
+    vinfo = VolumeInfo(sinfo.volume_min, sinfo.volume_step, sinfo.volume_max)
+    norm = normalize_volume(req.units, vinfo)
+    if not norm["valid"]:
+        return {
+            "status": "rejected",
+            "rejection_reason": f"invalid volume: {norm['reason']}",
+            "requested_units": norm["requested_units"],
+            "calculated_lots": norm["calculated_lots"],
+            "normalized_lots": norm["normalized_lots"],
+            "volume_min": norm["volume_min"],
+            "volume_step": norm["volume_step"],
+            "volume_max": norm["volume_max"],
+            "broker_mode": "demo",
+        }
     request = {
         "action": mt5.TRADE_ACTION_DEAL,
         "symbol": m,
-        "volume": req.units / 10000.0,
+        "volume": norm["normalized_lots"],
         "type": mt5.ORDER_TYPE_BUY if req.side == "buy" else mt5.ORDER_TYPE_SELL,
         "price": price,
         "sl": req.stop_loss,
@@ -267,16 +287,13 @@ def place(req: OrderReq, _=Depends(_require_auth)):
         "comment": "aether-demo",
         "type_time": mt5.ORDER_TIME_GTC,
         "type_filling": mt5.ORDER_FILLING_IOC,
+        # debug-safe context (no secrets)
+        "requested_units": norm["requested_units"],
+        "calculated_lots": norm["calculated_lots"],
+        "spread_at_entry": float(tick.ask - tick.bid),
     }
-    result = mt5.order_send(request)
-    if getattr(result, "retcode", 1) != mt5.TRADE_RETCODE_DONE:
-        return {"status": "rejected", "rejection_reason": f"mt5 retcode {getattr(result, 'retcode', '?')}",
-                "broker_mode": "demo"}
-    return {
-        "status": "filled", "order_id": str(getattr(result, "order", "")),
-        "filled_entry": float(price), "spread_at_entry": float(tick.ask - tick.bid),
-        "slippage": 0.0, "broker_mode": "demo",
-    }
+    result = execute_demo_order(mt5, request, m, broker_mode="demo")
+    return result
 
 
 @app.get("/positions")
