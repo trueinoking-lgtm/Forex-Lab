@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import os
+import shutil
+import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -23,6 +25,70 @@ from src.execution import (
     check_demo_trade_mode,
     is_live_trade_mode,
 )
+
+
+from src.execution.adapter import PriceQuote
+from src.execution.bridge_validation import is_stale_signal
+
+
+FIXED_TEST_NOW = datetime(2030, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+
+class _FrozenDateTime(datetime):
+    """Deterministic clock used only by execution tests."""
+
+    @classmethod
+    def now(cls, tz=None):
+        if tz is None:
+            return FIXED_TEST_NOW.replace(tzinfo=None)
+        return FIXED_TEST_NOW.astimezone(tz)
+
+
+@pytest.fixture
+def lifecycle_env(monkeypatch, tmp_path):
+    """Isolated DB, clock and quote for one mock lifecycle test."""
+    import run_execution
+    import src.execution.bridge_validation as bridge_validation
+
+    source_db = Path(run_execution.DB_PATH)
+    test_db = tmp_path / "forex_lab.db"
+    shutil.copyfile(source_db, test_db)
+    monkeypatch.setattr(run_execution, "DB_PATH", str(test_db))
+    monkeypatch.setattr(bridge_validation, "datetime", _FrozenDateTime)
+
+    def fixed_quote(self, symbol):
+        return PriceQuote(
+            symbol=symbol, bid=1.0999, ask=1.1001, spread=0.0002,
+            timestamp=FIXED_TEST_NOW.isoformat(),
+        )
+
+    monkeypatch.setattr(MockDemoAdapter, "get_prices", fixed_quote)
+
+    db = sqlite3.connect(str(test_db))
+    db.row_factory = sqlite3.Row
+    for table in ("ExecutionJournal", "DemoExecutionLock", "DemoExecutionOrder"):
+        db.execute(f"DELETE FROM {table}")
+    fresh_timestamp = (FIXED_TEST_NOW - timedelta(minutes=5)).isoformat()
+    db.execute(
+        """UPDATE Signal SET pair='EURUSD', strategy='rsi', direction=1,
+           entry=1.1000, stop_loss=1.0950, take_profit=1.1050,
+           status='paper', signal_score=60.0, regime='trend', units=2000.0,
+           generated_at=? WHERE id=1""",
+        (fresh_timestamp,),
+    )
+    if db.execute("SELECT changes()").fetchone()[0] == 0:
+        db.execute(
+            """INSERT INTO Signal
+               (id,pair,strategy,direction,entry,stop_loss,take_profit,status,
+                signal_score,regime,generated_at,units)
+               VALUES (1,'EURUSD','rsi',1,1.1000,1.0950,1.1050,'paper',
+                       60.0,'trend',?,2000.0)""",
+            (fresh_timestamp,),
+        )
+    db.execute("UPDATE ExecutionControl SET kill_switch=0, broker_mode='demo' WHERE id=1")
+    db.commit()
+    db.close()
+    return test_db
 
 
 def _signal(entry=1.1000, sl=1.0950, tp=1.1050, direction=1, units=2000.0, sid=1,
@@ -202,25 +268,10 @@ def test_real_adapters_unavailable_without_creds():
 
 
 # ===== Full demo lifecycle (mock) =====
-def test_lifecycle_creates_journal_row():
-    import sqlite3
-    from run_execution import (
-        _db, _control, _paper_signal, cmd_mock_lifecycle, _now,
-    )
-    # We drive the lifecycle via the CLI function directly using a temp signal row.
+def test_lifecycle_creates_journal_row(lifecycle_env):
+    from run_execution import _db, cmd_mock_lifecycle
     db = _db()
-    # ensure a paper Signal exists (reuse id if present)
     sid = 1
-    cur = db.execute("SELECT id FROM Signal WHERE id=? AND status='paper'", (sid,)).fetchone()
-    if not cur:
-        db.execute(
-            "INSERT INTO Signal (id,pair,strategy,direction,entry,stop_loss,take_profit,"
-            "status,signal_score,regime,generated_at,units) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-            (sid, "EURUSD", "rsi", 1, 1.1000, 1.0950, 1.1050, "paper", 60.0, "trend",
-             "2026-07-10T00:00:00", 2000.0),
-        )
-        db.commit()
-    # run the lifecycle with a fixed run_id
     rc = cmd_mock_lifecycle(_args(signal_id=sid, run_id="test-lc-1"))
     assert rc == 0
     row = db.execute(
@@ -240,9 +291,10 @@ def test_lifecycle_creates_journal_row():
     assert row["broker_mode"] == "demo"
 
 
-def test_lifecycle_rerun_same_run_id_no_duplicate():
+def test_lifecycle_rerun_same_run_id_no_duplicate(lifecycle_env):
     from run_execution import _db, cmd_mock_lifecycle
     db = _db()
+    assert cmd_mock_lifecycle(_args(signal_id=1, run_id="test-lc-1")) == 0
     before = db.execute(
         "SELECT COUNT(*) c FROM ExecutionJournal WHERE run_id='test-lc-1'",
     ).fetchone()["c"]
@@ -261,7 +313,7 @@ def test_lifecycle_rerun_same_run_id_no_duplicate():
     assert after2 == 1
 
 
-def test_kill_switch_blocks_lifecycle():
+def test_kill_switch_blocks_lifecycle(lifecycle_env):
     from run_execution import _db, _control, cmd_mock_lifecycle
     db = _db()
     db.execute("UPDATE ExecutionControl SET kill_switch=1 WHERE id=1")
@@ -278,7 +330,7 @@ def test_kill_switch_blocks_lifecycle():
         db.commit()
 
 
-def test_paper_pnl_not_overwritten_by_broker_response():
+def test_paper_pnl_not_overwritten_by_broker_response(lifecycle_env):
     """Expected paper PnL is computed from the paper signal, independent of the
     fill. Even if the broker response implied a different number, the stored
     expected_paper_pnl must equal the paper-model value."""
@@ -298,7 +350,7 @@ def test_paper_pnl_not_overwritten_by_broker_response():
     assert row["expected_paper_pnl"] == expected
 
 
-def test_no_secrets_in_journal_or_raw_response():
+def test_no_secrets_in_journal_or_raw_response(lifecycle_env):
     from run_execution import _db, cmd_mock_lifecycle
     db = _db()
     rc = cmd_mock_lifecycle(_args(signal_id=1, run_id="test-lc-secret2"))
@@ -505,7 +557,7 @@ def test_duplicate_signal_broker_runid_blocked(monkeypatch):
     db.commit()
 
 
-def test_mock_lifecycle_still_passes(monkeypatch):
+def test_mock_lifecycle_still_passes(monkeypatch, lifecycle_env):
     from run_execution import cmd_mock_lifecycle
     rc = cmd_mock_lifecycle(_args(signal_id=1, run_id="v132-mock-check"))
     assert rc == 0
@@ -586,6 +638,29 @@ def test_guard_accepts_fresh_signal():
         signal_timestamp=fresh_ts, execution_class="paper",
     )
     assert res.passed, res.reasons
+
+
+def test_fresh_fixture_is_not_stale_at_frozen_clock():
+    timestamp = (FIXED_TEST_NOW - timedelta(minutes=5)).isoformat()
+    assert is_stale_signal(timestamp, 30, now=FIXED_TEST_NOW) is False
+
+
+def test_stale_fixture_is_rejected_at_frozen_clock():
+    timestamp = (FIXED_TEST_NOW - timedelta(minutes=31)).isoformat()
+    assert is_stale_signal(timestamp, 30, now=FIXED_TEST_NOW) is True
+
+
+@pytest.mark.parametrize(
+    ("age", "expected_stale"),
+    [
+        (timedelta(minutes=30) - timedelta(microseconds=1), False),
+        (timedelta(minutes=30), False),
+        (timedelta(minutes=30) + timedelta(microseconds=1), True),
+    ],
+)
+def test_stale_boundary_is_deterministic(age, expected_stale):
+    timestamp = (FIXED_TEST_NOW - age).isoformat()
+    assert is_stale_signal(timestamp, 30, now=FIXED_TEST_NOW) is expected_stale
 
 
 def test_guard_exempts_backtest_only_signal_from_staleness():
