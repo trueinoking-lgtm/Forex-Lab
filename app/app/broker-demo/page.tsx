@@ -1,6 +1,7 @@
 import {
   executionControl, latestBrokerCaps, openDemoPositionsByBroker, brokerSpreadComparison,
   paperVsBrokerPnl, brokerLatency, realDemoOrders, rejectedDemoOrders,
+  remoteBridgeStatus, openDemoPositions,
 } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,8 @@ export default function BrokerDemoPage() {
   const latency = brokerLatency();
   const rejected = rejectedDemoOrders();
   const realOrders = realDemoOrders();
+  const bridge = remoteBridgeStatus();
+  const openRemotePositions = openDemoPositions().filter((o: any) => o.broker === "remote_mt5");
 
   const killOn = ctrl.kill_switch === 1;
   const capMap = Object.fromEntries(caps.map((c: any) => [c.broker, c]));
@@ -210,6 +213,56 @@ export default function BrokerDemoPage() {
           </table>
         </div>
       )}
+
+      <h2 style={{ color: "var(--accent-2)", marginTop: 28 }}>Remote MT5 Bridge (Tailscale → Windows PC)</h2>
+      <p className="muted" style={{ fontSize: 12 }}>
+        VPS holds only REMOTE_MT5_BRIDGE_URL + TOKEN. MT5 credentials stay on the PC .env.
+        Demo-only; PC bridge kill-switch + VPS kill-switch both block orders.
+      </p>
+      <div className="surface-grid" style={{ marginTop: 14 }}>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Bridge reachable</h3>
+          <span className={`badge ${bridge?.reachable ? "ok" : "warn"}`}>{bridge?.reachable ? "yes" : "no"}</span>
+        </div>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Tailscale URL configured</h3>
+          <span className={`badge ${bridge?.tailscale_url_configured ? "ok" : "native"}`}>
+            {bridge?.tailscale_url_configured ? "yes" : "no"}
+          </span>
+        </div>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>PC bridge mode</h3>
+          <span className={`badge ${bridge?.pc_bridge_mode === "demo" ? "ok" : "warn"}`}>
+            {bridge?.pc_bridge_mode || "unknown"}
+          </span>
+        </div>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Bridge kill-switch</h3>
+          <span className={`badge ${bridge?.bridge_kill_switch ? "warn" : "ok"}`}>
+            {bridge?.bridge_kill_switch ? "ENGAGED" : "armed-off"}
+          </span>
+        </div>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Latest MT5 quote</h3>
+          <span className="mono" style={{ fontSize: 14 }}>
+            {bridge?.latest_symbol
+              ? `${bridge.latest_symbol} ${bridge.latest_bid} / ${bridge.latest_ask} (spr ${bridge.latest_spread})`
+              : "—"}
+          </span>
+        </div>
+        <div className="surface-card">
+          <h3 style={{ color: "var(--accent-2)" }}>Open remote positions</h3>
+          <span className="num" style={{ fontSize: 22 }}>{openRemotePositions.length}</span>
+        </div>
+      </div>
+      <div className="panel glass" style={{ padding: 16, marginTop: 14 }}>
+        <h3 style={{ color: "var(--accent-2)" }}>Symbol map (PC → broker)</h3>
+        {bridge?.symbol_map_json ? (
+          <pre className="mono" style={{ fontSize: 12 }}>{bridge.symbol_map_json}</pre>
+        ) : (
+          <span className="muted">No symbol map fetched yet. Run <code>npm run execution:remote-mt5-symbols</code>.</span>
+        )}
+      </div>
 
       <p className="muted" style={{ marginTop: 24, fontSize: 12 }}>
         Broker winner today (by execution quality):{" "}

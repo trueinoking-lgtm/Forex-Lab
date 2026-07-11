@@ -503,3 +503,135 @@ def test_mock_lifecycle_still_passes(monkeypatch):
     from run_execution import cmd_mock_lifecycle
     rc = cmd_mock_lifecycle(_args(signal_id=1, run_id="v132-mock-check"))
     assert rc == 0
+
+
+# ===== v1.3.3 Remote MT5 Bridge (Tailscale → Windows PC) =====
+
+def test_missing_bridge_url_fails_loud(monkeypatch):
+    monkeypatch.delenv("REMOTE_MT5_BRIDGE_URL", raising=False)
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    from src.execution.factory import build_adapter
+    with pytest.raises(RuntimeError):
+        build_adapter("remote_mt5", fail_loud=True)
+
+
+def test_missing_bridge_token_fails_loud(monkeypatch):
+    monkeypatch.delenv("REMOTE_MT5_BRIDGE_TOKEN", raising=False)
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    from src.execution.factory import build_adapter
+    with pytest.raises(RuntimeError):
+        build_adapter("remote_mt5", fail_loud=True)
+
+
+def test_invalid_token_rejected(monkeypatch):
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "correct-token")
+    import requests
+    from src.execution.remote_mt5_bridge import RemoteMT5BridgeAdapter
+
+    class FakeResp:
+        def __init__(self, status_code=401, json_data=None):
+            self.status_code = status_code
+            self._j = json_data or {}
+        def json(self):
+            return self._j
+
+    class FakeSess:
+        def request(self, *a, **k):
+            return FakeResp(status_code=401)
+
+    monkeypatch.setattr(requests, "request", lambda *a, **k: FakeResp(status_code=401))
+    a = RemoteMT5BridgeAdapter()
+    with pytest.raises(RuntimeError):
+        a.get_account()
+
+
+def test_unreachable_bridge_fails_loud(monkeypatch):
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    import requests
+    from src.execution.remote_mt5_bridge import RemoteMT5BridgeAdapter
+
+    def boom(*a, **k):
+        raise requests.RequestException("connection refused")
+    monkeypatch.setattr(requests, "request", boom)
+    a = RemoteMT5BridgeAdapter()
+    with pytest.raises(RuntimeError):
+        a.get_account()
+
+
+def test_bridge_reports_non_demo_rejected(monkeypatch):
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    import requests
+    from src.execution.remote_mt5_bridge import RemoteMT5BridgeAdapter
+
+    class FakeResp:
+        status_code = 200
+        def json(self):
+            return {"broker_mode": "live", "balance": 1000.0, "currency": "USD"}
+    monkeypatch.setattr(requests, "request", lambda *a, **k: FakeResp())
+    a = RemoteMT5BridgeAdapter()
+    with pytest.raises(RuntimeError):
+        a.get_account()
+
+
+def test_bridge_supports_sl_tp_payload(monkeypatch):
+    # The adapter must forward SL/TP to the bridge (no fallback to mock).
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    import requests
+    from src.execution.remote_mt5_bridge import RemoteMT5BridgeAdapter
+
+    captured = {}
+    class FakeResp:
+        status_code = 200
+        def json(self):
+            return {"status": "skipped", "rejection_reason": "DRY_RUN active",
+                    "broker_mode": "demo"}
+    def fake(*a, **k):
+        captured["json"] = k.get("json")
+        return FakeResp()
+    monkeypatch.setattr(requests, "request", fake)
+    a = RemoteMT5BridgeAdapter()
+    order = _good_order()
+    a.place_demo_order(order)
+    assert captured["json"]["stop_loss"] == order.stop_loss
+    assert captured["json"]["take_profit"] == order.take_profit
+
+
+def test_remote_bridge_status_table_no_secret_columns(monkeypatch):
+    import sqlite3
+    from run_execution import _db
+    db = _db()
+    cols = [c["name"] for c in db.execute("PRAGMA table_info(RemoteBridgeStatus)").fetchall()]
+    for secret in ("api_key", "password", "token", "secret", "login", "mt5"):
+        assert secret not in cols, f"RemoteBridgeStatus must not store {secret}"
+    # the table exists and is writable without secrets
+    db.execute(
+        "INSERT INTO RemoteBridgeStatus (reachable, tailscale_url_configured, "
+        "pc_bridge_mode, bridge_kill_switch, last_checked_at) VALUES (0,1,'unknown',0,'2026-07-11T00:00:00')"
+    )
+    db.commit()
+
+
+def test_no_mt5_credentials_on_vps(monkeypatch):
+    # The VPS adapter must NOT read MT5_LOGIN/PASSWORD/SERVER for its own use.
+    from src.execution.remote_mt5_bridge import RemoteMT5BridgeAdapter
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    # Even with MT5 env vars set, the remote adapter ignores them (uses URL/token only).
+    monkeypatch.setenv("MT5_LOGIN", "should-not-be-used")
+    monkeypatch.setenv("MT5_PASSWORD", "should-not-be-used")
+    monkeypatch.setenv("MT5_SERVER", "should-not-be-used")
+    a = RemoteMT5BridgeAdapter()
+    assert a._url == "https://pc.tailnet.ts.net"
+    assert a._token == "tok"
+    assert not getattr(a, "_mt5_login", None)
+
+
+def test_kill_switch_blocks_remote_bridge_order(monkeypatch):
+    # observe_only default => can_place_real_demo False => order rejected.
+    from src.execution.factory import can_place_real_demo, execution_mode
+    assert execution_mode() == "observe_only"
+    assert can_place_real_demo() is False

@@ -38,6 +38,7 @@ from .factory import (
 from .capabilities import capabilities, capability
 from .oanda_practice import OandaPracticeAdapter, SYMBOL_MAP as OANDA_SYMBOL_MAP
 from .mt5_demo import MT5DemoAdapter, DEFAULT_SYMBOL_MAP as MT5_DEFAULT_SYMBOL_MAP
+from .remote_mt5_bridge import RemoteMT5BridgeAdapter
 
 __all__ = [
     "ExecutionAdapter",
@@ -54,6 +55,7 @@ __all__ = [
     "MockDemoAdapter",
     "OandaPracticeAdapter",
     "MT5DemoAdapter",
+    "RemoteMT5BridgeAdapter",
     "build_adapter",
     "list_adapters",
     "available_adapters",

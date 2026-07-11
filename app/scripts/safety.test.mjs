@@ -565,3 +565,84 @@ test("trends are wired into the daily loop AFTER scoring, review after outcomes"
   assert.ok(ingestIdx > detectIdx, "trends:ingest runs after detect");
   assert.ok(reviewIdx > ingestIdx, "review:trends runs after ingest");
 });
+
+// ---- v1.3.3: Tailscale Remote MT5 Bridge (VPS → Windows PC) ----
+
+test("v1.3.3 remote-mt5 bridge package exists (PC-side FastAPI server)", () => {
+  const dir = join(root, "remote-mt5-bridge");
+  const server = readFileSync(join(dir, "server.py"), "utf8");
+  assert.ok(/uvicorn.run\(app, host="127.0.0.1"/.test(server),
+    "bridge binds to localhost only (exposed via tailscale serve)");
+  assert.ok(/REMOTE_MT5_BRIDGE_TOKEN/.test(server), "bridge requires a bearer token");
+  assert.ok(/trade_mode.*REAL|LIVE account detected/.test(server),
+    "bridge refuses LIVE accounts");
+  assert.ok(/BRIDGE_KILL_SWITCH/.test(server), "bridge has its own kill switch");
+  assert.ok(/_ensure_demo_account/.test(server), "bridge enforces demo-only account");
+  assert.ok(/stop_loss/.test(server) && /take_profit/.test(server),
+    "bridge requires SL/TP on place path");
+  const readme = readFileSync(join(dir, "README.md"), "utf8");
+  assert.ok(/tailscale serve/.test(readme), "README documents tailscale serve");
+  assert.ok(/127.0.0.1/.test(readme), "README documents localhost bind");
+  const envEx = readFileSync(join(dir, ".env.example"), "utf8");
+  assert.ok(/REMOTE_MT5_BRIDGE_TOKEN/.test(envEx));
+  assert.ok(/MT5_LOGIN/.test(envEx) && /MT5_PASSWORD/.test(envEx),
+    "PC .env holds MT5 creds (never on VPS)");
+});
+
+test("v1.3.3 VPS adapter never stores MT5 credentials (URL+token only)", () => {
+  const a = readFileSync(join(root, "engine", "src", "execution", "remote_mt5_bridge.py"), "utf8");
+  assert.ok(/REMOTE_MT5_BRIDGE_URL/.test(a), "adapter reads bridge URL");
+  assert.ok(/REMOTE_MT5_BRIDGE_TOKEN/.test(a), "adapter reads bridge token");
+  assert.ok(/MT5_LOGIN|MT5_PASSWORD|MT5_SERVER/.test(a) === false,
+    "adapter must NOT reference MT5 credentials at all (stays on PC)");
+  assert.ok(/RuntimeError[\s\S]*?REMOTE_MT5_BRIDGE_URL not set/.test(a),
+    "fail loud when URL missing");
+  assert.ok(/RuntimeError[\s\S]*?REMOTE_MT5_BRIDGE_TOKEN not set/.test(a),
+    "fail loud when token missing");
+  assert.ok(/_assert_demo/.test(a) && /non-demo mode/.test(a),
+    "adapter rejects a non-demo bridge response");
+  assert.ok(/default to mock/.test(a) === false, "must NOT fall back to mock for real demo");
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  const block = sql.slice(sql.indexOf("CREATE TABLE IF NOT EXISTS RemoteBridgeStatus"));
+  assert.ok(!/password|secret|api_key|token|login|mt5/.test(block),
+    "RemoteBridgeStatus stores no secret columns");
+});
+
+test("v1.3.3 factory registers remote_mt5 and rejects unknown", () => {
+  const f = readFileSync(join(root, "engine", "src", "execution", "factory.py"), "utf8");
+  assert.ok(/\"remote_mt5\"/.test(f), "factory lists remote_mt5");
+  assert.ok(/RemoteMT5BridgeAdapter/.test(f), "factory builds RemoteMT5BridgeAdapter");
+  assert.ok(/PRIMARY_DEMO_BROKER[\s\S]*remote_mt5/.test(f),
+    "primary_demo_broker may be remote_mt5");
+});
+
+test("v1.3.3 npm scripts wire remote-mt5 commands", () => {
+  const pkg = readFileSync(join(__dirname, "..", "package.json"), "utf8");
+  for (const s of ["execution:remote-mt5-check", "execution:remote-mt5-symbols",
+                   "execution:remote-mt5-quote", "execution:remote-mt5-dry-run",
+                   "execution:remote-mt5-order"]) {
+    assert.ok(pkg.includes(`"${s}"`), `missing npm script ${s}`);
+  }
+});
+
+test("v1.3.3 broker-demo page exposes Remote MT5 Bridge status", () => {
+  const page = readFileSync(join(__dirname, "..", "app", "broker-demo", "page.tsx"), "utf8");
+  assert.ok(/Remote MT5 Bridge/.test(page), "page has bridge section");
+  assert.ok(/Bridge reachable/.test(page), "page shows reachable status");
+  assert.ok(/Tailscale URL configured/.test(page), "page shows Tailscale URL status");
+  assert.ok(/PC bridge mode/.test(page), "page shows PC bridge mode (demo/live/unknown)");
+  assert.ok(/Bridge kill-switch/.test(page), "page shows bridge kill-switch status");
+  assert.ok(/remoteBridgeStatus/.test(page), "page reads RemoteBridgeStatus accessor");
+});
+
+test("v1.3.3 demo order still requires approved signal + SL/TP (no exploration)", () => {
+  const g = readFileSync(join(root, "engine", "src", "execution", "guards.py"), "utf8");
+  assert.ok(/missing stop_loss/.test(g) && /missing take_profit/.test(g),
+    "SL/TP mandatory");
+  assert.ok(/no parent paper Signal/.test(g), "every order needs an approved paper signal");
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/REJECTED: no paper Signal id=/.test(cli), "remote order requires a paper signal");
+  assert.ok(/_place_real_demo\(db, cfg, ctrl, "remote_mt5"/.test(cli),
+    "remote order routes through the same hard-gated placement path");
+});
+

@@ -330,6 +330,24 @@ CREATE TABLE IF NOT EXISTS DemoExecutionLock (
   UNIQUE(signal_id, broker, run_id)
 );
 
+-- Remote MT5 Bridge status (Tailscale → Windows PC). Stores only redacted
+-- metadata: reachability, bridge demo/live mode, bridge kill-switch, latest
+-- quote. NEVER stores the bridge token or any MT5 credential.
+CREATE TABLE IF NOT EXISTS RemoteBridgeStatus (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  reachable INTEGER NOT NULL DEFAULT 0,
+  tailscale_url_configured INTEGER NOT NULL DEFAULT 0,
+  pc_bridge_mode TEXT NOT NULL DEFAULT 'unknown',  -- demo | live | unknown
+  bridge_kill_switch INTEGER NOT NULL DEFAULT 0,
+  latest_symbol TEXT,
+  latest_bid REAL,
+  latest_ask REAL,
+  latest_spread REAL,
+  symbol_map_json TEXT,
+  last_checked_at TEXT NOT NULL,
+  last_error_redacted TEXT
+);
+
 CREATE TABLE IF NOT EXISTS TrendReviewLesson (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   prediction_id INTEGER NOT NULL,

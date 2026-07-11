@@ -685,6 +685,178 @@ def cmd_mirror_demo_order(args) -> int:
     return 0
 
 
+def _remote_mt5_adapter():
+    """Build the remote bridge adapter; fail loud if URL/token missing."""
+    try:
+        adapter = build_adapter("remote_mt5", fail_loud=True)
+    except Exception as exc:
+        print(f"REMOTE MT5 UNAVAILABLE: {redact(str(exc))[:220]}")
+        raise
+    return adapter
+
+
+def _persist_remote_bridge(db, *, reachable, tailscale_url_configured, pc_bridge_mode,
+                            bridge_kill_switch, symbol=None, bid=None, ask=None, spread=None,
+                            symbol_map_json=None, error=None):
+    """Write a RemoteBridgeStatus row (redacted metadata only — never the token)."""
+    db.execute(
+        """INSERT INTO RemoteBridgeStatus
+           (reachable, tailscale_url_configured, pc_bridge_mode, bridge_kill_switch,
+            latest_symbol, latest_bid, latest_ask, latest_spread, symbol_map_json,
+            last_checked_at, last_error_redacted)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+        (int(reachable), int(tailscale_url_configured), pc_bridge_mode, int(bridge_kill_switch),
+         symbol, bid, ask, spread, symbol_map_json, _now(),
+         redact(str(error))[:200] if error else None),
+    )
+    db.commit()
+
+
+def cmd_remote_mt5_check(args) -> int:
+    cfg = _cfg()
+    if cfg.get("allow_live_orders"):
+        print("REMOTE MT5 CHECK FAILED: allow_live_orders=true"); return 2
+    db = _db()
+    try:
+        cap = capability("remote_mt5")
+    except Exception as exc:
+        print(json.dumps({"broker": "remote_mt5", "error": redact(str(exc))[:220]}, indent=2))
+        return 2
+    _persist_one(db, cap)
+    # Bridge health (mode + kill switch) via a direct health call.
+    health = {}
+    pc_mode = "unknown"
+    bridge_kill = False
+    reachable = cap.account_reachable
+    try:
+        a = _remote_mt5_adapter()
+        try:
+            import requests
+            resp = requests.get(f"{os.environ.get('REMOTE_MT5_BRIDGE_URL','').rstrip('/')}/health",
+                                headers={"Authorization": f"Bearer {os.environ.get('REMOTE_MT5_BRIDGE_TOKEN','')}"},
+                                timeout=float(os.environ.get("REMOTE_MT5_BRIDGE_TIMEOUT", "8")))
+            health = resp.json()
+            pc_mode = health.get("broker_mode", "demo")
+            bridge_kill = bool(health.get("bridge_kill_switch"))
+        except Exception as exc:
+            health = {"error": redact(str(exc))[:160]}
+            reachable = False
+    except Exception:
+        reachable = False
+    _persist_remote_bridge(
+        db, reachable=reachable,
+        tailscale_url_configured=bool(os.environ.get("REMOTE_MT5_BRIDGE_URL")),
+        pc_bridge_mode=pc_mode, bridge_kill_switch=bridge_kill,
+        error=(None if reachable else (health.get("error") if isinstance(health, dict) else None)),
+    )
+    print(json.dumps({**_cap_to_dict(cap), "bridge_health": health,
+                      "tailscale_url_configured": bool(os.environ.get("REMOTE_MT5_BRIDGE_URL"))}, indent=2))
+    return 0 if cap.credentials_present and cap.account_reachable else 2
+
+
+def cmd_remote_mt5_symbols(args) -> int:
+    try:
+        a = _remote_mt5_adapter()
+    except Exception:
+        return 2
+    try:
+        import requests
+        resp = requests.get(f"{os.environ.get('REMOTE_MT5_BRIDGE_URL','').rstrip('/')}/symbols",
+                            headers={"Authorization": f"Bearer {os.environ.get('REMOTE_MT5_BRIDGE_TOKEN','')}"},
+                            timeout=float(os.environ.get("REMOTE_MT5_BRIDGE_TIMEOUT", "8")))
+        body = resp.json()
+        # Persist symbol map for the dashboard.
+        db = _db()
+        _persist_remote_bridge(
+            db, reachable=True,
+            tailscale_url_configured=bool(os.environ.get("REMOTE_MT5_BRIDGE_URL")),
+            pc_bridge_mode="demo", bridge_kill_switch=False,
+            symbol_map_json=json.dumps(body.get("symbol_map", {})),
+        )
+        print(json.dumps(body, indent=2))
+        return 0
+    except Exception as exc:
+        print(f"REMOTE MT5 SYMBOLS FAILED: {redact(str(exc))[:200]}"); return 2
+
+
+def cmd_remote_mt5_quote(args) -> int:
+    try:
+        a = _remote_mt5_adapter()
+    except Exception:
+        return 2
+    try:
+        q = a.get_prices(args.symbol)
+        db = _db()
+        _persist_remote_bridge(
+            db, reachable=True,
+            tailscale_url_configured=bool(os.environ.get("REMOTE_MT5_BRIDGE_URL")),
+            pc_bridge_mode="demo", bridge_kill_switch=False,
+            symbol=q.symbol, bid=q.bid, ask=q.ask, spread=q.spread,
+        )
+        print(json.dumps({"symbol": q.symbol, "bid": q.bid, "ask": q.ask,
+                          "spread": q.spread, "broker_mode": "demo"}, indent=2))
+        return 0
+    except Exception as exc:
+        print(f"REMOTE MT5 QUOTE FAILED: {redact(str(exc))[:200]}"); return 2
+
+
+def cmd_remote_mt5_dry_run(args) -> int:
+    cfg = _cfg()
+    if cfg.get("allow_live_orders"):
+        print("REMOTE MT5 DRY-RUN FAILED: allow_live_orders=true"); return 2
+    db = _db()
+    ctrl = _control(db)
+    signal = _paper_signal(db, args.signal_id)
+    if signal is None:
+        print(f"REJECTED: no paper Signal id={args.signal_id}"); return 2
+    try:
+        a = _remote_mt5_adapter()
+    except Exception:
+        return 2
+    # Validate against the live bridge (calls /dry-run on PC) but never places.
+    try:
+        import requests
+        resp = requests.post(
+            f"{os.environ.get('REMOTE_MT5_BRIDGE_URL','').rstrip('/')}/dry-run",
+            headers={"Authorization": f"Bearer {os.environ.get('REMOTE_MT5_BRIDGE_TOKEN','')}"},
+            json={"symbol": signal.pair, "side": "buy" if signal.direction > 0 else "sell",
+                  "units": signal.units or 0.0, "stop_loss": signal.stop_loss,
+                  "take_profit": signal.take_profit, "signal_id": args.signal_id},
+            timeout=float(os.environ.get("REMOTE_MT5_BRIDGE_TIMEOUT", "8")),
+        )
+        bridge = resp.json()
+    except Exception as exc:
+        print(f"REMOTE MT5 DRY-RUN FAILED: {redact(str(exc))[:200]}"); return 2
+    print(json.dumps({
+        "broker": "remote_mt5", "broker_mode": "demo",
+        "would_place_order": bridge.get("would_place", False),
+        "dry_run": dry_run(), "demo_autotrade_enabled": demo_autotrade_enabled(),
+        "execution_mode": execution_mode(),
+        "bridge_kill_switch": bridge.get("bridge_kill_switch"),
+        "signal": {"pair": signal.pair, "direction": signal.direction,
+                   "sl": signal.stop_loss, "tp": signal.take_profit},
+        "NOTE": "no order was placed — dry run only",
+    }, indent=2))
+    return 0
+
+
+def cmd_remote_mt5_order(args) -> int:
+    cfg = _cfg()
+    db = _db()
+    ctrl = _control(db)
+    signal = _paper_signal(db, args.signal_id)
+    if signal is None:
+        print(f"REJECTED: no paper Signal id={args.signal_id}"); return 2
+    try:
+        a = _remote_mt5_adapter()
+    except Exception:
+        return 2
+    run_id = args.run_id or f"remote-mt5-{args.signal_id}"
+    res = _place_real_demo(db, cfg, ctrl, "remote_mt5", signal, run_id, a)
+    print(json.dumps({**res, "broker_mode": "demo"}, indent=2))
+    return 0 if res["status"] == "filled" else 2
+
+
 def cmd_kill_switch(args) -> int:
     db = _db()
     new_val = 1 if args.on else (0 if args.off else None)
@@ -761,10 +933,29 @@ def main(argv=None) -> int:
     pro.add_argument("--run-id", type=str, default=None)
     pro.set_defaults(func=cmd_real_demo_order)
 
-    pmo = sub.add_parser("mirror-demo-order")
-    pmo.add_argument("--signal-id", type=int, required=True)
-    pmo.add_argument("--run-id", type=str, default=None)
-    pmo.set_defaults(func=cmd_mirror_demo_order)
+    pmr = sub.add_parser("mirror-demo-order")
+    pmr.add_argument("--signal-id", type=int, required=True)
+    pmr.add_argument("--run-id", type=str, default=None)
+    pmr.set_defaults(func=cmd_mirror_demo_order)
+
+    prm = sub.add_parser("remote-mt5-check")
+    prm.set_defaults(func=cmd_remote_mt5_check)
+
+    prms = sub.add_parser("remote-mt5-symbols")
+    prms.set_defaults(func=cmd_remote_mt5_symbols)
+
+    prmq = sub.add_parser("remote-mt5-quote")
+    prmq.add_argument("--symbol", default="EURUSD")
+    prmq.set_defaults(func=cmd_remote_mt5_quote)
+
+    prmd = sub.add_parser("remote-mt5-dry-run")
+    prmd.add_argument("--signal-id", type=int, required=True)
+    prmd.set_defaults(func=cmd_remote_mt5_dry_run)
+
+    prmo = sub.add_parser("remote-mt5-order")
+    prmo.add_argument("--signal-id", type=int, required=True)
+    prmo.add_argument("--run-id", type=str, default=None)
+    prmo.set_defaults(func=cmd_remote_mt5_order)
 
     args = p.parse_args(argv)
     return args.func(args)

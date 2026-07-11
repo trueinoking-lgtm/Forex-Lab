@@ -25,6 +25,9 @@ def available_adapters() -> dict:
         os.environ.get("OANDA_PRACTICE_API_KEY") and os.environ.get("OANDA_PRACTICE_ACCOUNT")
     )
     out["mt5_demo"] = all(os.environ.get(f"MT5_{k}") for k in ("LOGIN", "PASSWORD", "SERVER"))
+    out["remote_mt5"] = bool(
+        os.environ.get("REMOTE_MT5_BRIDGE_URL") and os.environ.get("REMOTE_MT5_BRIDGE_TOKEN")
+    )
     return out
 
 
@@ -33,7 +36,7 @@ def list_adapters() -> dict:
 
 
 def broker_names() -> list[str]:
-    return ["mock", "oanda_practice", "mt5_demo"]
+    return ["mock", "oanda_practice", "mt5_demo", "remote_mt5"]
 
 
 def build_adapter(name: Optional[str] = None, *, fail_loud: bool = True) -> ExecutionAdapter:
@@ -64,7 +67,18 @@ def build_adapter(name: Optional[str] = None, *, fail_loud: bool = True) -> Exec
         from .oanda_practice import OandaPracticeAdapter
         return OandaPracticeAdapter()
 
-    raise ValueError(f"unknown adapter {name!r}; allowed: mock, oanda_practice, mt5_demo")
+    if name == "remote_mt5":
+        if not available_adapters()["remote_mt5"]:
+            if fail_loud:
+                raise RuntimeError(
+                    "remote_mt5 unavailable: missing REMOTE_MT5_BRIDGE_URL/TOKEN. "
+                    "Configure the Tailscale bridge to the Windows PC."
+                )
+            return MockDemoAdapter()
+        from .remote_mt5_bridge import RemoteMT5BridgeAdapter
+        return RemoteMT5BridgeAdapter()
+
+    raise ValueError(f"unknown adapter {name!r}; allowed: mock, oanda_practice, mt5_demo, remote_mt5")
 
 
 # ===== Execution modes =====
@@ -78,7 +92,7 @@ def execution_mode() -> str:
 
 def primary_demo_broker() -> str:
     b = os.environ.get("PRIMARY_DEMO_BROKER", "oanda_practice").lower()
-    return b if b in ("oanda_practice", "mt5_demo") else "oanda_practice"
+    return b if b in ("oanda_practice", "mt5_demo", "remote_mt5") else "oanda_practice"
 
 
 def mirror_demo_enabled() -> bool:

@@ -266,4 +266,19 @@ export function realDemoOrders(broker?: string): any[] {
   return (broker ? db.prepare(sql).all(broker) : db.prepare(sql).all()) as any[];
 }
 
+// ===== Remote MT5 Bridge (v1.3.3) =====
+export interface RemoteBridgeStatusRow {
+  id: number; reachable: number; tailscale_url_configured: number;
+  pc_bridge_mode: string; bridge_kill_switch: number;
+  latest_symbol: string | null; latest_bid: number | null; latest_ask: number | null;
+  latest_spread: number | null; symbol_map_json: string | null;
+  last_checked_at: string; last_error_redacted: string | null;
+}
+export function remoteBridgeStatus(): RemoteBridgeStatusRow | null {
+  return db.prepare(`SELECT * FROM RemoteBridgeStatus ORDER BY id DESC LIMIT 1`).get() as RemoteBridgeStatusRow | null;
+}
+export function remoteBridgeHistory(limit = 20): RemoteBridgeStatusRow[] {
+  return db.prepare(`SELECT * FROM RemoteBridgeStatus ORDER BY id DESC LIMIT ?`).all(limit) as RemoteBridgeStatusRow[];
+}
+
 

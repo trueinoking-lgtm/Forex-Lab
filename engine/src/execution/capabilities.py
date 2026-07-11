@@ -92,12 +92,42 @@ def mt5_capability() -> BrokerCapability:
     return caps
 
 
+def _remote_mt5_creds_present() -> bool:
+    return bool(
+        os.environ.get("REMOTE_MT5_BRIDGE_URL")
+        and os.environ.get("REMOTE_MT5_BRIDGE_TOKEN")
+    )
+
+
+def remote_mt5_capability() -> BrokerCapability:
+    caps = BrokerCapability(broker="remote_mt5", broker_mode="demo",
+                            credentials_present=_remote_mt5_creds_present(),
+                            account_reachable=False, last_checked_at=_now())
+    if not caps.credentials_present:
+        caps.last_error_redacted = redact("REMOTE_MT5_BRIDGE_URL/TOKEN not set")
+        return caps
+    try:
+        from .remote_mt5_bridge import RemoteMT5BridgeAdapter
+        a = RemoteMT5BridgeAdapter()
+        acc = a.get_account()
+        caps.account_reachable = True
+        caps.account_currency = acc.currency
+        caps.balance = acc.balance
+        caps.equity = acc.balance
+        caps.trading_enabled = True
+    except Exception as exc:
+        caps.account_reachable = False
+        caps.last_error_redacted = redact(str(exc))[:200]
+    return caps
+
+
 def capabilities() -> dict:
     """Return all broker capabilities keyed by broker name."""
     out = {
         "mock": mock_capability(),
         "oanda_practice": oanda_capability(),
         "mt5_demo": mt5_capability(),
+        "remote_mt5": remote_mt5_capability(),
     }
     return out
 
@@ -110,4 +140,6 @@ def capability(broker: str) -> BrokerCapability:
         return oanda_capability()
     if broker in ("mt5_demo", "deriv_mt5"):
         return mt5_capability()
+    if broker == "remote_mt5":
+        return remote_mt5_capability()
     raise ValueError(f"unknown broker {broker!r}")
