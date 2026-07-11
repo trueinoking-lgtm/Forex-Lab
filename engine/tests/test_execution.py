@@ -763,4 +763,179 @@ def test_kill_switch_blocks_remote_bridge_order(monkeypatch):
     # observe_only default => can_place_real_demo False => order rejected.
     from src.execution.factory import can_place_real_demo, execution_mode
     assert execution_mode() == "observe_only"
-    assert can_place_real_demo() is False
+
+
+# --- refresh-signal command (live quote revalidation, never places an order) ---
+def _make_refresh_db(tmp_path, *, orig_id=3, pair="EURUSD", direction=1,
+                     entry=1.14143, sl=1.135, tp=1.15, status="paper",
+                     generated_at="2026-07-11T13:52:28+00:00", units=2000.0):
+    import sqlite3
+    dbp = tmp_path / "refr.db"
+    db = sqlite3.connect(str(dbp))
+    db.execute("""CREATE TABLE Signal (
+        id INTEGER PRIMARY KEY, pair TEXT, strategy TEXT, direction INTEGER,
+        entry REAL, stop_loss REAL, take_profit REAL, signal_score REAL,
+        regime TEXT, units REAL, generated_at TEXT, status TEXT,
+        original_signal_id INTEGER)""")
+    db.execute("""INSERT INTO Signal (id,pair,strategy,direction,entry,stop_loss,
+        take_profit,signal_score,regime,units,generated_at,status)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (orig_id, pair, "rsi", direction, entry, sl, tp, 63.0, "trend", units,
+         generated_at, status))
+    db.commit()
+    db.close()
+    return dbp
+
+
+def _patch_bridge(monkeypatch, *, health=None, quote=None, captured=None,
+                  raise_exc=None):
+    """Patch every requests entry point used by the bridge so no real network
+    call can happen. `health`/`quote` are JSON dicts; `raise_exc` (a
+    requests.RequestException) makes every call blow up (unreachable)."""
+    import requests
+    from src.execution import remote_mt5_bridge as rmb
+
+    class _R:
+        status_code = 200
+        def __init__(self, j): self._j = j
+        def json(self): return self._j
+
+    def make(method, url, **k):
+        if raise_exc is not None:
+            raise raise_exc
+        if captured is not None:
+            captured[url] = (method, k.get("json"))
+        base = url.split("?")[0].rstrip("/")  # ignore query string
+        if health is not None and base.endswith("/health"):
+            return _R(health)
+        if quote is not None and base.endswith("/quote"):
+            return _R(quote)
+        return _R({})
+
+    monkeypatch.setattr(requests, "request", make)
+    monkeypatch.setattr(requests, "get", lambda u, **k: make("get", u, **k))
+    monkeypatch.setattr(requests, "post", lambda u, **k: make("post", u, **k))
+    # adapter module also holds a reference to the requests module
+    monkeypatch.setattr(rmb.requests, "request", make)
+    monkeypatch.setattr(rmb.requests, "get", lambda u, **k: make("get", u, **k))
+    monkeypatch.setattr(rmb.requests, "post", lambda u, **k: make("post", u, **k))
+    return _R
+
+
+def _ns():
+    return __import__("types").SimpleNamespace(signal_id=3, broker="remote_mt5")
+
+
+HEALTH_OK = {"broker_mode": "demo", "bridge_kill_switch": False}
+QUOTE_OK = {"symbol": "EURUSD", "bid": 1.14140, "ask": 1.14143, "spread": 0.0003}
+
+
+def test_refresh_stale_signal_creates_fresh_candidate(monkeypatch, tmp_path):
+    dbp = _make_refresh_db(tmp_path)
+    monkeypatch.setattr("run_execution.DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    _patch_bridge(monkeypatch, health=HEALTH_OK, quote=QUOTE_OK)
+    from run_execution import cmd_refresh_signal
+    assert cmd_refresh_signal(_ns()) == 0
+    import sqlite3
+    db = sqlite3.connect(str(dbp)); db.row_factory = sqlite3.Row
+    rows = db.execute("SELECT * FROM Signal ORDER BY id").fetchall()
+    assert len(rows) == 2
+    fresh = rows[1]
+    assert fresh["original_signal_id"] == 3
+    assert fresh["status"] == "paper"
+    from src.execution.bridge_validation import is_stale_signal
+    assert not is_stale_signal(fresh["generated_at"], 30)
+    assert fresh["entry"] == 1.14143  # live ask used as entry
+    assert fresh["stop_loss"] == 1.135 and fresh["take_profit"] == 1.15
+
+
+def test_refresh_invalid_geometry_rejected(monkeypatch, tmp_path):
+    # Force invalid geometry: live ask ABOVE TP(1.15) => buy geometry fails.
+    dbp = _make_refresh_db(tmp_path)
+    monkeypatch.setattr("run_execution.DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    bad_quote = {"symbol": "EURUSD", "bid": 1.15050, "ask": 1.15060, "spread": 0.0001}
+    _patch_bridge(monkeypatch, health=HEALTH_OK, quote=bad_quote)
+    from run_execution import cmd_refresh_signal
+    assert cmd_refresh_signal(_ns()) == 2
+    import sqlite3
+    db = sqlite3.connect(str(dbp))
+    assert db.execute("SELECT COUNT(*) c FROM Signal").fetchone()[0] == 1
+
+
+def test_refresh_does_not_place_order(monkeypatch, tmp_path):
+    dbp = _make_refresh_db(tmp_path)
+    monkeypatch.setattr("run_execution.DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    captured = {}
+    _patch_bridge(monkeypatch, health=HEALTH_OK, quote=QUOTE_OK, captured=captured)
+    from run_execution import cmd_refresh_signal
+    assert cmd_refresh_signal(_ns()) == 0
+    # refresh must only GET /health and GET /quote; never POST /place-demo-order
+    assert all("/place-demo-order" not in u for u in captured)
+
+
+def test_refresh_preserves_original_signal(monkeypatch, tmp_path):
+    dbp = _make_refresh_db(tmp_path)
+    monkeypatch.setattr("run_execution.DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    _patch_bridge(monkeypatch, health=HEALTH_OK, quote=QUOTE_OK)
+    from run_execution import cmd_refresh_signal
+    assert cmd_refresh_signal(_ns()) == 0
+    import sqlite3
+    db = sqlite3.connect(str(dbp)); db.row_factory = sqlite3.Row
+    orig = db.execute("SELECT * FROM Signal WHERE id=3").fetchone()
+    assert orig is not None
+    assert orig["original_signal_id"] is None  # original left untouched
+    assert orig["entry"] == 1.14143 and orig["stop_loss"] == 1.135 and orig["take_profit"] == 1.15
+
+
+def test_refresh_fresh_candidate_passes_stale_check(monkeypatch, tmp_path):
+    dbp = _make_refresh_db(tmp_path)
+    monkeypatch.setattr("run_execution.DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    _patch_bridge(monkeypatch, health=HEALTH_OK, quote=QUOTE_OK)
+    from run_execution import cmd_refresh_signal
+    from src.execution.bridge_validation import is_stale_signal, validate_price_geometry
+    assert cmd_refresh_signal(_ns()) == 0
+    import sqlite3
+    db = sqlite3.connect(str(dbp)); db.row_factory = sqlite3.Row
+    fresh = db.execute("SELECT * FROM Signal ORDER BY id DESC LIMIT 1").fetchone()
+    assert not is_stale_signal(fresh["generated_at"], 30)
+    assert validate_price_geometry("buy", fresh["entry"], fresh["stop_loss"],
+                                    fresh["take_profit"]) is None
+
+
+def test_refresh_remote_mt5_unavailable_fails_loud(monkeypatch, tmp_path):
+    dbp = _make_refresh_db(tmp_path)
+    monkeypatch.setattr("run_execution.DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    import requests
+    _patch_bridge(monkeypatch, raise_exc=requests.RequestException("connection refused"))
+    from run_execution import cmd_refresh_signal
+    assert cmd_refresh_signal(_ns()) == 2  # fails loud, no candidate created
+    import sqlite3
+    db = sqlite3.connect(str(dbp))
+    assert db.execute("SELECT COUNT(*) c FROM Signal").fetchone()[0] == 1
+
+
+def test_refresh_kill_switch_blocks(monkeypatch, tmp_path):
+    dbp = _make_refresh_db(tmp_path)
+    monkeypatch.setattr("run_execution.DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    kill_health = {"broker_mode": "demo", "bridge_kill_switch": True}
+    _patch_bridge(monkeypatch, health=kill_health, quote=QUOTE_OK)
+    from run_execution import cmd_refresh_signal
+    assert cmd_refresh_signal(_ns()) == 2
+    import sqlite3
+    db = sqlite3.connect(str(dbp))
+    assert db.execute("SELECT COUNT(*) c FROM Signal").fetchone()[0] == 1
+

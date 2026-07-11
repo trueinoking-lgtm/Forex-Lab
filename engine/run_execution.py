@@ -35,6 +35,7 @@ from src.execution import (  # noqa: E402
     execution_mode, primary_demo_broker, mirror_demo_enabled,
     dry_run, demo_autotrade_enabled, can_place_real_demo, broker_names,
 )
+from src.execution.bridge_validation import validate_price_geometry  # noqa: E402
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "forex_lab.db")
 CFG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
@@ -151,6 +152,32 @@ def _paper_signal(db: sqlite3.Connection, signal_id: int) -> PaperSignal | None:
         signal_score=row["signal_score"] or 0.0, regime=row["regime"] or "range",
         timestamp=row["generated_at"],
     )
+
+
+def _ensure_signal_lineage_col(db: sqlite3.Connection) -> None:
+    """Idempotent migration: add original_signal_id to Signal for refresh lineage.
+
+    Safe to call on every open — no-op once the column exists.
+    """
+    cols = {r[1] for r in db.execute("PRAGMA table_info(Signal)").fetchall()}
+    if "original_signal_id" not in cols:
+        db.execute("ALTER TABLE Signal ADD COLUMN original_signal_id INTEGER")
+
+
+def _insert_fresh_signal(db: sqlite3.Connection, *, pair, strategy, direction, entry,
+                         stop_loss, take_profit, status, signal_score, regime,
+                         generated_at, units, original_signal_id) -> int:
+    """Insert a fresh Signal row and return its new id. Mirrors the existing
+    Signal schema (adds original_signal_id lineage)."""
+    db.execute(
+        """INSERT INTO Signal
+           (pair, strategy, direction, entry, stop_loss, take_profit, status,
+            signal_score, regime, generated_at, units, original_signal_id)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (pair, strategy, direction, entry, stop_loss, take_profit, status,
+         signal_score, regime, generated_at, units, original_signal_id),
+    )
+    return db.execute("SELECT last_insert_rowid() id").fetchone()["id"]
 
 
 def cmd_check(args) -> int:
@@ -811,6 +838,108 @@ def cmd_remote_mt5_quote(args) -> int:
         print(f"REMOTE MT5 QUOTE FAILED: {redact(str(exc))[:200]}"); return 2
 
 
+MAX_REFRESH_SPREAD_PIPS = float(os.environ.get("REMOTE_MT5_MAX_SPREAD_PIPS", "5.0"))
+
+
+def cmd_refresh_signal(args) -> int:
+    """Refresh a (possibly stale) approved paper Signal against the live broker
+    quote: revalidate direction + SL/TP geometry, recreate a FRESH Signal row
+    with current timestamp and original_signal_id lineage. NEVER places an order.
+    """
+    if args.broker != "remote_mt5":
+        print(f"REFRESH REJECTED: broker '{args.broker}' not supported (use remote_mt5)")
+        return 2
+    cfg = _cfg()
+    if cfg.get("allow_live_orders"):
+        print("REFRESH REJECTED: allow_live_orders=true"); return 2
+    db = _db()
+    _ensure_signal_lineage_col(db)
+    # 1) require an existing approved paper Signal
+    orig = db.execute(
+        "SELECT * FROM Signal WHERE id=?", (args.signal_id,)
+    ).fetchone()
+    if orig is None:
+        print(f"REFRESH REJECTED: no Signal with id={args.signal_id}"); return 2
+    if (orig["status"] or "") != "paper":
+        print(f"REFRESH REJECTED: Signal #{orig['id']} status='{orig['status']}' "
+              f"is not an approved paper signal"); return 2
+    # 2) broker reachable + kill-switch read via live health
+    try:
+        a = _remote_mt5_adapter()
+    except Exception:
+        return 2
+    bridge_kill = False
+    reachable = True
+    try:
+        import requests
+        hresp = requests.get(
+            f"{os.environ.get('REMOTE_MT5_BRIDGE_URL','').rstrip('/')}/health",
+            headers={"Authorization": f"Bearer {os.environ.get('REMOTE_MT5_BRIDGE_TOKEN','')}"},
+            timeout=float(os.environ.get("REMOTE_MT5_BRIDGE_TIMEOUT", "8")),
+        )
+        hb = hresp.json()
+        bridge_kill = bool(hb.get("bridge_kill_switch"))
+        if hresp.status_code != 200 or hb.get("broker_mode") == "real":
+            reachable = False
+    except Exception as exc:
+        print(f"REFRESH REJECTED: broker unreachable — {redact(str(exc))[:200]}"); return 2
+    if not reachable:
+        print("REFRESH REJECTED: broker unreachable / live mode"); return 2
+    if bridge_kill:
+        print("REFRESH REJECTED: bridge kill-switch is ON"); return 2
+    # 3) live quote
+    try:
+        q = a.get_prices(orig["pair"])
+    except Exception as exc:
+        print(f"REFRESH REJECTED: could not fetch live quote — {redact(str(exc))[:200]}")
+        return 2
+    side = "buy" if orig["direction"] > 0 else "sell"
+    live_entry = q.ask if side == "buy" else q.bid
+    # 4) reject if spread too wide
+    spread_pips = (q.spread or 0.0) * 10000.0
+    if q.spread is not None and spread_pips > MAX_REFRESH_SPREAD_PIPS:
+        print(json.dumps({
+            "status": "rejected", "reason": "spread_too_wide",
+            "spread_pips": round(spread_pips, 2),
+            "max_spread_pips": MAX_REFRESH_SPREAD_PIPS,
+            "broker": "remote_mt5",
+        }, indent=2))
+        return 2
+    # 5) revalidate price geometry using the LIVE entry (SL/TP unchanged unless invalid)
+    geom_reason = validate_price_geometry(side, live_entry, orig["stop_loss"], orig["take_profit"])
+    if geom_reason is not None:
+        print(json.dumps({
+            "status": "rejected", "reason": "geometry_invalid_vs_live_quote",
+            "detail": geom_reason, "side": side, "live_entry": live_entry,
+            "stop_loss": orig["stop_loss"], "take_profit": orig["take_profit"],
+            "broker": "remote_mt5", "placed_order": False,
+        }, indent=2))
+        return 2
+    # 6) create a fresh Signal row (same strategy/pair/direction only because
+    #    geometry is still valid) with current timestamp + lineage.
+    new_ts = _now()
+    new_id = _insert_fresh_signal(
+        db, pair=orig["pair"], strategy=orig["strategy"], direction=orig["direction"],
+        entry=live_entry, stop_loss=orig["stop_loss"], take_profit=orig["take_profit"],
+        status="paper", signal_score=orig["signal_score"] or 0.0,
+        regime=orig["regime"] or "range", generated_at=new_ts,
+        units=orig["units"], original_signal_id=orig["id"],
+    )
+    db.commit()
+    out = {
+        "status": "refreshed", "broker": "remote_mt5",
+        "original_signal_id": orig["id"], "new_signal_id": new_id,
+        "pair": orig["pair"], "side": side,
+        "live_entry": live_entry, "stop_loss": orig["stop_loss"],
+        "take_profit": orig["take_profit"], "spread": q.spread,
+        "spread_pips": round(spread_pips, 2),
+        "generated_at": new_ts, "placed_order": False,
+        "note": "stale guard satisfied by fresh timestamp — no order placed",
+    }
+    print(json.dumps(out, indent=2))
+    return 0
+
+
 def cmd_remote_mt5_dry_run(args) -> int:
     cfg = _cfg()
     if cfg.get("allow_live_orders"):
@@ -1051,6 +1180,11 @@ def main(argv=None) -> int:
     prmq = sub.add_parser("remote-mt5-quote")
     prmq.add_argument("--symbol", default="EURUSD")
     prmq.set_defaults(func=cmd_remote_mt5_quote)
+
+    prmf = sub.add_parser("refresh-signal")
+    prmf.add_argument("--signal-id", type=int, required=True)
+    prmf.add_argument("--broker", default="remote_mt5")
+    prmf.set_defaults(func=cmd_refresh_signal)
 
     prmd = sub.add_parser("remote-mt5-dry-run")
     prmd.add_argument("--signal-id", type=int, required=True)

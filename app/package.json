@@ -35,6 +35,7 @@
     "execution:remote-mt5-check": "cd ../engine && .venv/bin/python run_execution.py remote-mt5-check",
     "execution:remote-mt5-symbols": "cd ../engine && .venv/bin/python run_execution.py remote-mt5-symbols",
     "execution:remote-mt5-quote": "cd ../engine && .venv/bin/python run_execution.py remote-mt5-quote",
+    "execution:refresh-signal": "cd ../engine && .venv/bin/python run_execution.py refresh-signal",
     "execution:remote-mt5-dry-run": "cd ../engine && .venv/bin/python run_execution.py remote-mt5-dry-run",
     "execution:remote-mt5-order": "cd ../engine && .venv/bin/python run_execution.py remote-mt5-order",
     "update:rules": "node scripts/update_rules.mjs",
