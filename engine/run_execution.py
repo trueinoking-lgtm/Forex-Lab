@@ -52,6 +52,14 @@ def _cfg() -> dict:
 def _db() -> sqlite3.Connection:
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
+    # Harden against "database is locked" under concurrent access (app + cron
+    # scheduler + pytest all write this single file). WAL lets a writer proceed
+    # without blocking readers; busy_timeout makes a contended writer wait
+    # instead of raising; isolation_level=None (autocommit) means no connection
+    # ever holds an implicit write transaction open across calls.
+    db.execute("PRAGMA journal_mode=WAL")
+    db.execute("PRAGMA busy_timeout=5000")
+    db.isolation_level = None
     return db
 
 
@@ -204,6 +212,7 @@ def cmd_demo_order(args) -> int:
         account=cfg.get("account", 10000.0), risk_pct=cfg.get("signals", {}).get("risk_pct", 0.75),
         signal=signal, open_demo_trades=_open_demo(db),
         max_open_demo_trades=ctrl["max_open_demo_trades"], kill_switch=bool(ctrl["kill_switch"]),
+        live_quote=quote, signal_timestamp=signal.timestamp, execution_class="paper",
     )
     if not res.passed:
         reason = "; ".join(res.reasons)
@@ -341,6 +350,7 @@ def cmd_mock_lifecycle(args) -> int:
         account=cfg.get("account", 10000.0), risk_pct=cfg.get("signals", {}).get("risk_pct", 0.75),
         signal=signal, open_demo_trades=_open_demo(db),
         max_open_demo_trades=ctrl["max_open_demo_trades"], kill_switch=bool(ctrl["kill_switch"]),
+        live_quote=quote, signal_timestamp=signal.timestamp, execution_class="paper",
     )
     if not res.passed:
         reason = "; ".join(res.reasons)
@@ -476,6 +486,7 @@ def _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter) -> dict:
         broker=broker,
         open_demo_trades_by_broker=_open_demo_by_broker(db, broker),
         max_open_per_broker=ctrl.get("max_open_per_broker", ctrl["max_open_demo_trades"]),
+        live_quote=quote, signal_timestamp=signal.timestamp, execution_class="paper",
     )
     if not res.passed:
         result["rejection_reason"] = "; ".join(res.reasons)
@@ -813,6 +824,33 @@ def cmd_remote_mt5_dry_run(args) -> int:
         a = _remote_mt5_adapter()
     except Exception:
         return 2
+    # ---- Aether-side validation (Task 3): fail loud even if the remote PC
+    # bridge is stale/pre-patch and would wrongly accept an invalid signal.
+    # We run the SAME deterministic guards against the LIVE quote AND check the
+    # bridge's verdict. A real order must NEVER proceed unless BOTH pass. ----
+    from src.execution import run_pretrade_guards, DemoOrderRequest, PriceQuote
+    # The real fill price IS the live quote (ask for a buy, bid for a sell), so
+    # use it as the requested_entry reference. The guard then checks SL/TP
+    # geometry against that live price (and risk_check against it) — the correct
+    # semantic for "would this order be valid right now?".
+    live_quote = a.get_prices(signal.pair)
+    requested_entry = live_quote.ask if signal.direction > 0 else live_quote.bid
+    vps_order = DemoOrderRequest(
+        symbol=signal.pair, side="buy" if signal.direction > 0 else "sell",
+        units=signal.units or 0.0, stop_loss=signal.stop_loss,
+        take_profit=signal.take_profit, signal_id=args.signal_id,
+        requested_entry=requested_entry,
+    )
+    vps_guard = run_pretrade_guards(
+        vps_order, broker_mode="demo", allow_live_orders=False,
+        account=cfg.get("account", 10000.0),
+        risk_pct=cfg.get("signals", {}).get("risk_pct", 0.75),
+        signal=signal, open_demo_trades=0,
+        kill_switch=bool(ctrl["kill_switch"]),
+        live_quote=live_quote, signal_timestamp=signal.timestamp,
+        execution_class="paper",
+    )
+    vps_ok = vps_guard.passed
     # Validate against the live bridge (calls /dry-run on PC) but never places.
     try:
         import requests
@@ -821,22 +859,42 @@ def cmd_remote_mt5_dry_run(args) -> int:
             headers={"Authorization": f"Bearer {os.environ.get('REMOTE_MT5_BRIDGE_TOKEN','')}"},
             json={"symbol": signal.pair, "side": "buy" if signal.direction > 0 else "sell",
                   "units": signal.units or 0.0, "stop_loss": signal.stop_loss,
-                  "take_profit": signal.take_profit, "signal_id": args.signal_id},
+                  "take_profit": signal.take_profit, "signal_id": args.signal_id,
+                  "signal_timestamp": signal.timestamp, "execution_class": "paper"},
             timeout=float(os.environ.get("REMOTE_MT5_BRIDGE_TIMEOUT", "8")),
         )
         bridge = resp.json()
     except Exception as exc:
         print(f"REMOTE MT5 DRY-RUN FAILED: {redact(str(exc))[:200]}"); return 2
+    # A patched bridge returns HTTP 400 with a reason when SL/TP / staleness is
+    # invalid. A pre-patch bridge returns 200 and must NOT be trusted on its own.
+    bridge_refused = (resp.status_code != 200) or (bridge.get("would_place") is False and
+                                                   bridge.get("broker_mode") != "demo")
     print(json.dumps({
         "broker": "remote_mt5", "broker_mode": "demo",
+        "bridge_status_code": resp.status_code,
         "would_place_order": bridge.get("would_place", False),
+        "live_entry": bridge.get("live_entry"),
+        "vps_guard_passed": vps_ok,
+        "vps_guard_reasons": vps_guard.reasons if not vps_ok else [],
+        "live_quote": {"bid": live_quote.bid, "ask": live_quote.ask},
         "dry_run": dry_run(), "demo_autotrade_enabled": demo_autotrade_enabled(),
         "execution_mode": execution_mode(),
         "bridge_kill_switch": bridge.get("bridge_kill_switch"),
         "signal": {"pair": signal.pair, "direction": signal.direction,
-                   "sl": signal.stop_loss, "tp": signal.take_profit},
+                   "sl": signal.stop_loss, "tp": signal.take_profit,
+                   "timestamp": signal.timestamp},
         "NOTE": "no order was placed — dry run only",
     }, indent=2))
+    # Exit non-zero if EITHER the VPS deterministic guard OR the bridge would
+    # refuse this signal (loud failure — never proceed to a real order).
+    if not vps_ok:
+        print("REMOTE MT5 DRY-RUN REJECTED (Aether-side guard): "
+              + "; ".join(vps_guard.reasons), file=sys.stderr)
+        return 2
+    if resp.status_code != 200:
+        print(f"REMOTE MT5 DRY-RUN REJECTED (bridge): {bridge}", file=sys.stderr)
+        return 2
     return 0
 
 
@@ -850,6 +908,52 @@ def cmd_remote_mt5_order(args) -> int:
     try:
         a = _remote_mt5_adapter()
     except Exception:
+        return 2
+    # Hard gate: a real demo order MUST never proceed unless BOTH the Aether-side
+    # deterministic guard AND the bridge dry-run accept the signal.
+    from src.execution import run_pretrade_guards, DemoOrderRequest
+    live_quote = a.get_prices(signal.pair)
+    requested_entry = live_quote.ask if signal.direction > 0 else live_quote.bid
+    vps_order = DemoOrderRequest(
+        symbol=signal.pair, side="buy" if signal.direction > 0 else "sell",
+        units=signal.units or 0.0, stop_loss=signal.stop_loss,
+        take_profit=signal.take_profit, signal_id=args.signal_id,
+        requested_entry=requested_entry,
+    )
+    vps_guard = run_pretrade_guards(
+        vps_order, broker_mode="demo", allow_live_orders=False,
+        account=cfg.get("account", 10000.0),
+        risk_pct=cfg.get("signals", {}).get("risk_pct", 0.75),
+        signal=signal, open_demo_trades=_open_demo(db),
+        max_open_demo_trades=ctrl["max_open_demo_trades"],
+        kill_switch=bool(ctrl["kill_switch"]),
+        broker="remote_mt5",
+        open_demo_trades_by_broker=_open_demo_by_broker(db, "remote_mt5"),
+        max_open_per_broker=ctrl.get("max_open_per_broker", ctrl["max_open_demo_trades"]),
+        live_quote=live_quote, signal_timestamp=signal.timestamp, execution_class="paper",
+    )
+    if not vps_guard.passed:
+        print("REJECTED: Aether-side guard failed: " + "; ".join(vps_guard.reasons))
+        return 2
+    # And the live bridge dry-run must also accept it. A patched bridge returns
+    # HTTP 400 when SL/TP/staleness is invalid; a pre-patch bridge that wrongly
+    # returns 200 is NOT trusted because vps_guard above already screened it.
+    try:
+        import requests
+        dresp = requests.post(
+            f"{os.environ.get('REMOTE_MT5_BRIDGE_URL','').rstrip('/')}/dry-run",
+            headers={"Authorization": f"Bearer {os.environ.get('REMOTE_MT5_BRIDGE_TOKEN','')}"},
+            json={"symbol": signal.pair, "side": "buy" if signal.direction > 0 else "sell",
+                  "units": signal.units or 0.0, "stop_loss": signal.stop_loss,
+                  "take_profit": signal.take_profit, "signal_id": args.signal_id,
+                  "signal_timestamp": signal.timestamp, "execution_class": "paper"},
+            timeout=float(os.environ.get("REMOTE_MT5_BRIDGE_TIMEOUT", "8")),
+        )
+        if dresp.status_code != 200:
+            print(f"REJECTED: bridge dry-run failed ({dresp.status_code}): {dresp.text[:240]}")
+            return 2
+    except Exception as exc:
+        print(f"REJECTED: could not verify bridge dry-run: {redact(str(exc))[:200]}")
         return 2
     run_id = args.run_id or f"remote-mt5-{args.signal_id}"
     res = _place_real_demo(db, cfg, ctrl, "remote_mt5", signal, run_id, a)

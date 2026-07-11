@@ -646,3 +646,63 @@ test("v1.3.3 demo order still requires approved signal + SL/TP (no exploration)"
     "remote order routes through the same hard-gated placement path");
 });
 
+// ---- v1.3.4 price-geometry + trade_mode + stale-signal hardening ----
+
+test("v1.3.4 shared validation enforces price geometry (buy/sell)", () => {
+  const v = readFileSync(join(root, "engine", "src", "execution", "bridge_validation.py"), "utf8");
+  assert.ok(/def validate_price_geometry/.test(v), "validate_price_geometry defined");
+  assert.ok(/invalid buy geometry/.test(v), "buy rejects TP below entry");
+  assert.ok(/invalid sell geometry/.test(v), "sell rejects TP above entry");
+  assert.ok(/stop_loss < entry < take_profit/.test(v), "buy bracket rule present");
+  assert.ok(/take_profit < entry < stop_loss/.test(v), "sell bracket rule present");
+});
+
+test("v1.3.4 guards reject invalid SL/TP vs live quote", () => {
+  const g = readFileSync(join(root, "engine", "src", "execution", "guards.py"), "utf8");
+  assert.ok(/live_quote/.test(g), "guards accept a live quote");
+  assert.ok(/price geometry invalid vs live quote/.test(g), "stale/invalid SL-TP rejected vs live quote");
+});
+
+test("v1.3.4 MT5 trade_mode DEMO=0 accepted, REAL=2 rejected (not the old 0=REAL bug)", () => {
+  const bv = readFileSync(join(root, "engine", "src", "execution", "bridge_validation.py"), "utf8");
+  assert.ok(/ACCOUNT_TRADE_MODE_DEMO = 0/.test(bv), "DEMO mapped to 0");
+  assert.ok(/ACCOUNT_TRADE_MODE_REAL = 2/.test(bv), "REAL mapped to 2");
+  assert.ok(/trade_mode == 0 is DEMO/.test(bv), "comment documents demo==0");
+  assert.ok(/only REAL \(2\) is refused/i.test(bv), "only REAL refused");
+  const srv = readFileSync(join(root, "remote-mt5-bridge", "server.py"), "utf8");
+  assert.ok(/check_demo_trade_mode/.test(srv), "bridge uses shared trade_mode check");
+  assert.ok(!/int\(info.trade_mode\) == 0/.test(srv), "old bug (0==LIVE) removed");
+  assert.ok(/0=DEMO, 1=CONTEST, 2=REAL/.test(srv), "bridge documents correct enum");
+});
+
+test("v1.3.4 stale-signal protection with configurable max age", () => {
+  const v = readFileSync(join(root, "engine", "src", "execution", "bridge_validation.py"), "utf8");
+  assert.ok(/def is_stale_signal/.test(v), "is_stale_signal defined");
+  assert.ok(/DEFAULT_SIGNAL_MAX_AGE_MINUTES = 30/.test(v), "default 30-min max age");
+  assert.ok(/backtest_only|paper_only/.test(v), "backtest/paper-only exempt from staleness");
+  const g = readFileSync(join(root, "engine", "src", "execution", "guards.py"), "utf8");
+  assert.ok(/stale signal/.test(g), "guards reject stale signals");
+  assert.ok(/signal_timestamp/.test(g), "guards receive signal timestamp");
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/signal_timestamp=signal.timestamp/.test(cli), "real placement passes signal ts to guards");
+  const bridge = readFileSync(join(root, "remote-mt5-bridge", "server.py"), "utf8");
+  assert.ok(/_reject_stale/.test(bridge), "bridge rejects stale signals");
+  assert.ok(/SIGNAL_MAX_AGE_MINUTES/.test(bridge), "max age configurable via env");
+});
+
+test("v1.3.4 bridge dry-run validates live price geometry", () => {
+  const bridge = readFileSync(join(root, "remote-mt5-bridge", "server.py"), "utf8");
+  assert.ok(/@app.post\("\/dry-run"\)/.test(bridge), "dry-run endpoint");
+  assert.ok(/validate_price_geometry\(req.side, entry/.test(bridge),
+    "dry-run checks geometry vs live entry");
+  assert.ok(/_reject_stale\(req\)/.test(bridge), "dry-run rejects stale signals");
+});
+
+test("v1.3.4 real remote order never proceeds if bridge dry-run fails", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/cmd_remote_mt5_order/.test(cli), "remote order command exists");
+  assert.ok(/Hard gate: a real demo order MUST never proceed/.test(cli),
+    "real order is gated on bridge dry-run success");
+  assert.ok(/bridge dry-run failed/.test(cli), "refuses when bridge dry-run fails");
+});
+

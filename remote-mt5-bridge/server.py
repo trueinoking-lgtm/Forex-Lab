@@ -19,12 +19,20 @@ the VPS. The VPS holds only REMOTE_MT5_BRIDGE_URL + REMOTE_MT5_BRIDGE_TOKEN.
 from __future__ import annotations
 
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, Depends
 from pydantic import BaseModel
+
+# Shared, zero-dependency validation (trade_mode mapping, price geometry, staleness).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from bridge_validation import (  # noqa: E402
+    check_demo_trade_mode, validate_price_geometry, is_stale_signal,
+    DEFAULT_SIGNAL_MAX_AGE_MINUTES,
+)
 
 app = FastAPI(title="Aether Forex Lab — Remote MT5 Bridge (DEMO ONLY)")
 
@@ -67,13 +75,32 @@ def _mt5():
     return mt5
 
 
+def _signal_max_age_minutes() -> float:
+    raw = os.environ.get("SIGNAL_MAX_AGE_MINUTES")
+    if raw:
+        try:
+            return float(raw)
+        except ValueError:
+            pass
+    return DEFAULT_SIGNAL_MAX_AGE_MINUTES
+
+
+def _execution_class() -> str:
+    # 'paper' signals may be forwarded to the demo broker; 'backtest_only' /
+    # 'paper_only' signals are never executed (exempt from staleness).
+    return os.environ.get("SIGNAL_EXECUTION_CLASS", "paper")
+
+
 def _ensure_demo_account(mt5) -> None:
     info = mt5.account_info()
     if info is None:
         raise HTTPException(status_code=503, detail="no MT5 account info")
-    # trade_mode: 0=REAL, 1=DEMO, 2=CONTEST
-    if int(info.trade_mode) == 0:
-        raise HTTPException(status_code=403, detail="LIVE account detected — demo bridge refuses")
+    # MetaTrader5 ACCOUNT_TRADE_MODE: 0=DEMO, 1=CONTEST, 2=REAL.
+    # CRITICAL: trade_mode == 0 is DEMO (NOT live). Only REAL (2) is refused.
+    try:
+        check_demo_trade_mode(int(info.trade_mode))
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
 
 
 # ---------- symbol map ----------
@@ -99,6 +126,31 @@ class OrderReq(BaseModel):
     take_profit: float
     signal_id: Optional[int] = None
     requested_entry: Optional[float] = None
+    signal_timestamp: Optional[str] = None     # paper signal generated_at (staleness)
+    execution_class: Optional[str] = None       # backtest_only|paper_only|paper
+
+
+def _reject_stale(req: OrderReq) -> None:
+    """Refuse a stale signal unless it is explicitly backtest/paper only."""
+    cls = req.execution_class or _execution_class()
+    if is_stale_signal(req.signal_timestamp, _signal_max_age_minutes(), cls):
+        raise HTTPException(
+            status_code=400,
+            detail=f"stale signal (older than {_signal_max_age_minutes()} min) — refuse execution",
+        )
+
+
+def _reject_bad_geometry(req: OrderReq) -> None:
+    """Reject SL/TP that do not bracket the live entry price on the correct side."""
+    if req.stop_loss in (None, 0) or req.take_profit in (None, 0):
+        raise HTTPException(status_code=400, detail="SL and TP are mandatory")
+    # Geometry is checked against the projected fill price; if the caller supplied
+    # a requested_entry use it, otherwise we fall back to the live tick below.
+    entry = req.requested_entry
+    if entry is not None:
+        reason = validate_price_geometry(req.side, entry, req.stop_loss, req.take_profit)
+        if reason:
+            raise HTTPException(status_code=400, detail=reason)
 
 
 # ---------- endpoints ----------
@@ -153,13 +205,27 @@ def quote(symbol: str, _=Depends(_require_auth)):
 @app.post("/dry-run")
 def dry_run(req: OrderReq, _=Depends(_require_auth)):
     # Validate inputs + gating WITHOUT placing. Mirrors VPS guard expectations.
+    _reject_stale(req)
     if req.stop_loss in (None, 0) or req.take_profit in (None, 0):
         raise HTTPException(status_code=400, detail="SL and TP are mandatory")
+    # Live price-geometry check: reject stale/invalid SL/TP against the current tick.
+    mt5 = _mt5()
+    _ensure_demo_account(mt5)
+    m = _symbol_map().get(req.symbol, req.symbol)
+    tick = mt5.symbol_info_tick(m)
+    if not tick:
+        raise HTTPException(status_code=404, detail=f"no tick for {m}")
+    entry = req.requested_entry if req.requested_entry is not None else (
+        tick.ask if req.side == "buy" else tick.bid)
+    reason = validate_price_geometry(req.side, entry, req.stop_loss, req.take_profit)
+    if reason:
+        raise HTTPException(status_code=400, detail=reason)
     return {
         "broker": "mt5_demo", "broker_mode": "demo",
         "would_place": (_autotrade() and not _dry_run() and not _bridge_kill()),
         "dry_run": _dry_run(), "demo_autotrade_enabled": _autotrade(),
         "bridge_kill_switch": _bridge_kill(),
+        "live_entry": entry,
         "note": "no order placed — dry run only",
     }
 
@@ -174,6 +240,7 @@ def place(req: OrderReq, _=Depends(_require_auth)):
             "rejection_reason": "DRY_RUN active" if _dry_run() else "DEMO_AUTOTRADE_ENABLED=false",
             "broker_mode": "demo",
         }
+    _reject_stale(req)
     if req.stop_loss in (None, 0) or req.take_profit in (None, 0):
         raise HTTPException(status_code=400, detail="SL and TP are mandatory")
     mt5 = _mt5()
@@ -183,6 +250,10 @@ def place(req: OrderReq, _=Depends(_require_auth)):
     if not tick:
         raise HTTPException(status_code=404, detail=f"no tick for {m}")
     price = tick.ask if req.side == "buy" else tick.bid
+    # Reject stale/invalid SL/TP against the actual fill price BEFORE sending.
+    reason = validate_price_geometry(req.side, price, req.stop_loss, req.take_profit)
+    if reason:
+        return {"status": "rejected", "rejection_reason": reason, "broker_mode": "demo"}
     request = {
         "action": mt5.TRADE_ACTION_DEAL,
         "symbol": m,

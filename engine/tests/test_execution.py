@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -18,14 +19,18 @@ from src.execution import (
     build_adapter,
     available_adapters,
     MAX_OPEN_DEMO_TRADES_DEFAULT,
+    validate_price_geometry,
+    check_demo_trade_mode,
+    is_live_trade_mode,
 )
 
 
-def _signal(entry=1.1000, sl=1.0950, tp=1.1050, direction=1, units=2000.0, sid=1):
+def _signal(entry=1.1000, sl=1.0950, tp=1.1050, direction=1, units=2000.0, sid=1,
+            timestamp="2026-07-10T00:00:00"):
     return PaperSignal(
         pair="EURUSD", strategy="rsi", direction=direction, entry=entry,
         stop_loss=sl, take_profit=tp, signal_score=60.0, regime="trend",
-        timestamp="2026-07-10T00:00:00", units=units,
+        timestamp=timestamp, units=units,
     )
 
 
@@ -503,6 +508,130 @@ def test_mock_lifecycle_still_passes(monkeypatch):
     from run_execution import cmd_mock_lifecycle
     rc = cmd_mock_lifecycle(_args(signal_id=1, run_id="v132-mock-check"))
     assert rc == 0
+
+
+# ===== v1.3.4 price-geometry + trade_mode + stale-signal hardening =====
+
+def test_validate_price_geometry_buy_rejects_tp_below_entry():
+    # buy needs SL < entry < TP; TP below entry must reject.
+    r = validate_price_geometry("buy", entry=1.14143, stop_loss=1.095, take_profit=1.105)
+    assert r is not None and "invalid buy geometry" in r
+
+
+def test_validate_price_geometry_buy_rejects_sl_above_entry():
+    # SL above entry is invalid for a buy.
+    r = validate_price_geometry("buy", entry=1.14143, stop_loss=1.150, take_profit=1.160)
+    assert r is not None and "invalid buy geometry" in r
+
+
+def test_validate_price_geometry_sell_rejects_tp_above_entry():
+    # sell needs TP < entry < SL; TP above entry must reject.
+    r = validate_price_geometry("sell", entry=1.14143, stop_loss=1.150, take_profit=1.160)
+    assert r is not None and "invalid sell geometry" in r
+
+
+def test_validate_price_geometry_sell_rejects_sl_below_entry():
+    # SL below entry is invalid for a sell.
+    r = validate_price_geometry("sell", entry=1.14143, stop_loss=1.095, take_profit=1.090)
+    assert r is not None and "invalid sell geometry" in r
+
+
+def test_validate_price_geometry_good_buy_passes():
+    assert validate_price_geometry("buy", entry=1.14143, stop_loss=1.095, take_profit=1.160) is None
+
+
+def test_validate_price_geometry_good_sell_passes():
+    assert validate_price_geometry("sell", entry=1.14143, stop_loss=1.160, take_profit=1.090) is None
+
+
+def test_check_demo_trade_mode_demo_zero_accepted():
+    # Observed SDK values: DEMO == 0. Must NOT be treated as live.
+    assert check_demo_trade_mode(0) is None
+    assert is_live_trade_mode(0) is False
+
+
+def test_check_demo_trade_mode_contest_accepted():
+    assert check_demo_trade_mode(1) is None
+    assert is_live_trade_mode(1) is False
+
+
+def test_check_demo_trade_mode_real_rejected():
+    # REAL == 2 must be refused.
+    assert is_live_trade_mode(2) is True
+    with pytest.raises(ValueError):
+        check_demo_trade_mode(2)
+
+
+def test_guard_rejects_stale_signal():
+    # A signal generated 2 hours ago exceeds the default 30-min max age.
+    old_ts = (datetime.now(timezone.utc).replace(microsecond=0)
+              - __import__("datetime").timedelta(hours=2)).isoformat()
+    order = _good_order()
+    res = run_pretrade_guards(
+        order, broker_mode="demo", allow_live_orders=False, account=10000,
+        risk_pct=0.75, signal=_signal(), open_demo_trades=0,
+        signal_timestamp=old_ts, execution_class="paper",
+    )
+    assert not res.passed
+    assert any("stale signal" in r for r in res.reasons)
+
+
+def test_guard_accepts_fresh_signal():
+    fresh_ts = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    order = _good_order()
+    res = run_pretrade_guards(
+        order, broker_mode="demo", allow_live_orders=False, account=10000,
+        risk_pct=0.75, signal=_signal(), open_demo_trades=0,
+        signal_timestamp=fresh_ts, execution_class="paper",
+    )
+    assert res.passed, res.reasons
+
+
+def test_guard_exempts_backtest_only_signal_from_staleness():
+    old_ts = (datetime.now(timezone.utc).replace(microsecond=0)
+              - __import__("datetime").timedelta(hours=2)).isoformat()
+    order = _good_order()
+    res = run_pretrade_guards(
+        order, broker_mode="demo", allow_live_orders=False, account=10000,
+        risk_pct=0.75, signal=_signal(), open_demo_trades=0,
+        signal_timestamp=old_ts, execution_class="backtest_only",
+    )
+    assert res.passed, res.reasons  # exempt: never executed
+
+
+def test_guard_rejects_invalid_buy_geometry_vs_live_quote():
+    # Stale Signal #1: SL=1.095, TP=1.105 with current ask ~1.14143 -> TP below entry.
+    from src.execution.adapter import PriceQuote
+    stale_signal = _signal(entry=1.1000, sl=1.095, tp=1.105, direction=1)
+    order = DemoOrderRequest(symbol="EURUSD", side="buy", units=2000.0,
+                             stop_loss=1.095, take_profit=1.105,
+                             signal_id=1, requested_entry=1.14143)
+    live = PriceQuote(symbol="EURUSD", bid=1.14140, ask=1.14143, spread=0.00003,
+                      timestamp=datetime.now(timezone.utc).isoformat())
+    res = run_pretrade_guards(
+        order, broker_mode="demo", allow_live_orders=False, account=10000,
+        risk_pct=0.75, signal=stale_signal, open_demo_trades=0,
+        live_quote=live, signal_timestamp=stale_signal.timestamp, execution_class="paper",
+    )
+    assert not res.passed
+    assert any("price geometry invalid" in r for r in res.reasons)
+
+
+def test_guard_passes_valid_buy_geometry_vs_live_quote():
+    from src.execution.adapter import PriceQuote
+    fresh_ts = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    sig = _signal(entry=1.14143, sl=1.095, tp=1.160, direction=1, timestamp=fresh_ts)
+    order = DemoOrderRequest(symbol="EURUSD", side="buy", units=2000.0,
+                             stop_loss=1.095, take_profit=1.160,
+                             signal_id=1, requested_entry=1.14143)
+    live = PriceQuote(symbol="EURUSD", bid=1.14140, ask=1.14143, spread=0.00003,
+                      timestamp=fresh_ts)
+    res = run_pretrade_guards(
+        order, broker_mode="demo", allow_live_orders=False, account=10000,
+        risk_pct=0.75, signal=sig, open_demo_trades=0,
+        live_quote=live, signal_timestamp=fresh_ts, execution_class="paper",
+    )
+    assert res.passed, res.reasons
 
 
 # ===== v1.3.3 Remote MT5 Bridge (Tailscale → Windows PC) =====

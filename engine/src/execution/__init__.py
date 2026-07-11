@@ -29,6 +29,11 @@ from .guards import (
     run_pretrade_guards,
     MAX_OPEN_DEMO_TRADES_DEFAULT,
 )
+from .bridge_validation import (
+    validate_price_geometry, is_stale_signal, check_demo_trade_mode,
+    is_live_trade_mode, DEFAULT_SIGNAL_MAX_AGE_MINUTES,
+    ACCOUNT_TRADE_MODE_DEMO, ACCOUNT_TRADE_MODE_REAL,
+)
 from .mock_adapter import MockDemoAdapter
 from .factory import (
     build_adapter, list_adapters, available_adapters, broker_names,
@@ -52,6 +57,13 @@ __all__ = [
     "GuardError",
     "run_pretrade_guards",
     "MAX_OPEN_DEMO_TRADES_DEFAULT",
+    "validate_price_geometry",
+    "is_stale_signal",
+    "check_demo_trade_mode",
+    "is_live_trade_mode",
+    "DEFAULT_SIGNAL_MAX_AGE_MINUTES",
+    "ACCOUNT_TRADE_MODE_DEMO",
+    "ACCOUNT_TRADE_MODE_REAL",
     "MockDemoAdapter",
     "OandaPracticeAdapter",
     "MT5DemoAdapter",
