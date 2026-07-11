@@ -396,11 +396,13 @@ test("demo execution: mock adapter is the default and always works", () => {
 });
 
 test("demo execution: real adapters fail loud without credentials", () => {
-  const deriv = readFileSync(join(root, "engine", "src", "execution", "deriv_mt5.py"), "utf8");
+  const deriv = readFileSync(join(root, "engine", "src", "execution", "mt5_demo.py"), "utf8");
   const oanda = readFileSync(join(root, "engine", "src", "execution", "oanda_practice.py"), "utf8");
-  assert.ok(/RuntimeError[\s\S]*?credentials missing/.test(deriv), "deriv fails without creds");
+  assert.ok(/RuntimeError[\s\S]*?credentials missing/.test(deriv), "mt5 fails without creds");
   assert.ok(/RuntimeError[\s\S]*?credentials missing/.test(oanda), "oanda fails without creds");
   assert.ok(/api-fxpractice\.oanda\.com/.test(oanda), "oanda targets practice host only");
+  assert.ok(/api-fxtrade\.oanda\.com/.test(oanda), "oanda keeps a live-host constant for rejection");
+  assert.ok(/LIVE/.test(deriv) && /demo adapter refuses/.test(deriv), "mt5 rejects live accounts");
 });
 
 test("demo execution: CLI refuses when allow_live_orders is true", () => {
@@ -484,6 +486,73 @@ test("demo execution: daily report separates mock execution quality from real br
   assert.ok(/kill-switch/.test(rep) || /kill switch/.test(rep), "report shows kill switch status");
   assert.ok(/worst_slip/.test(rep), "report shows worst slippage");
   assert.ok(/paper-vs-demo/.test(rep) || /mismatch/.test(rep), "report shows paper-vs-demo mismatch");
+});
+
+test("demo execution: v1.3.2 broker-demo page exists with readiness + kill switch", () => {
+  const page = readFileSync(join(__dirname, "..", "app", "broker-demo", "page.tsx"), "utf8");
+  assert.ok(/Broker readiness/.test(page), "page shows broker readiness");
+  assert.ok(/kill switch/i.test(page), "page shows kill switch status");
+  assert.ok(/NEVER LIVE/i.test(page), "page must state NEVER LIVE");
+  assert.ok(/REAL DEMO BROKER/.test(page), "page labels real-broker rows clearly");
+  assert.ok(/execution mode/i.test(page), "page shows execution mode");
+  assert.ok(/spread/.test(page) && /slippage/.test(page), "page compares spread/slippage");
+});
+
+test("demo execution: broker capability registry never stores secret values", () => {
+  const cap = readFileSync(join(root, "engine", "src", "execution", "capabilities.py"), "utf8");
+  assert.ok(/credentials_present/.test(cap), "registry reports creds present as boolean");
+  assert.ok(/credentials_present/.test(cap) && /redact/.test(cap),
+    "errors are redacted, not raw");
+  // The schema table BrokerCapability must not contain secret columns.
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  const block = sql.slice(sql.indexOf("CREATE TABLE IF NOT EXISTS BrokerCapability"),
+                          sql.indexOf("CREATE TABLE IF NOT EXISTS DemoExecutionLock"));
+  assert.ok(!/password|secret|api_key|token|login/.test(block),
+    "BrokerCapability must not store secrets");
+});
+
+test("demo execution: kill switch blocks all broker demo orders (place path)", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/kill switch engaged — all demo orders refused/.test(cli),
+    "real-demo placement must refuse when kill switch is set");
+  assert.ok(/can_place_real_demo\(\)/.test(cli), "placement gates on execution mode");
+});
+
+test("demo execution: DRY_RUN and DEMO_AUTOTRADE gate real orders", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  const oa = readFileSync(join(root, "engine", "src", "execution", "oanda_practice.py"), "utf8");
+  assert.ok(/can_place_real_demo\(\)/.test(cli), "placement gates on execution mode");
+  assert.ok(/DEMO_AUTOTRADE_ENABLED=false/.test(oa), "autotrade flag blocks orders (oanda)");
+  assert.ok(/status="skipped"/.test(oa), "oanda returns skipped (not filled) under gate");
+});
+
+test("demo execution: duplicate same signal/broker/run_id rejected", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/DemoExecutionLock/.test(cli), "uses a lock table for idempotency");
+  assert.ok(/duplicate \(signal,broker,run_id/.test(cli), "duplicate key is rejected");
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
+  assert.ok(/UNIQUE\(signal_id, broker, run_id\)/.test(sql), "DB enforces unique key");
+});
+
+test("demo execution: max open trades enforced per broker", () => {
+  const g = readFileSync(join(root, "engine", "src", "execution", "guards.py"), "utf8");
+  assert.ok(/open_demo_trades_by_broker/.test(g), "guards track per-broker open count");
+  assert.ok(/per-broker cap/.test(g), "per-broker cap message present");
+});
+
+test("demo execution: broker failure cannot create a fake filled order", () => {
+  const cli = readFileSync(join(root, "engine", "run_execution.py"), "utf8");
+  assert.ok(/status == "skipped"/.test(cli) || /status != "filled"/.test(cli),
+    "non-filled adapter result is never recorded as filled");
+});
+
+test("demo execution: npm scripts wire broker-check/oanda-check/mt5-check/demo-quotes/real-demo-*", () => {
+  const pkg = readFileSync(join(__dirname, "..", "package.json"), "utf8");
+  for (const s of ["execution:broker-check", "execution:oanda-check", "execution:mt5-check",
+                   "execution:demo-quotes", "execution:real-demo-dry-run",
+                   "execution:real-demo-order", "execution:mirror-demo-order"]) {
+    assert.ok(pkg.includes(`"${s}"`), `missing npm script ${s}`);
+  }
 });
 
 test("trends are wired into the daily loop AFTER scoring, review after outcomes", () => {

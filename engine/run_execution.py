@@ -31,7 +31,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from src.signals import PaperSignal  # noqa: E402
 from src.execution import (  # noqa: E402
     build_adapter, run_pretrade_guards, GuardError, redact, MockDemoAdapter,
-    DemoOrderRequest,
+    DemoOrderRequest, capabilities, capability, BrokerCapability,
+    execution_mode, primary_demo_broker, mirror_demo_enabled,
+    dry_run, demo_autotrade_enabled, can_place_real_demo, broker_names,
 )
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "forex_lab.db")
@@ -56,13 +58,79 @@ def _db() -> sqlite3.Connection:
 def _control(db: sqlite3.Connection) -> dict:
     row = db.execute("SELECT * FROM ExecutionControl WHERE id=1").fetchone()
     return dict(row) if row else {"kill_switch": 0, "broker_mode": "demo",
-                                  "max_open_demo_trades": 5}
+                                  "max_open_demo_trades": 5,
+                                  "max_open_per_broker": 5,
+                                  "execution_mode": "observe_only",
+                                  "primary_demo_broker": "oanda_practice"}
 
 
 def _open_demo(db: sqlite3.Connection) -> int:
     return db.execute(
         "SELECT COUNT(*) c FROM DemoExecutionOrder WHERE status='filled'"
     ).fetchone()["c"]
+
+
+def _open_demo_by_broker(db: sqlite3.Connection, broker: str) -> int:
+    return db.execute(
+        "SELECT COUNT(*) c FROM DemoExecutionOrder WHERE status='filled' AND broker=?",
+        (broker,),
+    ).fetchone()["c"]
+
+
+def _persist_capabilities(db: sqlite3.Connection) -> dict:
+    """Probe every broker and store a redacted capability snapshot."""
+    caps = capabilities()
+    for broker, cap in caps.items():
+        db.execute(
+            """INSERT INTO BrokerCapability
+               (broker, broker_mode, credentials_present, account_reachable,
+                account_currency, balance, equity, trading_enabled, market_open,
+                last_checked_at, last_error_redacted)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            (cap.broker, cap.broker_mode, int(cap.credentials_present),
+             int(cap.account_reachable), cap.account_currency, cap.balance,
+             cap.equity, int(cap.trading_enabled),
+             None if cap.market_open is None else int(cap.market_open),
+             cap.last_checked_at, cap.last_error_redacted),
+        )
+    db.commit()
+    return {b: _cap_to_dict(c) for b, c in caps.items()}
+
+
+def _cap_to_dict(cap: BrokerCapability) -> dict:
+    return {
+        "broker": cap.broker, "broker_mode": cap.broker_mode,
+        "credentials_present": cap.credentials_present,
+        "account_reachable": cap.account_reachable,
+        "account_currency": cap.account_currency, "balance": cap.balance,
+        "equity": cap.equity, "trading_enabled": cap.trading_enabled,
+        "market_open": cap.market_open,
+        "last_checked_at": cap.last_checked_at,
+        "last_error_redacted": cap.last_error_redacted,
+    }
+
+
+def _lock_key_exists(db: sqlite3.Connection, signal_id, broker, run_id) -> bool:
+    row = db.execute(
+        "SELECT 1 FROM DemoExecutionLock WHERE signal_id=? AND broker=? AND run_id=?",
+        (signal_id, broker, run_id),
+    ).fetchone()
+    return row is not None
+
+
+def _acquire_lock(db: sqlite3.Connection, signal_id, broker, run_id, order_id) -> bool:
+    """Insert a duplicate-lock row. Returns False if (signal,broker,run_id) exists."""
+    try:
+        db.execute(
+            """INSERT INTO DemoExecutionLock (signal_id, broker, run_id, order_id, created_at)
+               VALUES (?,?,?,?,?)""",
+            (signal_id, broker, run_id, order_id, _now()),
+        )
+        db.commit()
+        return True
+    except sqlite3.IntegrityError:
+        db.rollback()
+        return False
 
 
 def _paper_signal(db: sqlite3.Connection, signal_id: int) -> PaperSignal | None:
@@ -353,6 +421,270 @@ def cmd_mock_lifecycle(args) -> int:
     return 0
 
 
+def _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter) -> dict:
+    """Place ONE real demo broker order for an approved paper signal.
+
+    Hard gates (all must pass or we return a rejected record — never a fake fill):
+      * allow_live_orders false, broker_mode demo
+      * kill switch off
+      * execution mode + autotrade + dry_run allow it (can_place_real_demo)
+      * pre-trade guards pass (deterministic risk engine, SL/TP, paper signal)
+      * per-broker AND global max-open caps respected
+      * duplicate (signal,broker,run_id) lock not already taken
+    The adapter itself ALSO gatekeeps DRY_RUN / DEMO_AUTOTRADE_ENABLED and returns a
+    'skipped' status if not permitted — so even a misconfigured env cannot place.
+    """
+    result = {"broker": broker, "status": "rejected", "order_id": "",
+              "filled_entry": None, "rejection_reason": None}
+    if cfg.get("allow_live_orders"):
+        result["rejection_reason"] = "ALLOW_LIVE_ORDERS=true — demo-only bridge refuses"
+        return result
+    if ctrl["broker_mode"] != "demo":
+        result["rejection_reason"] = "broker_mode != demo"
+        return result
+    if ctrl["kill_switch"]:
+        result["rejection_reason"] = "kill switch engaged — all demo orders refused"
+        return result
+    if not can_place_real_demo():
+        result["rejection_reason"] = (
+            f"execution mode {execution_mode()} / autotrade {demo_autotrade_enabled()} "
+            f"/ dry_run {dry_run()} do not permit real demo orders"
+        )
+        return result
+    if _lock_key_exists(db, signal.id if hasattr(signal, "id") else None, broker, run_id):
+        result["rejection_reason"] = f"duplicate (signal,broker,run_id={run_id}) already executed"
+        return result
+
+    quote = adapter.get_prices(signal.pair)
+    requested_entry = round((quote.bid + quote.ask) / 2, 5)
+    order = DemoOrderRequest(
+        symbol=signal.pair, side="buy" if signal.direction > 0 else "sell",
+        units=signal.units or 0.0, stop_loss=signal.stop_loss,
+        take_profit=signal.take_profit,
+        signal_id=signal.id if hasattr(signal, "id") else None,
+        requested_entry=requested_entry,
+    )
+    res = run_pretrade_guards(
+        order, broker_mode=ctrl["broker_mode"],
+        allow_live_orders=cfg.get("allow_live_orders"),
+        account=cfg.get("account", 10000.0),
+        risk_pct=cfg.get("signals", {}).get("risk_pct", 0.75),
+        signal=signal,
+        open_demo_trades=_open_demo(db),
+        max_open_demo_trades=ctrl["max_open_demo_trades"],
+        kill_switch=bool(ctrl["kill_switch"]),
+        broker=broker,
+        open_demo_trades_by_broker=_open_demo_by_broker(db, broker),
+        max_open_per_broker=ctrl.get("max_open_per_broker", ctrl["max_open_demo_trades"]),
+    )
+    if not res.passed:
+        result["rejection_reason"] = "; ".join(res.reasons)
+        return result
+
+    status = adapter.place_demo_order(order)
+    if status.status == "filled":
+        cur = db.execute(
+            """INSERT INTO DemoExecutionOrder
+               (signal_id,broker,broker_mode,symbol,side,requested_entry,filled_entry,
+                stop_loss,take_profit,units,requested_at,filled_at,status,
+                spread_at_entry,slippage,raw_response_redacted_json)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (signal.id if hasattr(signal, "id") else None, broker, "demo",
+             order.symbol, order.side, requested_entry, status.filled_entry,
+             order.stop_loss, order.take_profit, order.units,
+             _now(), _now(), "filled", status.spread_at_entry, status.slippage,
+             status.raw_redacted),
+        )
+        order_id = cur.lastrowid
+        if not _acquire_lock(db, signal.id if hasattr(signal, "id") else None, broker, run_id, order_id):
+            # Lost the race; mark as duplicate and do NOT count as a fresh order.
+            result["status"] = "skipped"
+            result["rejection_reason"] = "duplicate lock acquired concurrently"
+            return result
+        result.update({"status": "filled", "order_id": status.order_id,
+                       "filled_entry": status.filled_entry,
+                       "spread": status.spread_at_entry, "slippage": status.slippage})
+    elif status.status == "skipped":
+        # Adapter refused (DRY_RUN/AUTOTRADE). Record as skipped, NOT filled.
+        result["status"] = "skipped"
+        result["rejection_reason"] = status.rejection_reason
+    else:
+        result["rejection_reason"] = status.rejection_reason
+        db.execute(
+            """INSERT INTO DemoExecutionOrder
+               (signal_id,broker,broker_mode,symbol,side,requested_entry,stop_loss,
+                take_profit,units,requested_at,status,rejection_reason,raw_response_redacted_json)
+               VALUES (?,?,?,?,?,?,?,?,?,?,'rejected',?,?)""",
+            (signal.id if hasattr(signal, "id") else None, broker, "demo",
+             order.symbol, order.side, requested_entry, order.stop_loss,
+             order.take_profit, order.units, _now(), status.rejection_reason,
+             status.raw_redacted),
+        )
+    db.commit()
+    return result
+
+
+def cmd_broker_check(args) -> int:
+    cfg = _cfg()
+    if cfg.get("allow_live_orders"):
+        print("BROKER CHECK FAILED: allow_live_orders=true"); return 2
+    db = _db()
+    caps = _persist_capabilities(db)
+    print(json.dumps({
+        "paper_only": cfg.get("paper_only"),
+        "allow_live_orders": cfg.get("allow_live_orders"),
+        "broker_mode": "demo",
+        "execution_mode": execution_mode(),
+        "primary_demo_broker": primary_demo_broker(),
+        "mirror_demo_enabled": mirror_demo_enabled(),
+        "dry_run": dry_run(),
+        "demo_autotrade_enabled": demo_autotrade_enabled(),
+        "can_place_real_demo": can_place_real_demo(),
+        "brokers": caps,
+    }, indent=2))
+    return 0
+
+
+def cmd_oanda_check(args) -> int:
+    return _single_broker_check("oanda_practice")
+
+
+def cmd_mt5_check(args) -> int:
+    return _single_broker_check("mt5_demo")
+
+
+def _single_broker_check(broker: str) -> int:
+    cfg = _cfg()
+    if cfg.get("allow_live_orders"):
+        print(f"{broker} CHECK FAILED: allow_live_orders=true"); return 2
+    db = _db()
+    try:
+        cap = capability(broker)
+    except Exception as exc:
+        print(json.dumps({"broker": broker, "error": redact(str(exc))[:200]}, indent=2))
+        return 2
+    _persist_one(db, cap)
+    print(json.dumps(_cap_to_dict(cap), indent=2))
+    return 0 if cap.credentials_present else 2
+
+
+def _persist_one(db, cap):
+    db.execute(
+        """INSERT INTO BrokerCapability
+           (broker, broker_mode, credentials_present, account_reachable,
+            account_currency, balance, equity, trading_enabled, market_open,
+            last_checked_at, last_error_redacted)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+        (cap.broker, cap.broker_mode, int(cap.credentials_present),
+         int(cap.account_reachable), cap.account_currency, cap.balance,
+         cap.equity, int(cap.trading_enabled),
+         None if cap.market_open is None else int(cap.market_open),
+         cap.last_checked_at, cap.last_error_redacted),
+    )
+    db.commit()
+
+
+def cmd_demo_quotes(args) -> int:
+    cfg = _cfg()
+    if cfg.get("allow_live_orders"):
+        print("QUOTES FAILED: allow_live_orders=true"); return 2
+    db = _db()
+    brokers = args.brokers.split(",") if args.brokers else [b for b in broker_names()]
+    out = {}
+    for broker in brokers:
+        broker = broker.strip()
+        try:
+            adapter = build_adapter(broker, fail_loud=False)
+        except Exception as exc:
+            out[broker] = {"error": redact(str(exc))[:160]}
+            continue
+        try:
+            q = adapter.get_prices(args.symbol)
+            out[broker] = {"symbol": q.symbol, "bid": q.bid, "ask": q.ask, "spread": q.spread}
+        except Exception as exc:
+            out[broker] = {"error": redact(str(exc))[:160]}
+    print(json.dumps(out, indent=2))
+    return 0
+
+
+def cmd_real_demo_dry_run(args) -> int:
+    """Validate an approved signal end-to-end against a real broker WITHOUT placing.
+
+    Prints what WOULD happen (guards, adapter gating) but never submits an order.
+    """
+    cfg = _cfg()
+    if cfg.get("allow_live_orders"):
+        print("DRY-RUN FAILED: allow_live_orders=true"); return 2
+    db = _db()
+    ctrl = _control(db)
+    broker = args.broker or primary_demo_broker()
+    signal = _paper_signal(db, args.signal_id)
+    if signal is None:
+        print(f"REJECTED: no paper Signal id={args.signal_id}"); return 2
+    try:
+        adapter = build_adapter(broker, fail_loud=True)
+    except Exception as exc:
+        print(f"BROKER UNAVAILABLE: {redact(str(exc))[:200]}"); return 2
+    # Simulate the gating decision as if can_place_real_demo() were evaluated,
+    # but DO NOT call place_demo_order.
+    would_place = can_place_real_demo()
+    caps = _cap_to_dict(capability(broker))
+    print(json.dumps({
+        "broker": broker, "broker_mode": "demo",
+        "dry_run": dry_run(), "demo_autotrade_enabled": demo_autotrade_enabled(),
+        "execution_mode": execution_mode(),
+        "would_place_order": would_place,
+        "credentials_present": caps["credentials_present"],
+        "account_reachable": caps["account_reachable"],
+        "signal": {"pair": signal.pair, "direction": signal.direction,
+                   "sl": signal.stop_loss, "tp": signal.take_profit},
+        "NOTE": "no order was placed — dry run only",
+    }, indent=2))
+    return 0
+
+
+def cmd_real_demo_order(args) -> int:
+    """Place ONE real demo order via the primary broker (single_broker_demo mode)."""
+    cfg = _cfg()
+    db = _db()
+    ctrl = _control(db)
+    broker = args.broker or primary_demo_broker()
+    signal = _paper_signal(db, args.signal_id)
+    if signal is None:
+        print(f"REJECTED: no paper Signal id={args.signal_id}"); return 2
+    try:
+        adapter = build_adapter(broker, fail_loud=True)
+    except Exception as exc:
+        print(f"BROKER UNAVAILABLE: {redact(str(exc))[:200]}"); return 2
+    run_id = args.run_id or f"real-{broker}-{args.signal_id}"
+    res = _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter)
+    print(json.dumps(res, indent=2))
+    return 0 if res["status"] == "filled" else 2
+
+
+def cmd_mirror_demo_order(args) -> int:
+    """Send the SAME approved signal to BOTH OANDA and MT5 demo for comparison."""
+    cfg = _cfg()
+    db = _db()
+    ctrl = _control(db)
+    if not mirror_demo_enabled():
+        print("REJECTED: MIRROR_DEMO_ENABLED is not true — refusing mirror order."); return 2
+    signal = _paper_signal(db, args.signal_id)
+    if signal is None:
+        print(f"REJECTED: no paper Signal id={args.signal_id}"); return 2
+    run_id = args.run_id or f"mirror-{args.signal_id}"
+    results = {}
+    for broker in ("oanda_practice", "mt5_demo"):
+        try:
+            adapter = build_adapter(broker, fail_loud=False)
+        except Exception as exc:
+            results[broker] = {"status": "unavailable", "rejection_reason": redact(str(exc))[:160]}
+            continue
+        results[broker] = _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter)
+    print(json.dumps({"run_id": run_id, "broker_mode": "demo", "results": results}, indent=2))
+    return 0
+
+
 def cmd_kill_switch(args) -> int:
     db = _db()
     new_val = 1 if args.on else (0 if args.off else None)
@@ -402,6 +734,37 @@ def main(argv=None) -> int:
     pk.add_argument("--on", action="store_true")
     pk.add_argument("--off", action="store_true")
     pk.set_defaults(func=cmd_kill_switch)
+
+    pb = sub.add_parser("broker-check")
+    pb.set_defaults(func=cmd_broker_check)
+
+    pob = sub.add_parser("oanda-check")
+    pob.set_defaults(func=cmd_oanda_check)
+
+    pmb = sub.add_parser("mt5-check")
+    pmb.set_defaults(func=cmd_mt5_check)
+
+    pq = sub.add_parser("demo-quotes")
+    pq.add_argument("--symbol", default="EURUSD")
+    pq.add_argument("--brokers", type=str, default=None,
+                    help="comma-separated broker names (default: all available)")
+    pq.set_defaults(func=cmd_demo_quotes)
+
+    pdr = sub.add_parser("real-demo-dry-run")
+    pdr.add_argument("--signal-id", type=int, required=True)
+    pdr.add_argument("--broker", type=str, default=None)
+    pdr.set_defaults(func=cmd_real_demo_dry_run)
+
+    pro = sub.add_parser("real-demo-order")
+    pro.add_argument("--signal-id", type=int, required=True)
+    pro.add_argument("--broker", type=str, default=None)
+    pro.add_argument("--run-id", type=str, default=None)
+    pro.set_defaults(func=cmd_real_demo_order)
+
+    pmo = sub.add_parser("mirror-demo-order")
+    pmo.add_argument("--signal-id", type=int, required=True)
+    pmo.add_argument("--run-id", type=str, default=None)
+    pmo.set_defaults(func=cmd_mirror_demo_order)
 
     args = p.parse_args(argv)
     return args.func(args)

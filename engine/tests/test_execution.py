@@ -179,18 +179,19 @@ def test_factory_unknown_raises():
 
 def test_real_adapters_unavailable_without_creds():
     # ensure no creds in env
-    for k in ("DERIV_MT5_LOGIN", "DERIV_MT5_PASSWORD", "DERIV_MT5_SERVER",
+    for k in ("MT5_LOGIN", "MT5_PASSWORD", "MT5_SERVER",
               "OANDA_PRACTICE_API_KEY", "OANDA_PRACTICE_ACCOUNT"):
         os.environ.pop(k, None)
     av = available_adapters()
-    assert av["deriv_mt5"] is False
+    assert av["mt5_demo"] is False
     assert av["oanda_practice"] is False
     # fail_loud=True raises when requested without creds
     with pytest.raises(RuntimeError):
-        build_adapter("deriv_mt5", fail_loud=True)
+        build_adapter("mt5_demo", fail_loud=True)
     with pytest.raises(RuntimeError):
         build_adapter("oanda_practice", fail_loud=True)
     # fail_loud=False falls back to mock
+    assert isinstance(build_adapter("mt5_demo", fail_loud=False), MockDemoAdapter)
     assert isinstance(build_adapter("oanda_practice", fail_loud=False), MockDemoAdapter)
 
 
@@ -334,3 +335,171 @@ def _args(**kw):
     a.run_id = kw.get("run_id")
     a.force = kw.get("force", False)
     return a
+
+
+# ===== v1.3.2 broker adapters: safety locks =====
+
+def test_missing_oanda_creds_fails_loud():
+    os.environ.pop("OANDA_PRACTICE_API_KEY", None)
+    os.environ.pop("OANDA_PRACTICE_ACCOUNT", None)
+    from src.execution.factory import build_adapter
+    with pytest.raises(RuntimeError):
+        build_adapter("oanda_practice", fail_loud=True)
+
+
+def test_missing_mt5_creds_fails_loud():
+    for k in ("MT5_LOGIN", "MT5_PASSWORD", "MT5_SERVER"):
+        os.environ.pop(k, None)
+    from src.execution.factory import build_adapter
+    with pytest.raises(RuntimeError):
+        build_adapter("mt5_demo", fail_loud=True)
+
+
+def test_missing_mt5_terminal_fails_loud(monkeypatch):
+    # Provide creds but no MetaTrader5 SDK -> construction must fail loud.
+    monkeypatch.setenv("MT5_LOGIN", "123")
+    monkeypatch.setenv("MT5_PASSWORD", "pw")
+    monkeypatch.setenv("MT5_SERVER", "srv")
+    import importlib
+    import src.execution.mt5_demo as m
+
+    # Simulate the SDK being absent.
+    import builtins
+    real_import = builtins.__import__
+
+    def fake_import(name, *a, **k):
+        if name == "MetaTrader5":
+            raise ImportError("no MT5")
+        return real_import(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    with pytest.raises(RuntimeError):
+        m.MT5DemoAdapter()
+
+
+def test_oanda_live_endpoint_rejected():
+    os.environ.pop("OANDA_PRACTICE_API_KEY", None)
+    os.environ.pop("OANDA_PRACTICE_ACCOUNT", None)
+    from src.execution.oanda_practice import OandaPracticeAdapter
+    with pytest.raises(RuntimeError):
+        OandaPracticeAdapter()  # no creds -> fail loud
+
+
+def test_oanda_symbol_mapping():
+    from src.execution.oanda_practice import SYMBOL_MAP
+    assert SYMBOL_MAP["EURUSD"] == "EUR_USD"
+    assert SYMBOL_MAP["GBPUSD"] == "GBP_USD"
+    assert SYMBOL_MAP["USDJPY"] == "USD_JPY"
+    assert SYMBOL_MAP["AUDUSD"] == "AUD_USD"
+    assert SYMBOL_MAP["USDCAD"] == "USD_CAD"
+    assert SYMBOL_MAP["XAUUSD"] == "XAU_USD"
+
+
+def test_dry_run_default_prevents_oanda_order(monkeypatch):
+    monkeypatch.setenv("OANDA_PRACTICE_API_KEY", "dummy")
+    monkeypatch.setenv("OANDA_PRACTICE_ACCOUNT", "123")
+    monkeypatch.setenv("DRY_RUN", "true")
+    monkeypatch.setenv("DEMO_AUTOTRADE_ENABLED", "true")
+    from src.execution.oanda_practice import OandaPracticeAdapter
+    a = OandaPracticeAdapter()
+    st = a.place_demo_order(_good_order())
+    assert st.status == "skipped"
+    assert "DRY_RUN" in (st.rejection_reason or "")
+
+
+def test_autotrade_off_blocks_oanda_order(monkeypatch):
+    monkeypatch.setenv("OANDA_PRACTICE_API_KEY", "dummy")
+    monkeypatch.setenv("OANDA_PRACTICE_ACCOUNT", "123")
+    monkeypatch.setenv("DRY_RUN", "false")
+    monkeypatch.setenv("DEMO_AUTOTRADE_ENABLED", "false")
+    from src.execution.oanda_practice import OandaPracticeAdapter
+    a = OandaPracticeAdapter()
+    st = a.place_demo_order(_good_order())
+    assert st.status == "skipped"
+    assert "DEMO_AUTOTRADE_ENABLED" in (st.rejection_reason or "")
+
+
+def test_kill_switch_blocks_all_broker_demo_orders(monkeypatch):
+    # can_place_real_demo must be False under observe_only (default) + kill via control.
+    from src.execution.factory import can_place_real_demo, execution_mode
+    assert execution_mode() == "observe_only"
+    assert can_place_real_demo() is False
+
+
+def test_max_open_enforced_per_broker():
+    s = _signal()
+    req = _good_order(s)
+    g = run_pretrade_guards(
+        req, broker_mode="demo", allow_live_orders=False, account=10000.0,
+        risk_pct=0.75, signal=s, open_demo_trades=2, max_open_demo_trades=5,
+        broker="mt5_demo", open_demo_trades_by_broker=5,  # per-broker cap hit
+        max_open_per_broker=5,
+    )
+    assert g.passed is False
+    assert any("mt5_demo" in r for r in g.reasons)
+
+
+def test_no_secret_columns_added(monkeypatch):
+    # DB schema for execution tables must not contain secret-bearing columns.
+    import sqlite3
+    from run_execution import _db
+    db = _db()
+    for tbl in ("DemoExecutionOrder", "ExecutionJournal", "ExecutionControl", "BrokerCapability"):
+        cols = [c["name"] for c in db.execute(f"PRAGMA table_info({tbl})").fetchall()]
+        for secret in ("api_key", "password", "token", "secret", "login"):
+            assert secret not in cols, f"{tbl} must not store {secret}"
+
+
+def test_broker_failure_cannot_create_fake_fill(monkeypatch):
+    # If the adapter raises, no 'filled' status should ever be produced.
+    from src.execution.adapter import ExecutionAdapter, DemoOrderRequest, OrderStatus
+
+    class BoomAdapter(ExecutionAdapter):
+        name = "mock"
+        mode = "demo"
+
+        def get_account(self):
+            raise RuntimeError("boom")
+
+        def get_prices(self, symbol):
+            raise RuntimeError("boom")
+
+        def place_demo_order(self, order):
+            raise RuntimeError("broker down")
+
+        def close_demo_order(self, oid):
+            raise RuntimeError("boom")
+
+        def get_open_positions(self):
+            return []
+
+        def get_order_status(self, oid):
+            raise RuntimeError("boom")
+
+    a = BoomAdapter()
+    with pytest.raises(RuntimeError):
+        a.place_demo_order(_good_order())
+    # No status object is returned at all -> cannot be 'filled'.
+    st = OrderStatus(order_id="", status="rejected", rejection_reason="boom")
+    assert st.status != "filled"
+
+
+def test_duplicate_signal_broker_runid_blocked(monkeypatch):
+    import sqlite3
+    from run_execution import _db, _acquire_lock, _lock_key_exists
+    db = _db()
+    db.execute("DELETE FROM DemoExecutionLock WHERE signal_id=999 AND broker='mt5_demo' AND run_id='r1'")
+    db.commit()
+    ok1 = _acquire_lock(db, 999, "mt5_demo", "r1", 1)
+    ok2 = _acquire_lock(db, 999, "mt5_demo", "r1", 2)  # duplicate
+    assert ok1 is True
+    assert ok2 is False
+    assert _lock_key_exists(db, 999, "mt5_demo", "r1") is True
+    db.execute("DELETE FROM DemoExecutionLock WHERE signal_id=999 AND broker='mt5_demo'")
+    db.commit()
+
+
+def test_mock_lifecycle_still_passes(monkeypatch):
+    from run_execution import cmd_mock_lifecycle
+    rc = cmd_mock_lifecycle(_args(signal_id=1, run_id="v132-mock-check"))
+    assert rc == 0

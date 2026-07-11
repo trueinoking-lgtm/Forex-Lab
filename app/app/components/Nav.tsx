@@ -9,6 +9,7 @@ const NAV = [
   ["/markets", "Markets"], ["/market-profile", "Market Profile"],
   ["/imports", "External Imports"], ["/cross-market", "Cross-Market Matrix"],
   ["/market-trends", "Market Trends"], ["/demo-execution", "Demo Execution"],
+  ["/broker-demo", "Broker Demo"],
 ];
 
 export default function Nav() {

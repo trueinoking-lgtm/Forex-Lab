@@ -55,10 +55,23 @@ function ensureTrendPredictionUnique() {
 }
 ensureTrendPredictionUnique();
 
+// v1.3.2: extend ExecutionControl with new columns (guard + idempotent). Must run
+// BEFORE the seed INSERT so the INSERT sees the new columns.
+function addControlColumn(col, def) {
+  const cols = db.prepare("PRAGMA table_info(ExecutionControl)").all().map((c) => c.name);
+  if (!cols.includes(col)) {
+    db.exec(`ALTER TABLE ExecutionControl ADD COLUMN ${col} ${def}`);
+  }
+}
+addControlColumn("max_open_per_broker", "INTEGER NOT NULL DEFAULT 5");
+addControlColumn("execution_mode", "TEXT NOT NULL DEFAULT 'observe_only'");
+addControlColumn("primary_demo_broker", "TEXT NOT NULL DEFAULT 'oanda_practice'");
+
 // v1.3.1: seed the single-row ExecutionControl singleton (safe to re-run).
 db.prepare(`INSERT OR IGNORE INTO ExecutionControl
-  (id, kill_switch, broker_mode, max_open_demo_trades, updated_at)
-  VALUES (1, 0, 'demo', 5, datetime('now'))`).run();
+  (id, kill_switch, broker_mode, max_open_demo_trades, max_open_per_broker,
+   execution_mode, primary_demo_broker, updated_at)
+  VALUES (1, 0, 'demo', 5, 5, 'observe_only', 'oanda_practice', datetime('now'))`).run();
 
 // v1.3.1 lifecycle proof: extend ExecutionJournal with broker/broker_mode/run_id/
 // price_exit (guard + idempotent; safe to re-run).

@@ -295,8 +295,39 @@ CREATE TABLE IF NOT EXISTS ExecutionControl (
   kill_switch INTEGER NOT NULL DEFAULT 0,        -- 1 => refuse all demo orders
   broker_mode TEXT NOT NULL DEFAULT 'demo',
   max_open_demo_trades INTEGER NOT NULL DEFAULT 5,
+  max_open_per_broker INTEGER NOT NULL DEFAULT 5,
+  execution_mode TEXT NOT NULL DEFAULT 'observe_only',  -- observe_only|dry_run|single_broker_demo|mirror_demo
+  primary_demo_broker TEXT NOT NULL DEFAULT 'oanda_practice',
   updated_at TEXT NOT NULL,
   CHECK (broker_mode = 'demo')                   -- never live
+);
+
+-- Broker capability snapshot (readiness, no secret values).
+CREATE TABLE IF NOT EXISTS BrokerCapability (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  broker TEXT NOT NULL,
+  broker_mode TEXT NOT NULL DEFAULT 'demo',
+  credentials_present INTEGER NOT NULL DEFAULT 0,
+  account_reachable INTEGER NOT NULL DEFAULT 0,
+  account_currency TEXT,
+  balance REAL,
+  equity REAL,
+  trading_enabled INTEGER NOT NULL DEFAULT 0,
+  market_open INTEGER,
+  last_checked_at TEXT NOT NULL,
+  last_error_redacted TEXT,
+  CHECK (broker_mode = 'demo')
+);
+
+-- Duplicate-order prevention: one real demo order per (signal, broker, run_id).
+CREATE TABLE IF NOT EXISTS DemoExecutionLock (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  signal_id INTEGER,
+  broker TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  order_id INTEGER,
+  created_at TEXT NOT NULL,
+  UNIQUE(signal_id, broker, run_id)
 );
 
 CREATE TABLE IF NOT EXISTS TrendReviewLesson (

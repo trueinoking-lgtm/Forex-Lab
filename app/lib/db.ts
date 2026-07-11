@@ -212,4 +212,58 @@ export function lifecycleJournalRows(limit = 50): any[] {
   `).all(limit);
 }
 
+// ===== Broker demo readiness + real-broker execution (v1.3.2) =====
+export interface BrokerCapRow {
+  id: number; broker: string; broker_mode: string;
+  credentials_present: number; account_reachable: number;
+  account_currency: string | null; balance: number | null; equity: number | null;
+  trading_enabled: number; market_open: number | null;
+  last_checked_at: string; last_error_redacted: string | null;
+}
+export function latestBrokerCaps(): BrokerCapRow[] {
+  // most recent capability snapshot per broker
+  return db.prepare(`
+    SELECT * FROM BrokerCapability
+    WHERE id IN (
+      SELECT MAX(id) FROM BrokerCapability GROUP BY broker
+    ) ORDER BY broker
+  `).all() as BrokerCapRow[];
+}
+export function openDemoPositionsByBroker(): any[] {
+  return db.prepare(`
+    SELECT broker, COUNT(*) c FROM DemoExecutionOrder
+    WHERE status='filled' GROUP BY broker ORDER BY broker
+  `).all();
+}
+export function brokerSpreadComparison(): any[] {
+  return db.prepare(`
+    SELECT broker, symbol, AVG(spread_at_entry) avg_spread, AVG(slippage) avg_slip,
+           COUNT(*) n
+    FROM DemoExecutionOrder WHERE status='filled' AND spread_at_entry IS NOT NULL
+    GROUP BY broker, symbol ORDER BY broker
+  `).all();
+}
+export function paperVsBrokerPnl(broker: string): any[] {
+  return db.prepare(`
+    SELECT j.id, j.expected_paper_pnl, j.actual_demo_pnl,
+           j.slippage, j.spread, j.was_execution_acceptable,
+           o.symbol, o.side, o.broker
+    FROM ExecutionJournal j JOIN DemoExecutionOrder o ON o.id = j.demo_order_id
+    WHERE o.broker = ?
+    ORDER BY j.created_at DESC LIMIT 100
+  `).all(broker);
+}
+export function brokerLatency(): any[] {
+  return db.prepare(`
+    SELECT broker, AVG(latency_ms) avg_latency_ms, COUNT(*) n
+    FROM ExecutionJournal WHERE latency_ms IS NOT NULL
+    GROUP BY broker ORDER BY broker
+  `).all();
+}
+export function realDemoOrders(broker?: string): any[] {
+  const where = broker ? "WHERE broker=?" : "WHERE broker<>'mock'";
+  const sql = `SELECT * FROM DemoExecutionOrder ${where} ORDER BY requested_at DESC LIMIT 100`;
+  return (broker ? db.prepare(sql).all(broker) : db.prepare(sql).all()) as any[];
+}
+
 

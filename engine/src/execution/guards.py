@@ -46,10 +46,14 @@ def run_pretrade_guards(
     open_demo_trades: int,
     max_open_demo_trades: int = MAX_OPEN_DEMO_TRADES_DEFAULT,
     kill_switch: bool = False,
+    broker: str = "mock",
+    open_demo_trades_by_broker: int = 0,
+    max_open_per_broker: Optional[int] = None,
 ) -> GuardResult:
     """Evaluate all deterministic pre-trade guards. Raises nothing; returns result.
 
     Callers must treat `passed=False` as a hard reject and NOT submit the order.
+    Enforces BOTH a global cap and a per-broker cap.
     """
     reasons: list[str] = []
 
@@ -98,10 +102,15 @@ def run_pretrade_guards(
     if signal is None:
         reasons.append("no parent paper Signal — demo order requires a paper signal")
 
-    # 6. Max open demo trades.
+    # 6. Max open demo trades (global + per-broker).
     if open_demo_trades >= max_open_demo_trades:
         reasons.append(
-            f"open demo trades {open_demo_trades} >= cap {max_open_demo_trades}"
+            f"global open demo trades {open_demo_trades} >= cap {max_open_demo_trades}"
+        )
+    cap_b = max_open_per_broker if max_open_per_broker is not None else max_open_demo_trades
+    if open_demo_trades_by_broker >= cap_b:
+        reasons.append(
+            f"open demo trades for {broker} {open_demo_trades_by_broker} >= per-broker cap {cap_b}"
         )
 
     return GuardResult(passed=len(reasons) == 0, reasons=reasons, risk=risk)

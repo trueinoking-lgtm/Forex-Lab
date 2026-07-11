@@ -40,29 +40,55 @@ const execRows = db.prepare(`
 `).all();
 const rej = db.prepare(`SELECT COUNT(*) c FROM DemoExecutionOrder WHERE status='rejected'`).get();
 lines.push("", "### Demo execution quality",
-  `- broker_mode in use: ${ctrl.broker_mode} (kill-switch: ${ctrl.kill_switch ? "ENGAGED" : "off"})`,
-  `- order rejections (total): ${rej.c}`,
-  `- mock vs real broker demo separated below:`);
+`- broker_mode in use: ${ctrl.broker_mode} (kill-switch: ${ctrl.kill_switch ? "ENGAGED" : "off"})`,
+`- execution mode: ${ctrl.execution_mode} (primary broker: ${ctrl.primary_demo_broker})`,
+`- order rejections (total): ${rej.c}`,
+`- mock vs real broker demo separated below:`);
 if (execRows.length === 0) {
-  lines.push("| broker | mode | runs | avg_slip | avg_spr | worst_slip |",
-             "| --- | --- | --- | --- | --- | --- |",
-             "| (none yet) | demo | 0 | — | — | — |");
+lines.push("| broker | mode | runs | avg_slip | avg_spr | worst_slip |",
+           "| --- | --- | --- | --- | --- | --- |",
+           "| (none yet) | demo | 0 | — | — | — |");
 } else {
-  lines.push("| broker | mode | runs | avg_slip | avg_spr | worst_slip |",
-             "| --- | --- | --- | --- | --- | --- |");
-  for (const e of execRows) {
-    const kind = e.broker === "mock" ? "MOCK (simulated, not a real venue)" : "REAL DEMO BROKER";
-    lines.push(`| ${e.broker} (${kind}) | ${e.broker_mode} | ${e.done} | ${e.avg_slip ?? "—"} | ${e.avg_spr ?? "—"} | ${e.worst_slip ?? "—"} |`);
-  }
+lines.push("| broker | mode | runs | avg_slip | avg_spr | worst_slip |",
+           "| --- | --- | --- | --- | --- | --- |");
+for (const e of execRows) {
+  const kind = e.broker === "mock" ? "MOCK (simulated, not a real venue)" : "REAL DEMO BROKER";
+  lines.push(`| ${e.broker} (${kind}) | ${e.broker_mode} | ${e.done} | ${e.avg_slip ?? "—"} | ${e.avg_spr ?? "—"} | ${e.worst_slip ?? "—"} |`);
 }
+}
+// real broker status + winner
+const caps = db.prepare(`
+SELECT * FROM BrokerCapability WHERE id IN (
+  SELECT MAX(id) FROM BrokerCapability GROUP BY broker
+) AND broker<>'mock'
+`).all();
+lines.push("", `- REAL DEMO BROKER status:`);
+if (caps.length === 0) {
+lines.push("  - (no real-broker capability snapshots yet; run `npm run execution:broker-check`)");
+} else {
+for (const c of caps) {
+  lines.push(`  - ${c.broker}: creds=${c.credentials_present ? "present" : "missing"} reachable=${c.account_reachable ? "yes" : "no"}${c.last_error_redacted ? " err=" + c.last_error_redacted : ""}`);
+}
+}
+// broker execution quality winner by avg (slippage+spread)
+const spreadByBroker = db.prepare(`
+SELECT broker, AVG(slippage + COALESCE(spread_at_entry,0)) q
+FROM DemoExecutionOrder WHERE broker<>'mock' AND status='filled'
+GROUP BY broker
+`).all();
+let winner = null;
+if (spreadByBroker.length) {
+winner = spreadByBroker.reduce((a, b) => (b.q <= a.q ? b : a)).broker;
+}
+lines.push(`- broker winner today (execution quality): ${winner ? winner : "no real-broker data yet"}`);
 // paper-vs-demo mismatch + worst slippage (mock block)
 const mockAgg = db.prepare(`
-  SELECT AVG(actual_demo_pnl - expected_paper_pnl) avg_delta, MAX(slippage) worst_slip
-  FROM ExecutionJournal WHERE broker='mock' AND actual_demo_pnl IS NOT NULL
+SELECT AVG(actual_demo_pnl - expected_paper_pnl) avg_delta, MAX(slippage) worst_slip
+FROM ExecutionJournal WHERE broker='mock' AND actual_demo_pnl IS NOT NULL
 `).get();
 lines.push("",
-  `- mock paper-vs-demo avg PnL mismatch: ${mockAgg.avg_delta == null ? "—" : mockAgg.avg_delta.toFixed(4)}`,
-  `- mock worst slippage: ${mockAgg.worst_slip == null ? "—" : mockAgg.worst_slip}`);
+`- mock paper-vs-demo avg PnL mismatch: ${mockAgg.avg_delta == null ? "—" : mockAgg.avg_delta.toFixed(4)}`,
+`- mock worst slippage: ${mockAgg.worst_slip == null ? "—" : mockAgg.worst_slip}`);
 
 const summary = lines.join("\n");
 db.prepare(`INSERT OR REPLACE INTO DailyReport (date,summary,generated_at) VALUES (?,?,?)`)

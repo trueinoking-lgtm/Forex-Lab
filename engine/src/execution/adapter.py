@@ -74,6 +74,22 @@ class OrderStatus:
     raw_redacted: str = ""
 
 
+@dataclass
+class BrokerCapability:
+    """Readiness report for one broker demo adapter (no secret values)."""
+    broker: str
+    broker_mode: str                # always 'demo'
+    credentials_present: bool       # true/false only — never the value
+    account_reachable: bool
+    account_currency: Optional[str] = None
+    balance: Optional[float] = None
+    equity: Optional[float] = None
+    trading_enabled: bool = False
+    market_open: Optional[bool] = None
+    last_checked_at: str = ""
+    last_error_redacted: str = ""
+
+
 class ExecutionAdapter(ABC):
     """Broker-agnostic demo execution surface. Demo/paper only."""
 
