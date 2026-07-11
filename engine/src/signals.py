@@ -36,6 +36,7 @@ class PaperSignal:
     regime: str
     timestamp: str
     units: float = 0.0      # risk-sized position size from risk_check
+    id: int | None = None   # DB row id (None when synthesized, e.g. backtest)
 
     def to_dict(self):
         return asdict(self)

@@ -28,6 +28,7 @@ from src.execution import (
 def _signal(entry=1.1000, sl=1.0950, tp=1.1050, direction=1, units=2000.0, sid=1,
             timestamp="2026-07-10T00:00:00"):
     return PaperSignal(
+        id=sid,
         pair="EURUSD", strategy="rsi", direction=direction, entry=entry,
         stop_loss=sl, take_profit=tp, signal_score=60.0, regime="trend",
         timestamp=timestamp, units=units,
@@ -938,4 +939,276 @@ def test_refresh_kill_switch_blocks(monkeypatch, tmp_path):
     import sqlite3
     db = sqlite3.connect(str(dbp))
     assert db.execute("SELECT COUNT(*) c FROM Signal").fetchone()[0] == 1
+
+
+# ===== v1.3.5 remote-mt5-order: preserve signal_id + units (fix #6) =====
+def _make_order_db(tmp_path, *, sid=6, units=2000.0, direction=1,
+                   entry=1.14143, sl=1.135, tp=1.15,
+                   generated_at=None):
+    """Fresh temp DB with the execution tables the order path touches."""
+    import sqlite3
+    if generated_at is None:
+        generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    dbp = tmp_path / "ord.db"
+    db = sqlite3.connect(str(dbp)); db.row_factory = sqlite3.Row
+    db.execute("""CREATE TABLE Signal (
+        id INTEGER PRIMARY KEY, pair TEXT, strategy TEXT, direction INTEGER,
+        entry REAL, stop_loss REAL, take_profit REAL, signal_score REAL,
+        regime TEXT, units REAL, generated_at TEXT, status TEXT,
+        original_signal_id INTEGER)""")
+    db.execute("""CREATE TABLE ExecutionControl (
+        id INTEGER PRIMARY KEY, kill_switch INTEGER, broker_mode TEXT,
+        max_open_demo_trades INTEGER, max_open_per_broker INTEGER,
+        execution_mode TEXT, primary_demo_broker TEXT)""")
+    db.execute("""CREATE TABLE DemoExecutionOrder (
+        id INTEGER PRIMARY KEY, signal_id INTEGER, broker TEXT, broker_mode TEXT,
+        symbol TEXT, side TEXT, requested_entry REAL, filled_entry REAL,
+        stop_loss REAL, take_profit REAL, units REAL, requested_at TEXT,
+        filled_at TEXT, status TEXT, spread_at_entry REAL, slippage REAL,
+        rejection_reason TEXT, raw_response_redacted_json TEXT)""")
+    db.execute("""CREATE TABLE DemoExecutionLock (
+        id INTEGER PRIMARY KEY, signal_id INTEGER, broker TEXT, run_id TEXT,
+        order_id INTEGER, created_at TEXT,
+        UNIQUE(signal_id, broker, run_id))""")
+    db.execute("""CREATE TABLE ExecutionJournal (
+        id INTEGER PRIMARY KEY, demo_order_id INTEGER, signal_id INTEGER,
+        broker TEXT, broker_mode TEXT, run_id TEXT, created_at TEXT,
+        expected_paper_pnl REAL, actual_demo_pnl REAL, pnl_delta REAL,
+        spread REAL, slippage REAL, latency_ms REAL, lesson_json TEXT)""")
+    db.execute(
+        "INSERT INTO Signal (id,pair,strategy,direction,entry,stop_loss,"
+        "take_profit,signal_score,regime,units,generated_at,status) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (sid, "EURUSD", "rsi", direction, entry, sl, tp, 63.0, "trend",
+         units, generated_at, "paper"))
+    db.commit(); db.close()
+    return dbp
+
+
+def _patch_order_bridge(monkeypatch, *, dry_run_payload=None, place_status="filled",
+                        place_reason=None, captured=None, raise_exc=None):
+    """Patch the bridge HTTP layer used by RemoteMT5BridgeAdapter.
+
+    Returns canned /dry-run and /place-demo-order responses and records every
+    outbound JSON in `captured` so we can assert the broker received units=2000.
+    Also flips the VPS execution-mode env to single_broker_demo + autotrade ON
+    so the order path is permitted to reach the adapter (we are testing the
+    signal_id/units preservation, not the observe_only gate).
+    """
+    import requests
+    from src.execution import remote_mt5_bridge as rmb
+
+    monkeypatch.setenv("DRY_RUN", "false")
+    monkeypatch.setenv("DEMO_AUTOTRADE_ENABLED", "true")
+    monkeypatch.setenv("BROKER_EXECUTION_MODE", "single_broker_demo")
+    if dry_run_payload is None:
+        dry_run_payload = {"would_place": True, "broker_mode": "demo",
+                           "live_entry": 1.14143, "bridge_kill_switch": False}
+    class _R:
+        def __init__(self, code, j): self.status_code = code; self._j = j
+        def json(self): return self._j
+    def make(method, url, **k):
+        if raise_exc is not None:
+            raise raise_exc
+        if captured is not None:
+            captured[url.split("?")[0].rstrip("/")] = (method, k.get("json"))
+        base = url.split("?")[0].rstrip("/")
+        if base.endswith("/dry-run"):
+            return _R(200, dry_run_payload)
+        if base.endswith("/place-demo-order"):
+            return _R(200, {"status": place_status,
+                            "rejection_reason": place_reason,
+                            "filled_entry": (k.get("json") or {}).get("requested_entry"),
+                            "order_id": "PC123",
+                            "spread_at_entry": 0.0003, "slippage": 0.0001,
+                            "broker_mode": "demo"})
+        if base.endswith("/quote"):
+            return _R(200, {"symbol": "EURUSD", "bid": 1.14140,
+                            "ask": 1.14143, "spread": 0.0003})
+        return _R(200, {})
+    monkeypatch.setattr(requests, "request", make)
+    monkeypatch.setattr(requests, "get", lambda u, **k: make("get", u, **k))
+    monkeypatch.setattr(requests, "post", lambda u, **k: make("post", u, **k))
+    monkeypatch.setattr(rmb.requests, "request", make)
+    monkeypatch.setattr(rmb.requests, "get", lambda u, **k: make("get", u, **k))
+    monkeypatch.setattr(rmb.requests, "post", lambda u, **k: make("post", u, **k))
+    return _R
+
+
+def test_prepare_demo_order_preserves_signal_id_and_units():
+    from run_execution import prepare_demo_order_from_signal
+    s = _signal(units=2000.0, sid=6, timestamp=datetime.now(timezone.utc).isoformat())
+    o = prepare_demo_order_from_signal(s, "remote_mt5", 1.14143)
+    assert o.signal_id == 6
+    assert o.units == 2000.0
+    assert o.symbol == "EURUSD"
+    assert o.side == "buy"
+
+
+def test_prepare_demo_order_rejects_missing_units():
+    from run_execution import prepare_demo_order_from_signal
+    s = _signal(units=None, sid=6)
+    with pytest.raises(ValueError):
+        prepare_demo_order_from_signal(s, "remote_mt5", 1.1)
+
+
+def test_prepare_demo_order_rejects_zero_units():
+    from run_execution import prepare_demo_order_from_signal
+    s = _signal(units=0.0, sid=6)
+    with pytest.raises(ValueError):
+        prepare_demo_order_from_signal(s, "remote_mt5", 1.1)
+
+
+def test_prepare_demo_order_rejects_nan_units():
+    from run_execution import prepare_demo_order_from_signal
+    s = _signal(units=float("nan"), sid=6)
+    with pytest.raises(ValueError):
+        prepare_demo_order_from_signal(s, "remote_mt5", 1.1)
+
+
+def test_prepare_demo_order_rejects_missing_signal_id():
+    from run_execution import prepare_demo_order_from_signal
+    s = _signal(units=2000.0, sid=None)
+    with pytest.raises(ValueError):
+        prepare_demo_order_from_signal(s, "remote_mt5", 1.1)
+
+
+def test_paper_signal_carries_id_and_units():
+    import run_execution, sqlite3, pathlib, tempfile
+    d = pathlib.Path(tempfile.mkdtemp())
+    dbp = _make_order_db(d, sid=6, units=2000.0)
+    orig = run_execution.DB_PATH
+    run_execution.DB_PATH = str(dbp)
+    try:
+        db = run_execution._db()
+        from run_execution import _paper_signal
+        s = _paper_signal(db, 6)
+        assert s is not None
+        assert s.id == 6
+        assert s.units == 2000.0
+    finally:
+        run_execution.DB_PATH = orig
+
+
+def test_remote_mt5_order_sends_units_2000_to_bridge(monkeypatch, tmp_path):
+    # Signal #6-style happy path: prove the broker receives requested_units=2000
+    # (the exact failure was units=0 reaching the bridge).
+    import run_execution, sqlite3
+    dbp = _make_order_db(tmp_path, sid=6, units=2000.0)
+    monkeypatch.setattr(run_execution, "DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    captured = {}
+    _patch_order_bridge(monkeypatch, captured=captured)
+    rc = run_execution.cmd_remote_mt5_order(_args(signal_id=6, run_id="mt5-first-demo-6"))
+    assert rc == 0
+    place_urls = [u for u in captured if u.endswith("/place-demo-order")]
+    assert place_urls, f"bridge /place-demo-order was never called; captured={captured}"
+    sent = captured[place_urls[0]][1]
+    assert sent["units"] == 2000.0
+    assert sent["signal_id"] == 6
+    db = sqlite3.connect(str(dbp)); db.row_factory = sqlite3.Row
+    row = db.execute("SELECT * FROM DemoExecutionOrder ORDER BY id DESC LIMIT 1").fetchone()
+    assert row is not None
+    assert row["signal_id"] == 6
+    assert row["units"] == 2000.0
+    assert row["status"] == "filled"
+
+
+def test_remote_mt5_dry_run_and_order_share_prepared_units(monkeypatch, tmp_path, capsys):
+    import run_execution, json
+    dbp = _make_order_db(tmp_path, sid=6, units=2000.0)
+    monkeypatch.setattr(run_execution, "DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    _patch_order_bridge(monkeypatch)
+    rc = run_execution.cmd_remote_mt5_dry_run(_args(signal_id=6))
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["signal_units"] == 2000.0
+    assert out["prepared_order_units"] == 2000.0
+    assert out["signal_id"] == 6
+    assert out["would_place_order"] is True
+
+
+def test_remote_mt5_order_missing_units_fails_before_bridge(monkeypatch, tmp_path):
+    import run_execution, sqlite3
+    dbp = _make_order_db(tmp_path, sid=6, units=None)
+    monkeypatch.setattr(run_execution, "DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    captured = {}
+    _patch_order_bridge(monkeypatch, captured=captured)
+    rc = run_execution.cmd_remote_mt5_order(_args(signal_id=6, run_id="bad-units"))
+    assert rc == 2
+    # The bad-units gate must fire BEFORE the broker order call (only the
+    # diagnostic /dry-run + /quote may have been contacted, never /place-demo-order).
+    assert not any(u.endswith("/place-demo-order") for u in captured)
+    db = sqlite3.connect(str(dbp)); db.row_factory = sqlite3.Row
+    row = db.execute("SELECT * FROM DemoExecutionOrder ORDER BY id DESC LIMIT 1").fetchone()
+    assert row is not None
+    assert row["signal_id"] == 6
+    assert row["status"] == "rejected"
+
+
+def test_remote_mt5_order_zero_units_fails_before_bridge(monkeypatch, tmp_path):
+    import run_execution
+    dbp = _make_order_db(tmp_path, sid=6, units=0.0)
+    monkeypatch.setattr(run_execution, "DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    captured = {}
+    _patch_order_bridge(monkeypatch, captured=captured)
+    rc = run_execution.cmd_remote_mt5_order(_args(signal_id=6, run_id="zero-units"))
+    assert rc == 2
+    assert not any(u.endswith("/place-demo-order") for u in captured)
+
+
+def test_remote_mt5_order_nan_units_fails_before_bridge(monkeypatch, tmp_path):
+    import run_execution
+    dbp = _make_order_db(tmp_path, sid=6, units=float("nan"))
+    monkeypatch.setattr(run_execution, "DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    captured = {}
+    _patch_order_bridge(monkeypatch, captured=captured)
+    rc = run_execution.cmd_remote_mt5_order(_args(signal_id=6, run_id="nan-units"))
+    assert rc == 2
+    assert not any(u.endswith("/place-demo-order") for u in captured)
+
+
+def test_remote_mt5_order_rejected_bridge_stores_signal_and_units(monkeypatch, tmp_path):
+    # If the bridge rejects, DemoExecutionOrder must still record signal_id + units.
+    import run_execution, sqlite3
+    dbp = _make_order_db(tmp_path, sid=6, units=2000.0)
+    monkeypatch.setattr(run_execution, "DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    _patch_order_bridge(monkeypatch, place_status="rejected",
+                        place_reason="invalid volume: units must be positive")
+    rc = run_execution.cmd_remote_mt5_order(_args(signal_id=6, run_id="bridge-reject"))
+    db = sqlite3.connect(str(dbp)); db.row_factory = sqlite3.Row
+    row = db.execute("SELECT * FROM DemoExecutionOrder ORDER BY id DESC LIMIT 1").fetchone()
+    assert row is not None
+    assert row["signal_id"] == 6
+    assert row["units"] == 2000.0
+    assert row["status"] == "rejected"
+    assert "units must be positive" in (row["rejection_reason"] or "")
+
+
+def test_remote_mt5_dry_run_invalid_units_shows_units_and_fails(monkeypatch, tmp_path, capsys):
+    import run_execution, json
+    dbp = _make_order_db(tmp_path, sid=6, units=0.0)
+    monkeypatch.setattr(run_execution, "DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    _patch_order_bridge(monkeypatch)
+    rc = run_execution.cmd_remote_mt5_dry_run(_args(signal_id=6))
+    assert rc == 2
+    out = json.loads(capsys.readouterr().out)
+    assert out["would_place_order"] is False
+    assert out["prepared_order_units"] is None
+    assert out["signal_units"] == 0.0
+    assert out["signal_id"] == 6
+
 

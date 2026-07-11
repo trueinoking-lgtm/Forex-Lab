@@ -22,6 +22,7 @@ import json
 import os
 import sqlite3
 import sys
+import math
 from datetime import datetime, timezone
 
 import yaml  # noqa: E402
@@ -151,6 +152,50 @@ def _paper_signal(db: sqlite3.Connection, signal_id: int) -> PaperSignal | None:
         entry=row["entry"], stop_loss=row["stop_loss"], take_profit=row["take_profit"],
         signal_score=row["signal_score"] or 0.0, regime=row["regime"] or "range",
         timestamp=row["generated_at"],
+        units=float(row["units"]) if row["units"] is not None else 0.0,
+        id=row["id"],
+    )
+
+
+def _validate_units(units) -> float:
+    """Return a valid (>0) units value, or raise ValueError loudly.
+
+    Rejects None, non-finite (NaN/inf), <= 0. A missing/zero/NaN size must never
+    be silently coerced to 0 — that is exactly what let Signal #6 reach the
+    broker with units=0 and get rejected as 'units must be positive'.
+    """
+    if units is None:
+        raise ValueError("units is missing (None)")
+    try:
+        u = float(units)
+    except (TypeError, ValueError):
+        raise ValueError(f"units is not numeric: {units!r}")
+    if not math.isfinite(u):
+        raise ValueError(f"units is not finite: {units!r}")
+    if u <= 0:
+        raise ValueError(f"units must be > 0, got {u!r}")
+    return u
+
+
+def prepare_demo_order_from_signal(signal: PaperSignal, broker: str,
+                                   requested_entry: float | None = None) -> DemoOrderRequest:
+    """Build the DemoOrderRequest for a paper signal, preserving signal_id + units.
+
+    Used by BOTH the dry-run and the real order so they share identical order
+    preparation. Raises ValueError (loud) if the signal lacks id, has no units,
+    or units <= 0 / NaN — so a bad signal can never be forwarded to the broker.
+    """
+    if getattr(signal, "id", None) is None:
+        raise ValueError("signal has no id — cannot place an order")
+    units = _validate_units(getattr(signal, "units", None))
+    return DemoOrderRequest(
+        symbol=signal.pair,
+        side="buy" if signal.direction > 0 else "sell",
+        units=units,
+        stop_loss=signal.stop_loss,
+        take_profit=signal.take_profit,
+        signal_id=signal.id,
+        requested_entry=requested_entry if requested_entry is not None else signal.entry,
     )
 
 
@@ -492,15 +537,36 @@ def _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter) -> dict:
         result["rejection_reason"] = f"duplicate (signal,broker,run_id={run_id}) already executed"
         return result
 
+    # ---- Build the order with the SAME shared preparation as the dry-run.
+    # This preserves signal_id + units and FAILS LOUD (before any broker call)
+    # if units are missing/zero/NaN. This is the exact guard that was missing for
+    # Signal #6, where units=0 reached the bridge and it rejected 'units must be
+    # positive' while DemoExecutionOrder recorded signal_id=NULL, units=0.0. ----
+    try:
+        order = prepare_demo_order_from_signal(signal, broker, None)
+    except ValueError as exc:
+        result["rejection_reason"] = f"invalid signal before broker call: {exc}"
+        result["signal_id"] = getattr(signal, "id", None)
+        result["signal_units"] = getattr(signal, "units", None)
+        result["prepared_order_units"] = None
+        # Record the rejection faithfully (with the REAL signal_id + units) so
+        # forensics never lose the linkage again.
+        cur = db.execute(
+            """INSERT INTO DemoExecutionOrder
+               (signal_id,broker,broker_mode,symbol,side,requested_entry,stop_loss,
+                take_profit,units,requested_at,status,rejection_reason)
+               VALUES (?,?,?,?,?,?,?,?,?,?,'rejected',?)""",
+            (getattr(signal, "id", None), broker, "demo", signal.pair,
+             "buy" if signal.direction > 0 else "sell",
+             signal.entry, signal.stop_loss, signal.take_profit,
+             getattr(signal, "units", 0.0), _now(), result["rejection_reason"]),
+        )
+        db.commit()
+        result["demo_execution_order_id"] = cur.lastrowid
+        return result
+
     quote = adapter.get_prices(signal.pair)
-    requested_entry = round((quote.bid + quote.ask) / 2, 5)
-    order = DemoOrderRequest(
-        symbol=signal.pair, side="buy" if signal.direction > 0 else "sell",
-        units=signal.units or 0.0, stop_loss=signal.stop_loss,
-        take_profit=signal.take_profit,
-        signal_id=signal.id if hasattr(signal, "id") else None,
-        requested_entry=requested_entry,
-    )
+    requested_entry = order.requested_entry
     res = run_pretrade_guards(
         order, broker_mode=ctrl["broker_mode"],
         allow_live_orders=cfg.get("allow_live_orders"),
@@ -548,7 +614,7 @@ def _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter) -> dict:
         result["rejection_reason"] = status.rejection_reason
     else:
         result["rejection_reason"] = status.rejection_reason
-        db.execute(
+        cur = db.execute(
             """INSERT INTO DemoExecutionOrder
                (signal_id,broker,broker_mode,symbol,side,requested_entry,stop_loss,
                 take_profit,units,requested_at,status,rejection_reason,raw_response_redacted_json)
@@ -558,6 +624,12 @@ def _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter) -> dict:
              order.take_profit, order.units, _now(), status.rejection_reason,
              status.raw_redacted),
         )
+        result["demo_execution_order_id"] = cur.lastrowid
+    # Safe debug fields on every outcome (no tokens/secrets).
+    result["signal_id"] = getattr(signal, "id", None)
+    result["signal_units"] = getattr(signal, "units", None)
+    result["prepared_order_units"] = order.units
+    result["bridge_rejection_reason"] = result.get("rejection_reason")
     db.commit()
     return result
 
@@ -953,23 +1025,25 @@ def cmd_remote_mt5_dry_run(args) -> int:
         a = _remote_mt5_adapter()
     except Exception:
         return 2
-    # ---- Aether-side validation (Task 3): fail loud even if the remote PC
-    # bridge is stale/pre-patch and would wrongly accept an invalid signal.
-    # We run the SAME deterministic guards against the LIVE quote AND check the
-    # bridge's verdict. A real order must NEVER proceed unless BOTH pass. ----
-    from src.execution import run_pretrade_guards, DemoOrderRequest, PriceQuote
-    # The real fill price IS the live quote (ask for a buy, bid for a sell), so
-    # use it as the requested_entry reference. The guard then checks SL/TP
-    # geometry against that live price (and risk_check against it) — the correct
-    # semantic for "would this order be valid right now?".
+    # ---- Shared order preparation (Task: dry-run uses the SAME prep as the real
+    # order). Validates + preserves signal_id and units; fails loud if units are
+    # missing/zero/NaN. ----
     live_quote = a.get_prices(signal.pair)
     requested_entry = live_quote.ask if signal.direction > 0 else live_quote.bid
-    vps_order = DemoOrderRequest(
-        symbol=signal.pair, side="buy" if signal.direction > 0 else "sell",
-        units=signal.units or 0.0, stop_loss=signal.stop_loss,
-        take_profit=signal.take_profit, signal_id=args.signal_id,
-        requested_entry=requested_entry,
-    )
+    try:
+        vps_order = prepare_demo_order_from_signal(signal, "remote_mt5", requested_entry)
+    except ValueError as exc:
+        print(json.dumps({
+            "broker": "remote_mt5", "broker_mode": "demo",
+            "would_place_order": False,
+            "signal_units": getattr(signal, "units", None),
+            "prepared_order_units": None,
+            "signal_id": getattr(signal, "id", None),
+            "rejection_reason": f"invalid signal: {exc}",
+            "NOTE": "no order was placed — dry run only",
+        }, indent=2))
+        return 2
+    from src.execution import run_pretrade_guards
     vps_guard = run_pretrade_guards(
         vps_order, broker_mode="demo", allow_live_orders=False,
         account=cfg.get("account", 10000.0),
@@ -986,26 +1060,31 @@ def cmd_remote_mt5_dry_run(args) -> int:
         resp = requests.post(
             f"{os.environ.get('REMOTE_MT5_BRIDGE_URL','').rstrip('/')}/dry-run",
             headers={"Authorization": f"Bearer {os.environ.get('REMOTE_MT5_BRIDGE_TOKEN','')}"},
-            json={"symbol": signal.pair, "side": "buy" if signal.direction > 0 else "sell",
-                  "units": signal.units or 0.0, "stop_loss": signal.stop_loss,
-                  "take_profit": signal.take_profit, "signal_id": args.signal_id,
+            json={"symbol": vps_order.symbol, "side": vps_order.side,
+                  "units": vps_order.units, "stop_loss": vps_order.stop_loss,
+                  "take_profit": vps_order.take_profit, "signal_id": vps_order.signal_id,
                   "signal_timestamp": signal.timestamp, "execution_class": "paper"},
             timeout=float(os.environ.get("REMOTE_MT5_BRIDGE_TIMEOUT", "8")),
         )
         bridge = resp.json()
     except Exception as exc:
         print(f"REMOTE MT5 DRY-RUN FAILED: {redact(str(exc))[:200]}"); return 2
-    # A patched bridge returns HTTP 400 with a reason when SL/TP / staleness is
-    # invalid. A pre-patch bridge returns 200 and must NOT be trusted on its own.
-    bridge_refused = (resp.status_code != 200) or (bridge.get("would_place") is False and
-                                                   bridge.get("broker_mode") != "demo")
+    would_place = (
+        vps_ok and resp.status_code == 200
+        and bridge.get("would_place") is True
+        and bridge.get("broker_mode") == "demo"
+        and not ctrl["kill_switch"]
+    )
     print(json.dumps({
         "broker": "remote_mt5", "broker_mode": "demo",
         "bridge_status_code": resp.status_code,
-        "would_place_order": bridge.get("would_place", False),
+        "would_place_order": would_place,
         "live_entry": bridge.get("live_entry"),
         "vps_guard_passed": vps_ok,
         "vps_guard_reasons": vps_guard.reasons if not vps_ok else [],
+        "signal_units": vps_order.units,
+        "prepared_order_units": vps_order.units,
+        "signal_id": vps_order.signal_id,
         "live_quote": {"bid": live_quote.bid, "ask": live_quote.ask},
         "dry_run": dry_run(), "demo_autotrade_enabled": demo_autotrade_enabled(),
         "execution_mode": execution_mode(),
@@ -1021,7 +1100,7 @@ def cmd_remote_mt5_dry_run(args) -> int:
         print("REMOTE MT5 DRY-RUN REJECTED (Aether-side guard): "
               + "; ".join(vps_guard.reasons), file=sys.stderr)
         return 2
-    if resp.status_code != 200:
+    if resp.status_code != 200 or bridge.get("would_place") is not True:
         print(f"REMOTE MT5 DRY-RUN REJECTED (bridge): {bridge}", file=sys.stderr)
         return 2
     return 0
@@ -1040,15 +1119,31 @@ def cmd_remote_mt5_order(args) -> int:
         return 2
     # Hard gate: a real demo order MUST never proceed unless BOTH the Aether-side
     # deterministic guard AND the bridge dry-run accept the signal.
-    from src.execution import run_pretrade_guards, DemoOrderRequest
+    from src.execution import run_pretrade_guards
     live_quote = a.get_prices(signal.pair)
     requested_entry = live_quote.ask if signal.direction > 0 else live_quote.bid
-    vps_order = DemoOrderRequest(
-        symbol=signal.pair, side="buy" if signal.direction > 0 else "sell",
-        units=signal.units or 0.0, stop_loss=signal.stop_loss,
-        take_profit=signal.take_profit, signal_id=args.signal_id,
-        requested_entry=requested_entry,
-    )
+    # Shared order preparation (Task): validates + preserves signal_id and units;
+    # fails loud if units are missing/zero/NaN before any broker call.
+    try:
+        vps_order = prepare_demo_order_from_signal(signal, "remote_mt5", requested_entry)
+    except ValueError as exc:
+        # Fails loud BEFORE any broker call (Task requirement): record the
+        # rejection faithfully with the REAL signal_id + units so forensics
+        # never lose the linkage again (this is exactly the gap that lost
+        # Signal #6's id/units when units=0 reached the bridge).
+        db.execute(
+            """INSERT INTO DemoExecutionOrder
+               (signal_id,broker,broker_mode,symbol,side,requested_entry,stop_loss,
+                take_profit,units,requested_at,status,rejection_reason)
+               VALUES (?,?,?,?,?,?,?,?,?,?,'rejected',?)""",
+            (getattr(signal, "id", None), "remote_mt5", "demo", signal.pair,
+             "buy" if signal.direction > 0 else "sell",
+             requested_entry, signal.stop_loss, signal.take_profit,
+             getattr(signal, "units", 0.0), _now(), f"invalid signal: {exc}"),
+        )
+        db.commit()
+        print(f"REJECTED: invalid signal for order: {exc}")
+        return 2
     vps_guard = run_pretrade_guards(
         vps_order, broker_mode="demo", allow_live_orders=False,
         account=cfg.get("account", 10000.0),
@@ -1072,9 +1167,9 @@ def cmd_remote_mt5_order(args) -> int:
         dresp = requests.post(
             f"{os.environ.get('REMOTE_MT5_BRIDGE_URL','').rstrip('/')}/dry-run",
             headers={"Authorization": f"Bearer {os.environ.get('REMOTE_MT5_BRIDGE_TOKEN','')}"},
-            json={"symbol": signal.pair, "side": "buy" if signal.direction > 0 else "sell",
-                  "units": signal.units or 0.0, "stop_loss": signal.stop_loss,
-                  "take_profit": signal.take_profit, "signal_id": args.signal_id,
+            json={"symbol": vps_order.symbol, "side": vps_order.side,
+                  "units": vps_order.units, "stop_loss": vps_order.stop_loss,
+                  "take_profit": vps_order.take_profit, "signal_id": vps_order.signal_id,
                   "signal_timestamp": signal.timestamp, "execution_class": "paper"},
             timeout=float(os.environ.get("REMOTE_MT5_BRIDGE_TIMEOUT", "8")),
         )
@@ -1086,7 +1181,9 @@ def cmd_remote_mt5_order(args) -> int:
         return 2
     run_id = args.run_id or f"remote-mt5-{args.signal_id}"
     res = _place_real_demo(db, cfg, ctrl, "remote_mt5", signal, run_id, a)
-    print(json.dumps({**res, "broker_mode": "demo"}, indent=2))
+    print(json.dumps({**res, "broker_mode": "demo",
+                      "signal_units": vps_order.units,
+                      "prepared_order_units": vps_order.units}, indent=2))
     return 0 if res["status"] == "filled" else 2
 
 
