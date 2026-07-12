@@ -31,7 +31,7 @@ _TRADE_RETCODE_NAMES = {
     10015: "TRADE_RETCODE_INVALID_PRICE",
     10016: "TRADE_RETCODE_INVALID_STOPS",
     10017: "TRADE_RETCODE_TRADE_DISABLED",
-    10018: "TRADE_RETCODE_INVALID_FILL",
+    10018: "TRADE_RETCODE_MARKET_CLOSED",
     10019: "TRADE_RETCODE_TRADE_TIMEOUT",
     10020: "TRADE_RETCODE_TRADE_LIMIT",
     10021: "TRADE_RETCODE_TRADE_HEDGE_PROHIBITED",
@@ -142,6 +142,13 @@ def is_stale_signal(
     if age is None:
         return False
     return age > float(max_age_minutes)
+
+
+# ---- Market-session preflight is intentionally NOT implemented here ----
+# The retcode-name mapping below is the only change in this file. A safer
+# tick/session-evidence based preflight lives in the VPS execution engine
+# (run_execution.py) and treats TRADE_RETCODE_MARKET_CLOSED (10018) from the
+# broker as the authoritative closed-session signal.
 
 
 # ---- MetaTrader5 volume normalization ----
