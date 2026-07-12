@@ -260,6 +260,172 @@ export function storeResearchReview(input, expectedSignalId) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Read APIs (Phase 2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse a stored JSON column safely. Returns null on malformed/empty.
+ * @param {string|null} text
+ * @returns {unknown[]|null}
+ */
+function safeParseJsonArray(text) {
+  if (!text) return null;
+  try {
+    const val = JSON.parse(text);
+    return Array.isArray(val) ? val : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parse a stored raw_response_json column safely.
+ * @param {string|null} text
+ * @returns {Record<string, unknown>|null}
+ */
+function safeParseJsonObject(text) {
+  if (!text) return null;
+  try {
+    const val = JSON.parse(text);
+    return typeof val === "object" && !Array.isArray(val) ? val : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if a stored JSON column is malformed (non-empty but unparseable).
+ * @param {string|null} text
+ * @returns {boolean}
+ */
+function isMalformedJson(text) {
+  if (!text) return false;
+  try {
+    JSON.parse(text);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Convert a raw DB row to a safe, client-friendly review object.
+ * Always forces execution_allowed=false and research_only=true.
+ * @param {Record<string, unknown>} row
+ * @returns {object}
+ */
+function rowToReview(row) {
+  return {
+    id: row.id,
+    signal_id: row.signal_id,
+    provider: row.provider,
+    model_or_tool: row.model_or_tool,
+    review_type: row.review_type,
+    verdict: row.verdict,
+    confidence: row.confidence,
+    summary: row.summary,
+    strengths: safeParseJsonArray(row.strengths_json),
+    risks: safeParseJsonArray(row.risks_json),
+    assumptions: safeParseJsonArray(row.assumptions_json),
+    data_sources: safeParseJsonArray(row.data_sources_json),
+    tool_calls: safeParseJsonArray(row.tool_calls_json),
+    raw_response: safeParseJsonObject(row.raw_response_json),
+    execution_allowed: false, // always false — advisory only
+    research_only: true,
+    created_at: row.created_at,
+    malformed: false,
+  };
+}
+
+/**
+ * Check all JSON columns of a review row for malformed data.
+ * @param {Record<string, unknown>} row
+ * @returns {boolean}
+ */
+function checkMalformed(row) {
+  return (
+    isMalformedJson(row.strengths_json) ||
+    isMalformedJson(row.risks_json) ||
+    isMalformedJson(row.assumptions_json) ||
+    isMalformedJson(row.data_sources_json) ||
+    isMalformedJson(row.tool_calls_json) ||
+    isMalformedJson(row.raw_response_json)
+  );
+}
+
+/**
+ * List research reviews, newest-first, with pagination and optional signal filter.
+ * @param {{signalId?: number, limit?: number, offset?: number, verdict?: string}} opts
+ * @returns {{reviews: object[], total: number}}
+ */
+export function listResearchReviews(opts = {}) {
+  const db = getDb();
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
+  const offset = Math.max(opts.offset ?? 0, 0);
+  const signalId = opts.signalId;
+  const verdict = opts.verdict;
+
+  /** @type {string[]} */
+  const whereParts = [];
+  /** @type {unknown[]} */
+  const params = [];
+  if (signalId !== undefined && Number.isInteger(signalId)) {
+    whereParts.push("signal_id = ?");
+    params.push(signalId);
+  }
+  if (verdict && typeof verdict === "string") {
+    whereParts.push("verdict = ?");
+    params.push(verdict);
+  }
+  const where = whereParts.length > 0 ? "WHERE " + whereParts.join(" AND ") : "";
+
+  const total = db
+    .prepare(`SELECT COUNT(*) as n FROM ResearchReview ${where}`)
+    .get(...params).n;
+  const rows = db
+    .prepare(
+      `SELECT * FROM ResearchReview ${where}
+       ORDER BY created_at DESC, id DESC
+       LIMIT ? OFFSET ?`
+    )
+    .all(...params, limit, offset);
+
+  const reviews = rows.map((r) => {
+    const review = rowToReview(r);
+    review.malformed = checkMalformed(r);
+    return review;
+  });
+
+  return { reviews, total };
+}
+
+/**
+ * Get a single research review by ID. Returns null if not found.
+ * @param {number} reviewId
+ * @returns {object|null}
+ */
+export function getResearchReview(reviewId) {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT * FROM ResearchReview WHERE id = ?")
+    .get(reviewId);
+  if (!row) return null;
+
+  const review = rowToReview(row);
+  review.malformed = checkMalformed(row);
+  return review;
+}
+
+/**
+ * List all reviews for a given signal, newest-first.
+ * @param {number} signalId
+ * @returns {object[]}
+ */
+export function listReviewsBySignal(signalId) {
+  return listResearchReviews({ signalId, limit: 200 }).reviews;
+}
+
 // Exposed only for tests; production code should not close the shared db handle.
 export function _closeResearchDb() {
   if (globalThis.__fxResearchDb) {
