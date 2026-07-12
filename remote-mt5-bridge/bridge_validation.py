@@ -306,43 +306,63 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
     # RETURN has no SYMBOL_FILLING_MODE flag and is NOT valid for a market
     # execution (TRADE_ACTION_DEAL) — it is only for pending/limit orders.
     #
-    # order_check is lenient: it accepts a mode even when order_send would later
-    # reject it with TRADE_RETCODE_INVALID_FILL (10018). So we do NOT trust
-    # order_check alone. We order the candidates by what a MARKET deal actually
-    # accepts (IOC first, then FOK if the symbol permits it) and, crucially, if
-    # order_send rejects one mode we fall through to the next. A rejected
-    # order_send does NOT open a position, so sequential retry is safe.
+    # We candidate modes in the symbol's actual permitted order (FOK first when
+    # flag 1 is set, then IOC). Both order_check and order_send can reject a
+    # filling mode (10030 UNSUPPORTED_FILLING_MODE / 10018 INVALID_FILL); either
+    # is a fall-through signal to try the next mode. A rejected order_send opens
+    # NO position, so sequential retry is safe.
     fm = int(getattr(info, "filling_mode", 0) or 0)
     candidate_modes = []
-    # IOC is the market-execution default and is broadly accepted.
-    candidate_modes.append((mt5.ORDER_FILLING_IOC, "IOC"))
-    if fm == 0 or (fm & 1):
-        # Unknown flags (fm==0) or explicit FOK flag -> also try FOK.
-        candidate_modes.append((mt5.ORDER_FILLING_FOK, "FOK"))
+    if fm == 0:
+        # Unknown flags — try both common market-execution modes.
+        candidate_modes = [
+            (mt5.ORDER_FILLING_FOK, "FOK"),
+            (mt5.ORDER_FILLING_IOC, "IOC"),
+        ]
+    else:
+        if fm & 1:  # SYMBOL_FILLING_FOK
+            candidate_modes.append((mt5.ORDER_FILLING_FOK, "FOK"))
+        if fm & 2:  # SYMBOL_FILLING_IOC
+            candidate_modes.append((mt5.ORDER_FILLING_IOC, "IOC"))
+
+    # MT5 MqlTradeRequest accepts only these keys. Debug/context fields that the
+    # bridge attaches (requested_units, calculated_lots, spread_at_entry, ...) must
+    # NOT be forwarded to order_check/order_send — unknown fields can make the
+    # broker reject the request (e.g. INVALID_FILL). Keep them in `ctx` for the
+    # response only.
+    _MT5_REQ_KEYS = {
+        "action", "symbol", "volume", "type", "price", "sl", "tp",
+        "deviation", "magic", "comment", "type_time", "type_filling",
+        "position", "position_by",
+    }
+    clean = {k: v for k, v in request.items() if k in _MT5_REQ_KEYS}
+    ctx = {k: v for k, v in request.items() if k not in _MT5_REQ_KEYS}
 
     last_check = None
     for mode, name in candidate_modes:
-        attempt = dict(request)
+        attempt = dict(clean)
         attempt["type_filling"] = mode
         check = mt5.order_check(attempt)
         last_check = check
         if check is not None and not _order_check_passed(check):
-            # Genuinely invalid (bad price/volume/geometry) -> stop, this isn't a
-            # filling-mode issue that another mode will fix.
+            rc = int(getattr(check, "retcode", -1))
+            # A filling-mode-specific rejection means "this mode unsupported" ->
+            # fall through. Anything else (bad price/volume/geometry) is fatal.
+            if rc == int(getattr(mt5, "TRADE_RETCODE_UNSUPPORTED_FILLING_MODE", 10030)):
+                continue
             return {
                 "status": "rejected",
                 "rejection_reason": (
-                    f"order_check failed: retcode {getattr(check, 'retcode', '?')} "
-                    f"({getattr(check, 'comment', '') or ''})"
+                    f"order_check failed: retcode {rc} ({getattr(check, 'comment', '') or ''})"
                 ),
-                "order_check_retcode": getattr(check, "retcode", None),
+                "order_check_retcode": rc,
                 "order_check_comment": getattr(check, "comment", "") or "",
                 "type_filling_used": mode,
                 "type_filling_name": name,
                 "filling_mode_candidates": [n for _, n in candidate_modes],
                 "symbol_filling_mode": fm,
-                "requested_units": request.get("requested_units"),
-                "calculated_lots": request.get("calculated_lots"),
+                "requested_units": ctx.get("requested_units"),
+                "calculated_lots": ctx.get("calculated_lots"),
                 "normalized_lots": vol,
                 "volume_min": volume_min,
                 "volume_step": volume_step,
@@ -350,9 +370,8 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
                 "broker_mode": broker_mode,
             }
 
-        # order_check passed (or unavailable). Try the real order_send — this is
-        # the authoritative filling-mode test. If it rejects with INVALID_FILL,
-        # fall through to the next candidate mode.
+        # order_check passed (or unavailable). order_send is the authoritative
+        # filling-mode test; fall through on fill-related rejections.
         result = mt5.order_send(attempt)
         if _order_send_succeeded(mt5, result):
             request = attempt
@@ -360,9 +379,11 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
             chosen_name = name
             break
         rc = int(getattr(result, "retcode", -1))
-        if rc == int(getattr(mt5, "TRADE_RETCODE_INVALID_FILL", 10018)):
-            last_check = check  # remember; fall through to next mode
-            continue
+        if rc in (
+            int(getattr(mt5, "TRADE_RETCODE_INVALID_FILL", 10018)),
+            int(getattr(mt5, "TRADE_RETCODE_UNSUPPORTED_FILLING_MODE", 10030)),
+        ):
+            continue  # try next filling mode
         # Any other order_send failure is fatal (not a filling-mode issue).
         return {
             "status": "rejected",
@@ -378,8 +399,8 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
             "order_check_comment": getattr(check, "comment", "") or "" if check else "",
             "type_filling_used": mode,
             "type_filling_name": name,
-            "requested_units": request.get("requested_units"),
-            "calculated_lots": request.get("calculated_lots"),
+            "requested_units": ctx.get("requested_units"),
+            "calculated_lots": ctx.get("calculated_lots"),
             "normalized_lots": vol,
             "volume_min": volume_min,
             "volume_step": volume_step,
@@ -390,14 +411,14 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
         return {
             "status": "rejected",
             "rejection_reason": (
-                f"all filling modes rejected (last: INVALID_FILL). "
-                f"candidates tried: {[n for _, n in candidate_modes]}"
+                f"all filling modes rejected. candidates tried: "
+                f"{[n for _, n in candidate_modes]}"
             ),
             "type_filling_used": None,
             "filling_mode_candidates": [n for _, n in candidate_modes],
             "symbol_filling_mode": fm,
-            "requested_units": request.get("requested_units"),
-            "calculated_lots": request.get("calculated_lots"),
+            "requested_units": ctx.get("requested_units"),
+            "calculated_lots": ctx.get("calculated_lots"),
             "normalized_lots": vol,
             "volume_min": volume_min,
             "volume_step": volume_step,
@@ -432,7 +453,7 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
         "mt5_retcode": retcode,
         "mt5_retcode_name": trade_retcode_name(mt5, retcode),
         "mt5_comment": getattr(result, "comment", "") or "",
-        "spread_at_entry": request.get("spread_at_entry", 0.0),
+        "spread_at_entry": ctx.get("spread_at_entry", 0.0),
         "slippage": 0.0,
         "broker_mode": broker_mode,
         "type_filling_used": request.get("type_filling"),
