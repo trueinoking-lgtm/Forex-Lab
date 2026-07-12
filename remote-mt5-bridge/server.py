@@ -356,6 +356,24 @@ def kill_switch(on: bool = True, _=Depends(_require_auth)):
     return {"bridge_kill_switch": _bridge_kill()}
 
 
+# Build marker — bump whenever server.py / bridge_validation.py change so a
+# stale process holding port 8787 can be detected remotely (curl /version).
+BRIDGE_BUILD_ID = "2026-07-12.filling-mode-fix"
+
+
+@app.get("/version")
+def version():
+    return {
+        "ok": True,
+        "broker_mode": "demo",
+        "build_id": BRIDGE_BUILD_ID,
+        "token_configured": bool(_token()),
+        "dry_run": _dry_run(),
+        "demo_autotrade_enabled": _autotrade(),
+        "bridge_kill_switch": _bridge_kill(),
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("BRIDGE_PORT", "8787"))
