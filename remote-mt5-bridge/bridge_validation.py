@@ -299,31 +299,43 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
     volume_step = float(getattr(info, "volume_step", 0.0)) if info else 0.0
     volume_max = float(getattr(info, "volume_max", 0.0)) if info else 0.0
 
-    # --- pick a filling mode, then order_send (with fallthrough) ---
+    # --- pick filling modes, then order_send (with fallthrough) ---
     # Official ENUM_ORDER_TYPE_FILLING: FOK = 0, IOC = 1, RETURN = 2.
     # symbol_info().filling_mode is a SEPARATE flags field (not the order enum):
     #   flag 1 = SYMBOL_FILLING_FOK, flag 2 = SYMBOL_FILLING_IOC.
-    # RETURN has no SYMBOL_FILLING_MODE flag and is NOT valid for a market
-    # execution (TRADE_ACTION_DEAL) — it is only for pending/limit orders.
+    # RETURN has NO SYMBOL_FILLING_MODE flag (it is always available) and IS a
+    # valid policy for a market deal (TRADE_ACTION_DEAL) — it is the standard
+    # instant-execution policy when the symbol uses Market Execution
+    # (trade_exemode == 2). Exchange Execution (trade_exemode == 1) instead
+    # requires FOK/IOC.
     #
-    # We candidate modes in the symbol's actual permitted order (FOK first when
-    # flag 1 is set, then IOC). Both order_check and order_send can reject a
-    # filling mode (10030 UNSUPPORTED_FILLING_MODE / 10018 INVALID_FILL); either
-    # is a fall-through signal to try the next mode. A rejected order_send opens
-    # NO position, so sequential retry is safe.
+    # We order candidates so the mode the broker most likely accepts is tried
+    # FIRST, and fall through to the next on any filling-mode rejection. A
+    # rejected order_send opens NO position, so sequential retry is safe:
+    #   * Market Execution (exemode==2): RETURN first, then FOK/IOC per flags.
+    #   * Exchange Execution / unknown: FOK/IOC per flags, then RETURN fallback.
     fm = int(getattr(info, "filling_mode", 0) or 0)
-    candidate_modes = []
+    exemode = int(getattr(info, "trade_exemode", 0) or 0)
+    flagged = []
     if fm == 0:
-        # Unknown flags — try both common market-execution modes.
-        candidate_modes = [
-            (mt5.ORDER_FILLING_FOK, "FOK"),
-            (mt5.ORDER_FILLING_IOC, "IOC"),
-        ]
+        flagged = [(mt5.ORDER_FILLING_FOK, "FOK"), (mt5.ORDER_FILLING_IOC, "IOC")]
     else:
         if fm & 1:  # SYMBOL_FILLING_FOK
-            candidate_modes.append((mt5.ORDER_FILLING_FOK, "FOK"))
+            flagged.append((mt5.ORDER_FILLING_FOK, "FOK"))
         if fm & 2:  # SYMBOL_FILLING_IOC
-            candidate_modes.append((mt5.ORDER_FILLING_IOC, "IOC"))
+            flagged.append((mt5.ORDER_FILLING_IOC, "IOC"))
+    return_mode = (mt5.ORDER_FILLING_RETURN, "RETURN")
+    if exemode == 2:
+        candidate_modes = [return_mode, *flagged]
+    else:
+        candidate_modes = [*flagged, return_mode]
+    # De-dupe (a symbol could theoretically list RETURN via flags — it doesn't,
+    # but guard anyway).
+    seen, candidate_modes = set(), []
+    for mode, name in ([return_mode, *flagged] if exemode == 2 else [*flagged, return_mode]):
+        if mode not in seen:
+            seen.add(mode)
+            candidate_modes.append((mode, name))
 
     # MT5 MqlTradeRequest accepts only these keys. Debug/context fields that the
     # bridge attaches (requested_units, calculated_lots, spread_at_entry, ...) must

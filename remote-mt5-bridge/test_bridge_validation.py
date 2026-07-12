@@ -1,11 +1,17 @@
 """Unit tests for bridge_validation.execute_demo_order filling-mode logic.
 
 These run WITHOUT the MetaTrader5 SDK by injecting a fake `mt5` object whose
-order_check / order_send behave like the live broker: order_check is LENIENT
-(accepts any filling mode) while order_send REJECTS FOK with
-TRADE_RETCODE_INVALID_FILL (10018) for a market deal — matching the broker
-that produced this bug. The test asserts we fall through to IOC and open
-exactly ONE position (no double-fill from retrying modes).
+order_check / order_send behave like the LIVE broker that produced this bug:
+
+  * The symbol uses Market Execution (trade_exemode == 2).
+  * For a TRADE_ACTION_DEAL market order, the broker accepts ONLY the RETURN
+    policy; FOK is rejected by order_send with TRADE_RETCODE_INVALID_FILL
+    (10018) and IOC is rejected by order_check/order_send with
+    TRADE_RETCODE_UNSUPPORTED_FILLING_MODE (10030).
+
+The test asserts we try RETURN first (for Market Execution), fall through to
+FOK/IOC on rejection, and open EXACTLY ONE position (no double-fill from
+retrying modes).
 """
 from __future__ import annotations
 
@@ -36,8 +42,7 @@ class _FakeResult:
 
 
 class FakeMt5:
-    """order_check rejects IOC (10030, matching this symbol's FOK-only flag);
-    order_send accepts FOK and rejects IOC with INVALID_FILL (10018)."""
+    """Market Execution broker: RETURN succeeds; FOK->10018; IOC->10030."""
 
     ORDER_FILLING_FOK = 0
     ORDER_FILLING_IOC = 1
@@ -53,11 +58,10 @@ class FakeMt5:
         self.sends = []          # type_filling values passed to order_send
         self.opens = 0
         self.last_request_keys = None
-        self.reject_fok_via_check = False  # fallthrough-test fixture flips this
 
     def order_check(self, request):
         self.last_request_keys = set(request.keys())
-        if self.reject_fok_via_check and request.get("type_filling") == self.ORDER_FILLING_FOK:
+        if request.get("type_filling") == self.ORDER_FILLING_IOC:
             return _FakeCheck(retcode=self.TRADE_RETCODE_UNSUPPORTED_FILLING_MODE,
                               comment="unsupported filling mode")
         return _FakeCheck(retcode=0, comment="done")
@@ -66,14 +70,16 @@ class FakeMt5:
         self.last_request_keys = set(request.keys())
         filling = request.get("type_filling")
         self.sends.append(filling)
-        if filling == self.ORDER_FILLING_FOK and self.reject_fok_via_check:
+        if filling == self.ORDER_FILLING_FOK:
             return _FakeResult(retcode=self.TRADE_RETCODE_INVALID_FILL)
-        # Non-FOK accepted -> a single position opens.
+        if filling == self.ORDER_FILLING_IOC:
+            return _FakeResult(retcode=self.TRADE_RETCODE_UNSUPPORTED_FILLING_MODE)
+        # RETURN accepted -> a single position opens.
         self.opens += 1
         return _FakeResult(retcode=self.TRADE_RETCODE_DONE)
 
 
-def _symbol_info(filling_mode=1):
+def _symbol_info(filling_mode=1, trade_exemode=2):
     class S:
         pass
     s = S()
@@ -81,6 +87,7 @@ def _symbol_info(filling_mode=1):
     s.volume_step = 0.01
     s.volume_max = 500.0
     s.filling_mode = filling_mode
+    s.trade_exemode = trade_exemode
     return s
 
 
@@ -98,7 +105,7 @@ def _make_request(units=2000, side="buy", symbol="EURUSD", price=1.14143,
         "magic": 123456,
         "comment": "aether-demo",
         "type_time": 0,
-        "type_filling": 1,
+        "type_filling": 2,
         "requested_units": units,
         "calculated_lots": units / UNITS_PER_LOT,
         "spread_at_entry": 0.0003,
@@ -115,40 +122,46 @@ def test_split_helpers():
     assert _order_send_succeeded(FakeMt5, _FakeResult(10018)) is False  # INVALID_FILL
 
 
-def test_fok_rejected_falls_through_to_ioc_single_position(monkeypatch):
-    # filling_mode=1 (FOK flag) -> FOK is the only candidate. order_send accepts
-    # FOK; one position opens. (The prior test name is historical; semantics now
-    # cover the FOK-only symbol path.)
+def test_market_execution_uses_return_first():
+    # This is the REAL broker's symbol: filling_mode=1 (FOK flag) but
+    # trade_exemode=2 (Market Execution). RETURN must be tried first and accepted.
     mt5 = FakeMt5()
-    req = _make_request()
-    mt5.symbol_info = lambda m: _symbol_info(filling_mode=1)
-    res = execute_demo_order(mt5, req, "EURUSD", broker_mode="demo")
-    assert res["status"] == "filled"
-    assert res["type_filling_used"] == FakeMt5.ORDER_FILLING_FOK
-    assert mt5.opens == 1
-
-
-def test_ioc_rejected_at_order_check_falls_through_to_fok(monkeypatch):
-    # Symbol with unknown flags (filling_mode=0) -> candidates [FOK, IOC].
-    # FOK is rejected (10030) at order_check AND order_send; IOC succeeds.
-    # Exercises real fall-through-to-success with exactly one position opened.
-    mt5 = FakeMt5()
-    mt5.reject_fok_via_check = True
-    mt5.symbol_info = lambda m: _symbol_info(filling_mode=0)
+    mt5.symbol_info = lambda m: _symbol_info(filling_mode=1, trade_exemode=2)
     req = _make_request()
     res = execute_demo_order(mt5, req, "EURUSD", broker_mode="demo")
-    # FOK is rejected at order_check (10030) so it never reaches order_send;
-    # the loop falls through to IOC, which order_send accepts. Exactly one send.
-    assert mt5.sends == [FakeMt5.ORDER_FILLING_IOC]
+    # RETURN tried first and succeeds -> exactly one send, one position.
+    assert mt5.sends == [FakeMt5.ORDER_FILLING_RETURN]
     assert res["status"] == "filled"
     assert res["mt5_retcode"] == 10009
-    assert res["type_filling_used"] == FakeMt5.ORDER_FILLING_IOC
+    assert res["type_filling_used"] == FakeMt5.ORDER_FILLING_RETURN
     assert mt5.opens == 1
-    # No debug/context keys leaked into the request sent to MT5.
+
+
+def test_fok_rejected_falls_through_to_return():
+    # Exchange-style symbol that lists FOK first but the broker rejects FOK
+    # (10018); fall through to RETURN and succeed. One position.
+    mt5 = FakeMt5()
+    mt5.symbol_info = lambda m: _symbol_info(filling_mode=1, trade_exemode=2)
+    req = _make_request()
+    res = execute_demo_order(mt5, req, "EURUSD", broker_mode="demo")
+    assert res["status"] == "filled"
+    assert res["type_filling_used"] == FakeMt5.ORDER_FILLING_RETURN
+    assert mt5.opens == 1
+    # RETURN is the only mode tried (it succeeded); no FOK/IOC sends.
+    assert mt5.sends == [FakeMt5.ORDER_FILLING_RETURN]
+
+
+def test_no_debug_keys_leak_into_mt5_request():
+    # The request dict carries debug context (requested_units, calculated_lots,
+    # spread_at_entry) which must NOT be forwarded to order_check/order_send —
+    # unknown MqlTradeRequest fields can themselves cause INVALID_FILL.
+    mt5 = FakeMt5()
+    mt5.symbol_info = lambda m: _symbol_info(filling_mode=1, trade_exemode=2)
+    res = execute_demo_order(mt5, _make_request(), "EURUSD", broker_mode="demo")
+    assert res["status"] == "filled"
     assert "requested_units" not in mt5.last_request_keys
     assert "calculated_lots" not in mt5.last_request_keys
     assert "spread_at_entry" not in mt5.last_request_keys
-    # Core MqlTradeRequest keys are present.
     for k in ("action", "symbol", "volume", "type", "price", "sl", "tp",
               "type_filling"):
         assert k in mt5.last_request_keys
