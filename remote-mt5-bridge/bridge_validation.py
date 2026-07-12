@@ -17,6 +17,45 @@ ACCOUNT_TRADE_MODE_DEMO = 0
 ACCOUNT_TRADE_MODE_CONTEST = 1
 ACCOUNT_TRADE_MODE_REAL = 2
 
+# Common MetaTrader5 TRADE_RETCODE_* values (used to label reject reasons so the
+# caller never has to guess what a raw retcode means).
+_TRADE_RETCODE_NAMES = {
+    10004: "TRADE_RETCODE_REQUOTE",
+    10006: "TRADE_RETCODE_CONNECTION",
+    10007: "TRADE_RETCODE_TIMEOUT",
+    10008: "TRADE_RETCODE_PLACED",
+    10009: "TRADE_RETCODE_DONE",
+    10010: "TRADE_RETCODE_DONE_PARTIAL",
+    10013: "TRADE_RETCODE_ERROR",
+    10014: "TRADE_RETCODE_INVALID_VOLUME",
+    10015: "TRADE_RETCODE_INVALID_PRICE",
+    10016: "TRADE_RETCODE_INVALID_STOPS",
+    10017: "TRADE_RETCODE_TRADE_DISABLED",
+    10018: "TRADE_RETCODE_INVALID_FILL",
+    10019: "TRADE_RETCODE_TRADE_TIMEOUT",
+    10020: "TRADE_RETCODE_TRADE_LIMIT",
+    10021: "TRADE_RETCODE_TRADE_HEDGE_PROHIBITED",
+    10022: "TRADE_RETCODE_TRADE_FIFO_PROHIBITED",
+    10023: "TRADE_RETCODE_TRADE_CONTEXT_BUSY",
+    10024: "TRADE_RETCODE_TRADE_EXPERT_DISABLED",
+    10025: "TRADE_RETCODE_TRADE_NO_MONEY",
+    10026: "TRADE_RETCODE_TRADE_TOO_MANY_REQUESTS",
+    10027: "TRADE_RETCODE_TRADE_MODIFY_DENIED",
+    10028: "TRADE_RETCODE_TRADE_FILL_RES_ERROR",
+    10029: "TRADE_RETCODE_TRADE_ORDER_DIR_PROHIBITED",
+    10030: "TRADE_RETCODE_UNSUPPORTED_FILLING_MODE",
+}
+
+
+def trade_retcode_name(mt5, code: int) -> str:
+    """Human-readable name for an MT5 trade retcode (with SDK override + fallback)."""
+    code = int(code)
+    sdk_name = getattr(mt5, f"TRADE_RETCODE_{code}", None) if mt5 is not None else None
+    if isinstance(sdk_name, str):
+        return sdk_name
+    return _TRADE_RETCODE_NAMES.get(code, f"retcode_{code}")
+
+
 # Conservative default max age for a paper signal before it may be executed as a
 # real demo order (minutes). A stale signal's SL/TP geometry no longer matches
 # the live market, so execution must be refused.
@@ -113,7 +152,9 @@ def is_stale_signal(
 # robustly, (b) snap to the symbol's volume_step, (c) reject rather than inflate
 # below volume_min, and (d) run mt5.order_check BEFORE order_send so an invalid
 # volume is rejected with debug-safe introspection instead of a raw retcode 10014.
-UNITS_PER_LOT = 10000.0
+# Standard forex convention: 1 lot = 100,000 units of the base currency.
+# A signal with units=2000 therefore maps to 0.02 lots.
+UNITS_PER_LOT = 100000.0
 
 
 class VolumeInfo:
@@ -125,20 +166,30 @@ class VolumeInfo:
         self.volume_max = float(volume_max)
 
 
-def _snap_to_step(value: float, step: float, vmin: float, vmax: float) -> tuple[float, bool]:
-    """Snap `value` DOWN to the nearest multiple of `step`, clamp to [vmin, vmax].
+def _step_decimals(step: float) -> int:
+    """Number of decimal places implied by a volume_step (0.01 -> 2)."""
+    if step <= 0:
+        return 2
+    d = -math.log10(step)
+    return max(0, int(round(d)))
 
-    MT5 requires `volume % volume_step == 0` (within float epsilon). Rounding DOWN
-    avoids overshooting volume_max. Returns ``(snapped, too_small)`` where
-    ``too_small`` is True when the snapped value falls below volume_min — in that
-    case the request cannot be honored without inflating risk, so the caller must
-    reject rather than silently bump up to volume_min.
+
+def _snap_to_step(value: float, step: float, vmin: float, vmax: float) -> tuple[float, bool]:
+    """Snap `value` to a whole multiple of `step`, clamped to [vmin, vmax].
+
+    Built from an INTEGER step count (not repeated float addition) and rounded to
+    the step's decimal places so MT5's `volume % volume_step == 0` check passes
+    without float-drift rejections (e.g. 0.2 lots vs step 0.01). Returns
+    ``(snapped, too_small)`` where ``too_small`` is True when the snapped value
+    falls below volume_min — the caller must reject rather than bump to vmin.
     """
     if step <= 0:
         clamped = max(vmin, min(vmax, value))
         return clamped, clamped < vmin
-    snapped = math.floor(value / step) * step
-    snapped = round(snapped, 10)  # kill float drift
+    n = int(round(value / step))
+    if n <= 0:
+        return 0.0, True
+    snapped = round(n * step, _step_decimals(step))
     if snapped < vmin:
         return snapped, True
     return min(snapped, vmax), False
@@ -314,12 +365,14 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
     # --- live send ---
     result = mt5.order_send(request)
     if not _order_send_succeeded(mt5, result):
+        rc = int(getattr(result, "retcode", -1))
         return {
             "status": "rejected",
-            "rejection_reason": f"mt5 retcode {getattr(result, 'retcode', '?')}",
-            "mt5_retcode": getattr(result, "retcode", None),
+            "rejection_reason": f"mt5 {trade_retcode_name(mt5, rc)} ({rc})",
+            "mt5_retcode": rc,
+            "mt5_retcode_name": trade_retcode_name(mt5, rc),
             "mt5_comment": getattr(result, "comment", "") or "",
-            "request_volume": vol,
+            "sent_volume": vol,
             "request_symbol": symbol_mapped,
             "request_side": request.get("type"),
             "broker_mode": broker_mode,
@@ -355,11 +408,14 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
         "filled_entry": float(getattr(result, "price", 0.0)),
         "filled_volume": filled_volume,
         "requested_volume": requested_volume,
+        "sent_volume": vol,
+        "mt5_retcode": retcode,
+        "mt5_retcode_name": trade_retcode_name(mt5, retcode),
+        "mt5_comment": getattr(result, "comment", "") or "",
         "spread_at_entry": request.get("spread_at_entry", 0.0),
         "slippage": 0.0,
         "broker_mode": broker_mode,
         "type_filling_used": request.get("type_filling"),
         "type_filling_name": chosen_name,
-        "mt5_comment": getattr(result, "comment", "") or "",
         "volume": vol,
     }
