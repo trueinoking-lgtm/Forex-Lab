@@ -221,30 +221,58 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
     volume_step = float(getattr(info, "volume_step", 0.0)) if info else 0.0
     volume_max = float(getattr(info, "volume_max", 0.0)) if info else 0.0
 
-    # --- pre-send validation: order_check (cheap, no fill) ---
-    check = mt5.order_check(request)
-    if check is None:
-        return {
-            "status": "rejected",
-            "rejection_reason": "order_check returned None — broker rejected pre-check",
-            "broker_mode": broker_mode,
-            "request_volume": vol,
-            "request_symbol": symbol_mapped,
-            "request_side": request.get("type"),
-            "volume_min": volume_min,
-            "volume_step": volume_step,
-            "volume_max": volume_max,
-        }
-    if getattr(check, "retcode", 1) != mt5.TRADE_RETCODE_DONE:
+    # --- pre-send validation: find a supported filling mode, then order_check ---
+    # Some demo accounts only permit a subset of ORDER_FILLING_* (often RETURN),
+    # and hard-coding one mode yields MT5 retcode 10030 (Unsupported filling mode).
+    # Derive the candidate modes from symbol_info().filling_mode and try each via
+    # order_check; use the first that the broker accepts.
+    fm = int(getattr(info, "filling_mode", 0) or 0)
+    if fm == 0:
+        # Unknown/unspecified — try the common modes in safest-first order.
+        candidate_modes = [
+            (mt5.ORDER_FILLING_RETURN, "RETURN"),
+            (mt5.ORDER_FILLING_IOC, "IOC"),
+            (mt5.ORDER_FILLING_FOK, "FOK"),
+        ]
+    else:
+        candidate_modes = []
+        for mode, flag, name in (
+            (mt5.ORDER_FILLING_RETURN, 1, "RETURN"),
+            (mt5.ORDER_FILLING_IOC, 2, "IOC"),
+            (mt5.ORDER_FILLING_FOK, 4, "FOK"),
+        ):
+            if fm & flag:
+                candidate_modes.append((mode, name))
+
+    last_check = None
+    chosen_mode = None
+    chosen_name = None
+    for mode, name in candidate_modes:
+        attempt = dict(request)
+        attempt["type_filling"] = mode
+        check = mt5.order_check(attempt)
+        if check is None:
+            last_check = None
+            continue
+        last_check = check
+        if getattr(check, "retcode", 1) == mt5.TRADE_RETCODE_DONE:
+            chosen_mode = mode
+            chosen_name = name
+            break
+
+    if chosen_mode is None:
         return {
             "status": "rejected",
             "rejection_reason": (
-                f"order_check failed: retcode {getattr(check, 'retcode', '?')} "
-                f"({getattr(check, 'comment', '') or ''})"
+                f"order_check failed for all filling modes: retcode "
+                f"{getattr(last_check, 'retcode', '?')} "
+                f"({getattr(last_check, 'comment', '') or ''})"
             ),
-            "order_check_retcode": getattr(check, "retcode", None),
-            "order_check_comment": getattr(check, "comment", "") or "",
-            "type_filling_used": request.get("type_filling"),
+            "order_check_retcode": getattr(last_check, "retcode", None) if last_check else None,
+            "order_check_comment": getattr(last_check, "comment", "") or "" if last_check else "",
+            "type_filling_used": None,
+            "filling_mode_candidates": [n for _, n in candidate_modes],
+            "symbol_filling_mode": fm,
             "requested_units": request.get("requested_units"),
             "calculated_lots": request.get("calculated_lots"),
             "normalized_lots": vol,
@@ -253,6 +281,9 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
             "volume_max": volume_max,
             "broker_mode": broker_mode,
         }
+
+    request["type_filling"] = chosen_mode
+    check = last_check
 
     # --- live send ---
     result = mt5.order_send(request)
@@ -284,5 +315,6 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
         "slippage": 0.0,
         "broker_mode": broker_mode,
         "type_filling_used": request.get("type_filling"),
+        "type_filling_name": chosen_name,
         "volume": vol,
     }
