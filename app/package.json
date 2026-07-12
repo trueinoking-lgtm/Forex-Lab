@@ -42,6 +42,8 @@
     "report:daily": "node scripts/report_daily.mjs",
     "report:payload": "node scripts/report_payload.mjs",
     "daily:run": "node scripts/daily_loop.mjs",
+    "research:export-signal": "node scripts/research_export_signal.mjs",
+    "research:store-review": "node scripts/research_store_review.mjs",
     "test": "node --test scripts/*.test.mjs"
   },
   "dependencies": {

@@ -361,3 +361,28 @@ CREATE TABLE IF NOT EXISTS TrendReviewLesson (
   lesson TEXT,
   FOREIGN KEY(prediction_id) REFERENCES TrendPrediction(id)
 );
+
+-- ===== v1.3.4 Vibe-Trading MCP research integration (advisory-only) =====
+-- Stores third-party research reviews. Never modifies signal state, units,
+-- stop loss, take profit, or execution status. execution_allowed is hard-coded
+-- to false at the application level; the DB default is also false.
+CREATE TABLE IF NOT EXISTS ResearchReview (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  signal_id INTEGER NOT NULL,
+  provider TEXT NOT NULL,
+  model_or_tool TEXT NOT NULL,
+  review_type TEXT NOT NULL,
+  verdict TEXT NOT NULL,
+  confidence REAL,
+  summary TEXT,
+  strengths_json TEXT,
+  risks_json TEXT,
+  assumptions_json TEXT,
+  data_sources_json TEXT,
+  tool_calls_json TEXT,
+  raw_response_json TEXT,
+  execution_allowed INTEGER NOT NULL DEFAULT 0,
+  research_only INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY(signal_id) REFERENCES Signal(id)
+);

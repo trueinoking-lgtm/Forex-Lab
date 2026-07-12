@@ -24,3 +24,4 @@ app/forex_lab.db
 .env
 .env.local
 *.env
+tsconfig.tsbuildinfo

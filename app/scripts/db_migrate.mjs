@@ -134,5 +134,37 @@ function ensureJournalNeverLiveCheck() {
 }
 ensureJournalNeverLiveCheck();
 
+// v1.3.4: ensure ResearchReview table exists for Vibe-Trading MCP advisory reviews.
+function ensureResearchReviewTable() {
+  const exists = db.prepare(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ResearchReview'"
+  ).get();
+  if (exists) return;
+  db.exec(`
+    CREATE TABLE ResearchReview (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      signal_id INTEGER NOT NULL,
+      provider TEXT NOT NULL,
+      model_or_tool TEXT NOT NULL,
+      review_type TEXT NOT NULL,
+      verdict TEXT NOT NULL,
+      confidence REAL,
+      summary TEXT,
+      strengths_json TEXT,
+      risks_json TEXT,
+      assumptions_json TEXT,
+      data_sources_json TEXT,
+      tool_calls_json TEXT,
+      raw_response_json TEXT,
+      execution_allowed INTEGER NOT NULL DEFAULT 0,
+      research_only INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY(signal_id) REFERENCES Signal(id)
+    );
+  `);
+  console.log("[db:migrate] + ResearchReview table");
+}
+ensureResearchReviewTable();
+
 console.log("[db:migrate] schema applied ->", dbPath);
 db.close();
