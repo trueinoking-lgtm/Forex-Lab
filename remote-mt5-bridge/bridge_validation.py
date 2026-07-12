@@ -222,27 +222,26 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
     volume_max = float(getattr(info, "volume_max", 0.0)) if info else 0.0
 
     # --- pre-send validation: find a supported filling mode, then order_check ---
-    # Some demo accounts only permit a subset of ORDER_FILLING_* (often RETURN),
-    # and hard-coding one mode yields MT5 retcode 10030 (Unsupported filling mode).
-    # Derive the candidate modes from symbol_info().filling_mode and try each via
-    # order_check; use the first that the broker accepts.
+    # Official ENUM_ORDER_TYPE_FILLING: FOK = 0, IOC = 1, RETURN = 2.
+    # symbol_info().filling_mode is a SEPARATE flags field (not the order enum):
+    #   flag 1 = SYMBOL_FILLING_FOK, flag 2 = SYMBOL_FILLING_IOC.
+    # So filling_mode=1 means the symbol permits FOK (NOT RETURN). RETURN has no
+    # SYMBOL_FILLING_MODE flag and is not allowed for Market Execution, so we
+    # only ever candidate FOK and IOC (derived from the flags), trying each via
+    # order_check and using the first the broker accepts.
     fm = int(getattr(info, "filling_mode", 0) or 0)
+    candidate_modes = []
     if fm == 0:
-        # Unknown/unspecified — try the common modes in safest-first order.
+        # Unknown/unspecified — try the common market-execution modes FOK then IOC.
         candidate_modes = [
-            (mt5.ORDER_FILLING_RETURN, "RETURN"),
-            (mt5.ORDER_FILLING_IOC, "IOC"),
             (mt5.ORDER_FILLING_FOK, "FOK"),
+            (mt5.ORDER_FILLING_IOC, "IOC"),
         ]
     else:
-        candidate_modes = []
-        for mode, flag, name in (
-            (mt5.ORDER_FILLING_RETURN, 1, "RETURN"),
-            (mt5.ORDER_FILLING_IOC, 2, "IOC"),
-            (mt5.ORDER_FILLING_FOK, 4, "FOK"),
-        ):
-            if fm & flag:
-                candidate_modes.append((mode, name))
+        if fm & 1:  # SYMBOL_FILLING_FOK
+            candidate_modes.append((mt5.ORDER_FILLING_FOK, "FOK"))
+        if fm & 2:  # SYMBOL_FILLING_IOC
+            candidate_modes.append((mt5.ORDER_FILLING_IOC, "IOC"))
 
     last_check = None
     chosen_mode = None
