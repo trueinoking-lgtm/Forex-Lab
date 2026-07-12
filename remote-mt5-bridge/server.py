@@ -89,6 +89,25 @@ def _mt5():
     return mt5
 
 
+def _supported_filling_mode(mt5, sinfo) -> int:
+    """Pick an ORDER_FILLING_* the symbol actually supports.
+
+    Hard-coding IOC/FOK causes retcode 10030 (Unsupported filling mode)
+    on accounts whose symbol only allows FILLING_RETURN (or a subset).
+    Derive from symbol_info().filling_mode bitmask; fall back to RETURN.
+    """
+    fm = int(getattr(sinfo, "filling_mode", 0) or 0)
+    # Prefer RETURN (most universally supported), then IOC, then FOK.
+    for mode, flag in (
+        (mt5.ORDER_FILLING_RETURN, 1),
+        (mt5.ORDER_FILLING_IOC, 2),
+        (mt5.ORDER_FILLING_FOK, 4),
+    ):
+        if fm == 0 or (fm & flag):
+            return mode
+    return mt5.ORDER_FILLING_RETURN
+
+
 def _signal_max_age_minutes() -> float:
     raw = os.environ.get("SIGNAL_MAX_AGE_MINUTES")
     if raw:
@@ -299,7 +318,7 @@ def place(req: OrderReq, _=Depends(_require_auth)):
         "magic": 123456,
         "comment": "aether-demo",
         "type_time": mt5.ORDER_TIME_GTC,
-        "type_filling": mt5.ORDER_FILLING_IOC,
+        "type_filling": _supported_filling_mode(mt5, sinfo),
         # debug-safe context (no secrets)
         "requested_units": norm["requested_units"],
         "calculated_lots": norm["calculated_lots"],
