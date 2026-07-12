@@ -147,14 +147,15 @@ def test_fok_market_execution_success():
     assert mt5.opens == 1
 
 
-def test_market_execution_request_has_price_zero_and_no_leak():
-    # The sanitized MqlTradeRequest for Market Execution must carry price=0 and
-    # ONLY valid MqlTradeRequest keys (debug fields stripped).
+def test_market_execution_request_keeps_live_price_and_no_leak():
+    # The sanitized MqlTradeRequest for a TRADE_ACTION_DEAL keeps the live price
+    # (the Python wrapper requires a positive price; price=0 makes order_send
+    # return None) and carries ONLY valid MqlTradeRequest keys (debug stripped).
     mt5 = FakeMt5()
     mt5.symbol_info = lambda m: _symbol_info(filling_mode=1, trade_exemode=2)
     execute_demo_order(mt5, _make_request(), "EURUSD", broker_mode="demo")
     sent = mt5.send_requests[0]
-    assert sent["price"] == 0
+    assert sent["price"] == 1.14143     # live tick passed by server.py
     assert sent["type_filling"] == FakeMt5.ORDER_FILLING_FOK
     assert sent["volume"] == 0.02
     for bad in ("requested_units", "calculated_lots", "spread_at_entry"):

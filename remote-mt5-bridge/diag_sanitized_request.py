@@ -33,8 +33,8 @@ _MT5_REQ_KEYS = {
 
 
 class _Err:
-    code = 10018
-    description = "TRADE_RETCODE_INVALID_FILL (simulated): price must be 0 for Market Execution"
+    code = -1
+    description = "order_send returned None (simulated): price=0 makes the MT5 Python wrapper reject the request"
 
 
 class FakeMt5:

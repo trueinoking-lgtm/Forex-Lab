@@ -371,11 +371,10 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
         attempt = dict(clean)
         attempt["type_filling"] = mode
         # For TRADE_ACTION_DEAL under SYMBOL_TRADE_EXECUTION_MARKET the terminal
-        # fills at market; MT5 requires price to be 0 (a fixed price with a
-        # filling policy such as FOK is rejected as INVALID_FILL). For Exchange
-        # Execution we keep the computed price so the limit can match.
-        if exemode == 2:  # Market Execution
-            attempt["price"] = 0
+        # fills at market and ignores the price; the MetaTrader5 Python wrapper,
+        # however, REQUIRES a positive price to construct a valid request (a
+        # price of 0 makes order_check/order_send return None). server.py already
+        # sets `price` to the live tick, so we keep it as-is (do NOT zero it).
         check = mt5.order_check(attempt)
         last_check = check
         if check is not None and not _order_check_passed(check):
