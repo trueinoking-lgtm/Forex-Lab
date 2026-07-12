@@ -30,9 +30,13 @@ from pydantic import BaseModel
 # Load .env (MT5 creds, bridge token, DRY_RUN/autotrade/kill-switch) into the
 # process environment. Without this the running bridge ignores its own .env and
 # every trading endpoint 503s ("bridge token not configured").
+# Resolve .env relative to THIS script's directory (not CWD) so it loads
+# correctly no matter which folder server.py is launched from.
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    import pathlib
+    _here = pathlib.Path(__file__).resolve().parent
+    load_dotenv(_here / ".env")
 except Exception:  # pragma: no cover - dotenv is in requirements.txt
     pass
 
