@@ -34,6 +34,9 @@ function useTempDb() {
   const destPath = join(tempDir, "forex_lab.db");
   execFileSync("sqlite3", [prodDbPath, `.backup ${destPath}`]);
   tempDb = new Database(destPath);
+  // Clear review outcomes first (child of ResearchReview) to avoid FK violations
+  // when clearing ResearchReview below. ReviewOutcome is created by Phase 4.
+  tempDb.exec("DELETE FROM ReviewOutcome");
   // Clear reviews so tests start clean
   tempDb.exec("DELETE FROM ResearchReview");
   // Ensure ResearchRun table exists (backup may predate v1.3.5)

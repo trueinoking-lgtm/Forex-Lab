@@ -1,5 +1,6 @@
 import { paperSignals } from "@/lib/db";
 import { listReviewsBySignal, type ResearchReview } from "@/lib/research-read";
+import { listReviewOutcomes, type ReviewOutcome } from "@/lib/research-eval-read";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,127 @@ function verdictColor(verdict: string): string {
     case "insufficient_data": return "#94a3b8";
     default: return "#9ca3af";
   }
+}
+
+function outcomeColor(outcome: string): string {
+  switch (outcome) {
+    case "win": return "#5eead4";
+    case "loss": return "#f87171";
+    case "neutral": return "#94a3b8";
+    case "unresolved": return "#f59e0b";
+    default: return "#9ca3af";
+  }
+}
+
+function fmt(n: number | null, suffix = ""): string {
+  if (n === null || n === undefined) return "N/A";
+  return `${n}${suffix}`;
+}
+
+function OutcomeCard({ outcome }: { outcome: ReviewOutcome }) {
+  const notes = outcome.evaluation_notes as Record<string, unknown> | null;
+  const limitations = notes?.limitations as string[] | undefined;
+  const rationale = notes?.scoring_rationale as string[] | undefined;
+
+  return (
+    <div style={{ border: "1px solid #1f2937", borderRadius: 8, padding: 16, marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <span style={{ color: outcomeColor(outcome.outcome), fontWeight: 700, fontSize: 16 }}>
+          {outcome.outcome.toUpperCase()}
+        </span>
+        <span style={{
+          backgroundColor: "#1a1a2e", color: "#94a3b8", padding: "2px 10px",
+          borderRadius: 999, fontSize: 12, fontWeight: 600, border: "1px solid #374151"
+        }}>
+          Retrospective · advisory only
+        </span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>Outcome #{outcome.id}</div>
+          <div style={{ color: "#9ca3af", fontSize: 13 }}>Window: {outcome.evaluation_window}</div>
+        </div>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>TP Hit</div>
+          <div style={{ color: outcome.take_profit_hit ? "#5eead4" : "#9ca3af", fontSize: 13 }}>
+            {outcome.take_profit_hit ? "✓ Yes" : "✗ No"}
+          </div>
+        </div>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>SL Hit</div>
+          <div style={{ color: outcome.stop_loss_hit ? "#f87171" : "#9ca3af", fontSize: 13 }}>
+            {outcome.stop_loss_hit ? "✓ Yes" : "✗ No"}
+          </div>
+        </div>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>Verdict Correct</div>
+          <div style={{
+            color: outcome.verdict_correct === true ? "#5eead4" : outcome.verdict_correct === false ? "#f87171" : "#94a3b8",
+            fontSize: 13
+          }}>
+            {outcome.verdict_correct === true ? "✓ Correct" : outcome.verdict_correct === false ? "✗ Incorrect" : "Not scored"}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>Return %</div>
+          <div style={{ color: "#e5e7eb", fontSize: 13 }}>{fmt(outcome.return_pct, "%")}</div>
+        </div>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>MFE %</div>
+          <div style={{ color: "#5eead4", fontSize: 13 }}>{fmt(outcome.maximum_favorable_excursion_pct, "%")}</div>
+        </div>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>MAE %</div>
+          <div style={{ color: "#f87171", fontSize: 13 }}>{fmt(outcome.maximum_adverse_excursion_pct, "%")}</div>
+        </div>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>Evaluated</div>
+          <div style={{ color: "#9ca3af", fontSize: 13 }}>{outcome.evaluated_at}</div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>Highest Price</div>
+          <div style={{ color: "#e5e7eb", fontSize: 13 }}>{fmt(outcome.highest_price)}</div>
+        </div>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>Lowest Price</div>
+          <div style={{ color: "#e5e7eb", fontSize: 13 }}>{fmt(outcome.lowest_price)}</div>
+        </div>
+        <div>
+          <div style={{ color: "#6b7280", fontSize: 12 }}>Final Price</div>
+          <div style={{ color: "#e5e7eb", fontSize: 13 }}>{fmt(outcome.final_price)}</div>
+        </div>
+      </div>
+
+      {limitations && limitations.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ color: "#f59e0b", fontSize: 12, marginBottom: 2 }}>Limitations</div>
+          <ul style={{ color: "#9ca3af", fontSize: 13, margin: 0, paddingLeft: 20 }}>
+            {limitations.map((l: string, i: number) => <li key={i}>{l}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {rationale && rationale.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ color: "#6b7280", fontSize: 12, marginBottom: 2 }}>Scoring Rationale</div>
+          <ul style={{ color: "#9ca3af", fontSize: 13, margin: 0, paddingLeft: 20 }}>
+            {rationale.map((r: string, i: number) => <li key={i}>{r}</li>)}
+          </ul>
+        </div>
+      )}
+
+      <div style={{ color: "#6b7280", fontSize: 12 }}>
+        Data source: {outcome.data_source ?? "N/A"} · execution_allowed: false
+      </div>
+    </div>
+  );
 }
 
 function ResearchReviewCard({ review }: { review: ResearchReview }) {
@@ -153,6 +275,7 @@ export default function SignalDetailPage({ params }: { params: { id: string } })
   }
 
   const reviews = listReviewsBySignal(signalId);
+  const { outcomes } = listReviewOutcomes({ signal_id: signalId });
 
   return (
     <div className="animate-in">
@@ -190,6 +313,25 @@ export default function SignalDetailPage({ params }: { params: { id: string } })
         </div>
       )}
 
+      {/* Evaluation outcomes */}
+      {outcomes.length > 0 && (
+        <>
+          <h2 style={{ color: "#5eead4", marginTop: 32, marginBottom: 8 }}>Evaluation Outcomes</h2>
+          <span style={{
+            backgroundColor: "#1a1a2e", color: "#94a3b8", padding: "2px 10px",
+            borderRadius: 999, fontSize: 12, fontWeight: 600, border: "1px solid #374151",
+            marginBottom: 12, display: "inline-block"
+          }}>
+            Retrospective evaluation · advisory only
+          </span>
+          <div>
+            {outcomes.map((outcome) => (
+              <OutcomeCard key={outcome.id} outcome={outcome} />
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Run review instruction panel */}
       <div style={{ marginTop: 24, border: "1px solid #1f2937", borderRadius: 8, padding: 16 }}>
         <h3 style={{ color: "#5eead4", fontSize: 15, marginTop: 0, marginBottom: 8 }}>
@@ -206,6 +348,25 @@ export default function SignalDetailPage({ params }: { params: { id: string } })
           Add <code style={{ color: "#9ca3af" }}>--force</code> to override the 24-hour deduplication window.
         </p>
       </div>
+
+      {/* Evaluate review instruction panel */}
+      {reviews.length > 0 && (
+        <div style={{ marginTop: 16, border: "1px solid #1f2937", borderRadius: 8, padding: 16 }}>
+          <h3 style={{ color: "#5eead4", fontSize: 15, marginTop: 0, marginBottom: 8 }}>
+            Evaluate Review Outcome
+          </h3>
+          <p style={{ color: "#9ca3af", fontSize: 13, marginBottom: 8 }}>
+            Retrospectively evaluate a research review against historical market data.
+            Evaluation is advisory only and never affects trade execution.
+          </p>
+          <pre style={{ color: "#5eead4", fontSize: 13, backgroundColor: "#0f0f1a", padding: 12, borderRadius: 6, overflow: "auto" }}>
+            npm run research:evaluate-review -- --review-id {reviews[0].id} --window 5d
+          </pre>
+          <p style={{ color: "#6b7280", fontSize: 12, marginTop: 8 }}>
+            Windows: 1d, 3d, 5d, 10d. Add <code style={{ color: "#9ca3af" }}>--force</code> to re-evaluate.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

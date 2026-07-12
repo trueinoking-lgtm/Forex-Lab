@@ -407,3 +407,36 @@ CREATE TABLE IF NOT EXISTS ResearchRun (
   execution_allowed INTEGER NOT NULL DEFAULT 0,  -- always false
   FOREIGN KEY(signal_id) REFERENCES Signal(id)
 );
+
+-- ===== v1.3.6 Research review outcome tracking (advisory-only, retrospective) =====
+-- Stores retrospective evaluation of research reviews against historical market data.
+-- Evaluation is retrospective and advisory only. It NEVER affects trade execution,
+-- signal state, or review content. execution_allowed is hard-coded to false.
+-- Triggered ONLY via CLI (npm run research:evaluate-review); no cron/queue/hook.
+CREATE TABLE IF NOT EXISTS ReviewOutcome (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  review_id INTEGER NOT NULL,
+  signal_id INTEGER NOT NULL,
+  evaluated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  evaluation_window TEXT NOT NULL,            -- 1d|3d|5d|10d
+  entry_reference REAL,
+  stop_loss REAL,
+  take_profit REAL,
+  highest_price REAL,
+  lowest_price REAL,
+  final_price REAL,
+  take_profit_hit INTEGER NOT NULL DEFAULT 0,
+  stop_loss_hit INTEGER NOT NULL DEFAULT 0,
+  outcome TEXT NOT NULL DEFAULT 'unresolved', -- win|loss|neutral|unresolved
+  return_pct REAL,
+  maximum_favorable_excursion_pct REAL,       -- MFE
+  maximum_adverse_excursion_pct REAL,         -- MAE
+  verdict_correct INTEGER,                     -- true|false|null (null = not scored)
+  confidence_score REAL,
+  evaluation_notes_json TEXT,                  -- scoring rationale + limitations
+  data_source TEXT,
+  execution_allowed INTEGER NOT NULL DEFAULT 0, -- always false
+  FOREIGN KEY(review_id) REFERENCES ResearchReview(id),
+  FOREIGN KEY(signal_id) REFERENCES Signal(id),
+  UNIQUE(review_id, evaluation_window)          -- one outcome per review+window
+);

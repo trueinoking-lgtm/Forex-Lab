@@ -194,5 +194,44 @@ function ensureResearchRunTable() {
 }
 ensureResearchRunTable();
 
+// v1.3.6: ensure ReviewOutcome table exists for retrospective review evaluation.
+function ensureReviewOutcomeTable() {
+  const exists = db.prepare(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ReviewOutcome'"
+  ).get();
+  if (exists) return;
+  db.exec(`
+    CREATE TABLE ReviewOutcome (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      review_id INTEGER NOT NULL,
+      signal_id INTEGER NOT NULL,
+      evaluated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      evaluation_window TEXT NOT NULL,
+      entry_reference REAL,
+      stop_loss REAL,
+      take_profit REAL,
+      highest_price REAL,
+      lowest_price REAL,
+      final_price REAL,
+      take_profit_hit INTEGER NOT NULL DEFAULT 0,
+      stop_loss_hit INTEGER NOT NULL DEFAULT 0,
+      outcome TEXT NOT NULL DEFAULT 'unresolved',
+      return_pct REAL,
+      maximum_favorable_excursion_pct REAL,
+      maximum_adverse_excursion_pct REAL,
+      verdict_correct INTEGER,
+      confidence_score REAL,
+      evaluation_notes_json TEXT,
+      data_source TEXT,
+      execution_allowed INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY(review_id) REFERENCES ResearchReview(id),
+      FOREIGN KEY(signal_id) REFERENCES Signal(id),
+      UNIQUE(review_id, evaluation_window)
+    );
+  `);
+  console.log("[db:migrate] + ReviewOutcome table");
+}
+ensureReviewOutcomeTable();
+
 console.log("[db:migrate] schema applied ->", dbPath);
 db.close();

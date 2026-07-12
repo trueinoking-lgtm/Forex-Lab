@@ -75,6 +75,11 @@ const SECRET_VAL_RE = /(api[_-]?key|apikey|secret|token|password|bridge[_-]?toke
  */
 export function deepRedact(obj) {
   if (obj === null || obj === undefined) return obj;
+  if (typeof obj === "string") {
+    // Redact secret-looking strings even when they appear as array elements
+    // or top-level strings (not just object property values).
+    return SECRET_VAL_RE.test(obj) ? "[REDACTED]" : obj;
+  }
   if (typeof obj !== "object") return obj;
   if (Array.isArray(obj)) return obj.map(deepRedact);
   /** @type {Record<string, unknown>} */

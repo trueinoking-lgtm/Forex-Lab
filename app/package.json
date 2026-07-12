@@ -46,6 +46,7 @@
     "research:store-review": "node scripts/research_store_review.mjs",
     "research:prepare-review": "node scripts/research_prepare_review.mjs",
     "research:run-review": "node scripts/research_run_review.mjs",
+    "research:evaluate-review": "node scripts/research_evaluate_review.mjs",
     "test": "node --test scripts/*.test.mjs"
   },
   "dependencies": {

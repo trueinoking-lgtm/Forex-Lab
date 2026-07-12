@@ -17,6 +17,8 @@ engine/data/imports.json
 
 # Local data / runtime
 app/forex_lab.db
+app/forex_lab.db-shm
+app/forex_lab.db-wal
 *.log
 .DS_Store
 
