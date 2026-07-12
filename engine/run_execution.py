@@ -216,6 +216,10 @@ def _ensure_demo_order_cols(db: sqlite3.Connection) -> None:
     result (order/deal/position ids, filling mode, partial-fill flag) can be
     persisted. Safe to call on every open — no-op once columns exist.
     """
+    tables = {r[0] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    if "DemoExecutionOrder" not in tables:
+        return  # table not yet created in this environment — nothing to migrate
     cols = {r[1] for r in db.execute("PRAGMA table_info(DemoExecutionOrder)").fetchall()}
     for col, ctype in (
         ("deal_id", "TEXT"),
