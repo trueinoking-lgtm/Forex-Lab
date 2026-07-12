@@ -166,5 +166,33 @@ function ensureResearchReviewTable() {
 }
 ensureResearchReviewTable();
 
+// v1.3.5: ensure ResearchRun audit table exists for CLI-triggered review runs.
+function ensureResearchRunTable() {
+  const exists = db.prepare(
+    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ResearchRun'"
+  ).get();
+  if (exists) return;
+  db.exec(`
+    CREATE TABLE ResearchRun (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      signal_id INTEGER NOT NULL,
+      started_at TEXT NOT NULL,
+      finished_at TEXT,
+      status TEXT NOT NULL DEFAULT 'running',
+      tools_requested_json TEXT,
+      tools_called_json TEXT,
+      failures_json TEXT,
+      direct_market_data_available INTEGER NOT NULL DEFAULT 0,
+      fallback_web_used INTEGER NOT NULL DEFAULT 0,
+      review_id INTEGER,
+      forced INTEGER NOT NULL DEFAULT 0,
+      execution_allowed INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY(signal_id) REFERENCES Signal(id)
+    );
+  `);
+  console.log("[db:migrate] + ResearchRun table");
+}
+ensureResearchRunTable();
+
 console.log("[db:migrate] schema applied ->", dbPath);
 db.close();

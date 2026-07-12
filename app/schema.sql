@@ -386,3 +386,24 @@ CREATE TABLE IF NOT EXISTS ResearchReview (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY(signal_id) REFERENCES Signal(id)
 );
+
+-- ===== v1.3.5 Vibe-Trading MCP research runner (advisory-only, CLI-triggered) =====
+-- Audit log for research review runs. execution_allowed is ALWAYS 0.
+-- No signal state, execution state, or broker data is ever modified.
+-- Triggered ONLY via CLI (npm run research:run-review); no cron/queue/hook.
+CREATE TABLE IF NOT EXISTS ResearchRun (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  signal_id INTEGER NOT NULL,
+  started_at TEXT NOT NULL,
+  finished_at TEXT,
+  status TEXT NOT NULL DEFAULT 'running',   -- running|completed|failed|timeout
+  tools_requested_json TEXT,                  -- tools we intended to call
+  tools_called_json TEXT,                     -- tools actually called
+  failures_json TEXT,                         -- list of failure descriptions
+  direct_market_data_available INTEGER NOT NULL DEFAULT 0,
+  fallback_web_used INTEGER NOT NULL DEFAULT 0,
+  review_id INTEGER,                          -- FK to ResearchReview.id (nullable)
+  forced INTEGER NOT NULL DEFAULT 0,
+  execution_allowed INTEGER NOT NULL DEFAULT 0,  -- always false
+  FOREIGN KEY(signal_id) REFERENCES Signal(id)
+);

@@ -45,6 +45,7 @@
     "research:export-signal": "node scripts/research_export_signal.mjs",
     "research:store-review": "node scripts/research_store_review.mjs",
     "research:prepare-review": "node scripts/research_prepare_review.mjs",
+    "research:run-review": "node scripts/research_run_review.mjs",
     "test": "node --test scripts/*.test.mjs"
   },
   "dependencies": {

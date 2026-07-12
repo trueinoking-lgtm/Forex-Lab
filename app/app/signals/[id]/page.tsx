@@ -189,6 +189,23 @@ export default function SignalDetailPage({ params }: { params: { id: string } })
           ))}
         </div>
       )}
+
+      {/* Run review instruction panel */}
+      <div style={{ marginTop: 24, border: "1px solid #1f2937", borderRadius: 8, padding: 16 }}>
+        <h3 style={{ color: "#5eead4", fontSize: 15, marginTop: 0, marginBottom: 8 }}>
+          Run Vibe Review
+        </h3>
+        <p style={{ color: "#9ca3af", fontSize: 13, marginBottom: 8 }}>
+          Run an advisory research review for this signal using the Vibe-Trading MCP server.
+          Reviews are research-only and cannot execute trades.
+        </p>
+        <pre style={{ color: "#5eead4", fontSize: 13, backgroundColor: "#0f0f1a", padding: 12, borderRadius: 6, overflow: "auto" }}>
+          npm run research:run-review -- --signal-id {signal.id}
+        </pre>
+        <p style={{ color: "#6b7280", fontSize: 12, marginTop: 8 }}>
+          Add <code style={{ color: "#9ca3af" }}>--force</code> to override the 24-hour deduplication window.
+        </p>
+      </div>
     </div>
   );
 }

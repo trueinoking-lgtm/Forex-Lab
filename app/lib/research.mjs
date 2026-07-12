@@ -73,7 +73,7 @@ const SECRET_VAL_RE = /(api[_-]?key|apikey|secret|token|password|bridge[_-]?toke
  * @param {unknown} obj
  * @returns {unknown}
  */
-function deepRedact(obj) {
+export function deepRedact(obj) {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== "object") return obj;
   if (Array.isArray(obj)) return obj.map(deepRedact);
