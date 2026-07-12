@@ -374,6 +374,37 @@ def version():
     }
 
 
+@app.get("/symbol-info")
+def symbol_info(symbol: str, _=Depends(_require_auth)):
+    """Read-only diagnostic: report the symbol's filling_mode and the SDK's
+    real ORDER_FILLING_* constant values so a retcode 10030 can be diagnosed
+    without placing an order."""
+    mt5 = _mt5()
+    m = _symbol_map().get(symbol, symbol)
+    info = mt5.symbol_info(m)
+    if not info:
+        return {"ok": False, "symbol": m, "error": "no symbol_info"}
+    return {
+        "ok": True,
+        "symbol": m,
+        "filling_mode": int(getattr(info, "filling_mode", 0) or 0),
+        "volume_min": float(info.volume_min),
+        "volume_step": float(info.volume_step),
+        "volume_max": float(info.volume_max),
+        "trade_mode": int(getattr(info, "trade_mode", 0) or 0),
+        "order_filling_constants": {
+            "ORDER_FILLING_RETURN": int(getattr(mt5, "ORDER_FILLING_RETURN", -1)),
+            "ORDER_FILLING_IOC": int(getattr(mt5, "ORDER_FILLING_IOC", -1)),
+            "ORDER_FILLING_FOK": int(getattr(mt5, "ORDER_FILLING_FOK", -1)),
+        },
+        "symbol_filling_constants": {
+            "SYMBOL_FILLING_RETURN": int(getattr(mt5, "SYMBOL_FILLING_RETURN", -1)),
+            "SYMBOL_FILLING_IOC": int(getattr(mt5, "SYMBOL_FILLING_IOC", -1)),
+            "SYMBOL_FILLING_FOK": int(getattr(mt5, "SYMBOL_FILLING_FOK", -1)),
+        },
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("BRIDGE_PORT", "8787"))
