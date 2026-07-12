@@ -27,6 +27,15 @@ from typing import Optional
 from fastapi import FastAPI, Header, HTTPException, Depends
 from pydantic import BaseModel
 
+# Load .env (MT5 creds, bridge token, DRY_RUN/autotrade/kill-switch) into the
+# process environment. Without this the running bridge ignores its own .env and
+# every trading endpoint 503s ("bridge token not configured").
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:  # pragma: no cover - dotenv is in requirements.txt
+    pass
+
 # Shared, zero-dependency validation (trade_mode mapping, price geometry, staleness).
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bridge_validation import (  # noqa: E402
