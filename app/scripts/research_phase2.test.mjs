@@ -30,6 +30,8 @@ function useTempDb() {
   const destPath = join(tempDir, "forex_lab.db");
   execFileSync("sqlite3", [prodDbPath, `.backup ${destPath}`]);
   tempDb = new Database(destPath);
+  // Clear any pre-existing reviews so tests start from a clean state.
+  tempDb.exec("DELETE FROM ResearchReview");
   process.env.FOREX_LAB_DB_PATH = destPath;
   return tempDir;
 }
