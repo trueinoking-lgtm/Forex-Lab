@@ -193,6 +193,33 @@ def normalize_volume(units: float, info: VolumeInfo) -> dict:
     }
 
 
+def _order_check_passed(result, mt5=None) -> bool:
+    """MqlTradeCheckResult.retcode == 0 means the validation passed.
+
+    This is the pre-send order_check; its retcode 0 is NOT the same as an
+    order_send trade-server retcode (which uses 10008/10009/10010). So this
+    helper must ONLY be used for order_check.
+    """
+    if result is None:
+        return False
+    return int(getattr(result, "retcode", 1)) == 0
+
+
+def _order_send_succeeded(mt5, result) -> bool:
+    """order_send uses trade-server retcodes, not 0.
+
+    TRADE_RETCODE_PLACED = 10008, TRADE_RETCODE_DONE = 10009,
+    TRADE_RETCODE_DONE_PARTIAL = 10010.
+    """
+    if result is None:
+        return False
+    return int(getattr(result, "retcode", 1)) in {
+        int(getattr(mt5, "TRADE_RETCODE_DONE", 10009)),
+        int(getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010)),
+        int(getattr(mt5, "TRADE_RETCODE_PLACED", 10008)),
+    }
+
+
 def execute_demo_order(mt5, request: dict, symbol_mapped: str,
                        broker_mode: str = "demo") -> dict:
     """Send a demo order after running mt5.order_check.
@@ -254,7 +281,7 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
             last_check = None
             continue
         last_check = check
-        if getattr(check, "retcode", 1) == mt5.TRADE_RETCODE_DONE:
+        if _order_check_passed(check):
             chosen_mode = mode
             chosen_name = name
             break
@@ -286,7 +313,7 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
 
     # --- live send ---
     result = mt5.order_send(request)
-    if getattr(result, "retcode", 1) != mt5.TRADE_RETCODE_DONE:
+    if not _order_send_succeeded(mt5, result):
         return {
             "status": "rejected",
             "rejection_reason": f"mt5 retcode {getattr(result, 'retcode', '?')}",
@@ -306,14 +333,33 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
             "volume_step": volume_step,
             "volume_max": volume_max,
         }
+
+    # order_send succeeded. Distinguish terminal states:
+    #   DONE (10009): fully filled.
+    #   DONE_PARTIAL (10010): partially filled -> persist actual volume + flag.
+    #   PLACED (10008): accepted/placed -> do NOT claim filled until
+    #                   position/deal confirmation (we surface deal/order ids).
+    retcode = int(getattr(result, "retcode", 1))
+    filled_volume = float(getattr(result, "volume", 0.0))
+    requested_volume = float(vol or 0.0)
+    is_partial = (
+        retcode == int(getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010))
+        or (requested_volume > 0 and 0 < filled_volume < requested_volume)
+    )
     return {
-        "status": "filled",
+        "status": "placed" if retcode == int(getattr(mt5, "TRADE_RETCODE_PLACED", 10008)) else "filled",
+        "partial": is_partial,
         "order_id": str(getattr(result, "order", "")),
+        "deal_id": str(getattr(result, "deal", "")),
+        "position_id": str(getattr(result, "position", "")),
         "filled_entry": float(getattr(result, "price", 0.0)),
+        "filled_volume": filled_volume,
+        "requested_volume": requested_volume,
         "spread_at_entry": request.get("spread_at_entry", 0.0),
         "slippage": 0.0,
         "broker_mode": broker_mode,
         "type_filling_used": request.get("type_filling"),
         "type_filling_name": chosen_name,
+        "mt5_comment": getattr(result, "comment", "") or "",
         "volume": vol,
     }

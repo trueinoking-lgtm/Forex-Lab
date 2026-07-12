@@ -66,11 +66,15 @@ class Position:
 @dataclass
 class OrderStatus:
     order_id: str
-    status: str                     # pending|filled|rejected|closed
+    status: str                     # pending|filled|placed|rejected|closed
     filled_entry: Optional[float] = None
     rejection_reason: Optional[str] = None
     spread_at_entry: Optional[float] = None
     slippage: Optional[float] = None
+    deal_id: Optional[str] = None
+    position_id: Optional[str] = None
+    type_filling_used: Optional[str] = None
+    partial: bool = False
     raw_redacted: str = ""
 
 

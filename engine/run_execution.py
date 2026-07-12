@@ -209,6 +209,24 @@ def _ensure_signal_lineage_col(db: sqlite3.Connection) -> None:
         db.execute("ALTER TABLE Signal ADD COLUMN original_signal_id INTEGER")
 
 
+def _ensure_demo_order_cols(db: sqlite3.Connection) -> None:
+    """Idempotent migration: add broker result fields to DemoExecutionOrder.
+
+    Adds deal_id, position_id, type_filling_used, partial so the live bridge
+    result (order/deal/position ids, filling mode, partial-fill flag) can be
+    persisted. Safe to call on every open — no-op once columns exist.
+    """
+    cols = {r[1] for r in db.execute("PRAGMA table_info(DemoExecutionOrder)").fetchall()}
+    for col, ctype in (
+        ("deal_id", "TEXT"),
+        ("position_id", "TEXT"),
+        ("type_filling_used", "TEXT"),
+        ("partial", "INTEGER"),
+    ):
+        if col not in cols:
+            db.execute(f"ALTER TABLE DemoExecutionOrder ADD COLUMN {col} {ctype}")
+
+
 def _insert_fresh_signal(db: sqlite3.Connection, *, pair, strategy, direction, entry,
                          stop_loss, take_profit, status, signal_score, regime,
                          generated_at, units, original_signal_id) -> int:
@@ -302,20 +320,24 @@ def cmd_demo_order(args) -> int:
         return 2
     # Passed — submit to adapter.
     status = adapter.place_demo_order(order)
-    if status.status == "filled":
-        db.execute(
+    last_id = None
+    if status.status in ("filled", "placed"):
+        cur = db.execute(
             """INSERT INTO DemoExecutionOrder
                (signal_id,broker,broker_mode,symbol,side,requested_entry,filled_entry,
                 stop_loss,take_profit,units,requested_at,filled_at,status,
-                spread_at_entry,slippage,raw_response_redacted_json)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                spread_at_entry,slippage,deal_id,position_id,type_filling_used,
+                partial,raw_response_redacted_json)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (args.signal_id, adapter.name, "demo", order.symbol, order.side, requested_entry,
              status.filled_entry, order.stop_loss, order.take_profit, order.units,
-             _now(), _now(), "filled", status.spread_at_entry, status.slippage,
-             status.raw_redacted),
+             _now(), _now(), status.status, status.spread_at_entry, status.slippage,
+             status.deal_id, status.position_id, status.type_filling_used,
+             status.partial, status.raw_redacted),
         )
+        last_id = cur.lastrowid
     else:
-        db.execute(
+        cur = db.execute(
             """INSERT INTO DemoExecutionOrder
                (signal_id,broker,broker_mode,symbol,side,requested_entry,stop_loss,
                 take_profit,units,requested_at,status,rejection_reason,raw_response_redacted_json)
@@ -324,11 +346,25 @@ def cmd_demo_order(args) -> int:
              order.stop_loss, order.take_profit, order.units, _now(), status.rejection_reason,
              status.raw_redacted),
         )
+        last_id = cur.lastrowid
     db.commit()
     print(json.dumps({
-        "status": status.status, "order_id": status.order_id,
-        "filled_entry": status.filled_entry, "spread": status.spread_at_entry,
-        "slippage": status.slippage, "risk": res.risk,
+        "broker": adapter.name,
+        "status": status.status,
+        "order_id": status.order_id,
+        "deal_id": status.deal_id,
+        "position_id": status.position_id,
+        "type_filling_used": status.type_filling_used,
+        "partial": status.partial,
+        "filled_entry": status.filled_entry,
+        "spread": status.spread_at_entry,
+        "slippage": status.slippage,
+        "rejection_reason": status.rejection_reason,
+        "demo_execution_order_id": last_id,
+        "signal_id": args.signal_id,
+        "signal_units": order.units,
+        "prepared_order_units": order.units,
+        "broker_mode": "demo",
     }, indent=2))
     return 0
 
@@ -926,6 +962,7 @@ def cmd_refresh_signal(args) -> int:
         print("REFRESH REJECTED: allow_live_orders=true"); return 2
     db = _db()
     _ensure_signal_lineage_col(db)
+    _ensure_demo_order_cols(db)
     # 1) require an existing approved paper Signal
     orig = db.execute(
         "SELECT * FROM Signal WHERE id=?", (args.signal_id,)

@@ -116,6 +116,10 @@ class RemoteMT5BridgeAdapter(ExecutionAdapter):
             rejection_reason=body.get("rejection_reason"),
             spread_at_entry=body.get("spread_at_entry"),
             slippage=body.get("slippage"),
+            deal_id=str(body.get("deal_id", "")) or None,
+            position_id=str(body.get("position_id", "")) or None,
+            type_filling_used=body.get("type_filling_used"),
+            partial=bool(body.get("partial", False)),
             raw_redacted=redact(json.dumps({k: v for k, v in body.items()
                                             if k not in ("order_id",)})),
         )
