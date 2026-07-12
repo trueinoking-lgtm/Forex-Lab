@@ -244,6 +244,25 @@ def normalize_volume(units: float, info: VolumeInfo) -> dict:
     }
 
 
+def _safe_last_error(mt5) -> Optional[dict]:
+    """Capture mt5.last_error() (MT5GetLastError object) without raising.
+
+    Returns None if the SDK is unavailable or the call fails. No secrets are
+    present in the error struct (it is a code + description).
+    """
+    try:
+        err = mt5.last_error()
+    except Exception:
+        return None
+    if err is None:
+        return None
+    try:
+        return {"code": int(getattr(err, "code", -1)),
+                "description": str(getattr(err, "description", ""))}
+    except Exception:
+        return None
+
+
 def _order_check_passed(result, mt5=None) -> bool:
     """MqlTradeCheckResult.retcode == 0 means the validation passed.
 
@@ -316,26 +335,22 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
     #   * Exchange Execution / unknown: FOK/IOC per flags, then RETURN fallback.
     fm = int(getattr(info, "filling_mode", 0) or 0)
     exemode = int(getattr(info, "trade_exemode", 0) or 0)
-    flagged = []
-    if fm == 0:
-        flagged = [(mt5.ORDER_FILLING_FOK, "FOK"), (mt5.ORDER_FILLING_IOC, "IOC")]
-    else:
-        if fm & 1:  # SYMBOL_FILLING_FOK
-            flagged.append((mt5.ORDER_FILLING_FOK, "FOK"))
-        if fm & 2:  # SYMBOL_FILLING_IOC
-            flagged.append((mt5.ORDER_FILLING_IOC, "IOC"))
-    return_mode = (mt5.ORDER_FILLING_RETURN, "RETURN")
-    if exemode == 2:
-        candidate_modes = [return_mode, *flagged]
-    else:
-        candidate_modes = [*flagged, return_mode]
-    # De-dupe (a symbol could theoretically list RETURN via flags — it doesn't,
-    # but guard anyway).
-    seen, candidate_modes = set(), []
-    for mode, name in ([return_mode, *flagged] if exemode == 2 else [*flagged, return_mode]):
-        if mode not in seen:
-            seen.add(mode)
-            candidate_modes.append((mode, name))
+    # Candidate modes are derived ONLY from the symbol's filling_mode flags:
+    #   flag 1 = SYMBOL_FILLING_FOK, flag 2 = SYMBOL_FILLING_IOC.
+    # RETURN has NO SYMBOL_FILLING_MODE flag and is NOT valid for a market deal
+    # under Market Execution (SYMBOL_TRADE_EXECUTION_MARKET) per MQL5 docs, so we
+    # never add it. This symbol (filling_mode=1) offers FOK only -> [FOK].
+    candidate_modes = []
+    if fm & 1:  # SYMBOL_FILLING_FOK
+        candidate_modes.append((mt5.ORDER_FILLING_FOK, "FOK"))
+    if fm & 2:  # SYMBOL_FILLING_IOC
+        candidate_modes.append((mt5.ORDER_FILLING_IOC, "IOC"))
+    if not candidate_modes:
+        # Unknown flags -> try both common market-execution modes.
+        candidate_modes = [
+            (mt5.ORDER_FILLING_FOK, "FOK"),
+            (mt5.ORDER_FILLING_IOC, "IOC"),
+        ]
 
     # MT5 MqlTradeRequest accepts only these keys. Debug/context fields that the
     # bridge attaches (requested_units, calculated_lots, spread_at_entry, ...) must
@@ -351,9 +366,16 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
     ctx = {k: v for k, v in request.items() if k not in _MT5_REQ_KEYS}
 
     last_check = None
+    last_error = None
     for mode, name in candidate_modes:
         attempt = dict(clean)
         attempt["type_filling"] = mode
+        # For TRADE_ACTION_DEAL under SYMBOL_TRADE_EXECUTION_MARKET the terminal
+        # fills at market; MT5 requires price to be 0 (a fixed price with a
+        # filling policy such as FOK is rejected as INVALID_FILL). For Exchange
+        # Execution we keep the computed price so the limit can match.
+        if exemode == 2:  # Market Execution
+            attempt["price"] = 0
         check = mt5.order_check(attempt)
         last_check = check
         if check is not None and not _order_check_passed(check):
@@ -362,6 +384,9 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
             # fall through. Anything else (bad price/volume/geometry) is fatal.
             if rc == int(getattr(mt5, "TRADE_RETCODE_UNSUPPORTED_FILLING_MODE", 10030)):
                 continue
+            err = _safe_last_error(mt5)
+            if err is not None:
+                last_error = err
             return {
                 "status": "rejected",
                 "rejection_reason": (
@@ -397,12 +422,16 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
         ):
             continue  # try next filling mode
         # Any other order_send failure is fatal (not a filling-mode issue).
+        err = _safe_last_error(mt5)
+        if err is not None:
+            last_error = err
         return {
             "status": "rejected",
             "rejection_reason": f"mt5 {trade_retcode_name(mt5, rc)} ({rc})",
             "mt5_retcode": rc,
             "mt5_retcode_name": trade_retcode_name(mt5, rc),
             "mt5_comment": getattr(result, "comment", "") or "",
+            "mt5_last_error": last_error,
             "sent_volume": vol,
             "request_symbol": symbol_mapped,
             "request_side": request.get("type"),
@@ -420,12 +449,16 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
         }
     else:
         # All candidates exhausted without a successful order_send.
+        err = _safe_last_error(mt5)
+        if err is not None:
+            last_error = err
         return {
             "status": "rejected",
             "rejection_reason": (
                 f"all filling modes rejected. candidates tried: "
                 f"{[n for _, n in candidate_modes]}"
             ),
+            "mt5_last_error": last_error,
             "type_filling_used": None,
             "filling_mode_candidates": [n for _, n in candidate_modes],
             "symbol_filling_mode": fm,
