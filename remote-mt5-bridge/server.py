@@ -375,7 +375,7 @@ def kill_switch(on: bool = True, _=Depends(_require_auth)):
 
 # Build marker — bump whenever server.py / bridge_validation.py change so a
 # stale process holding port 8787 can be detected remotely (curl /version).
-BRIDGE_BUILD_ID = "2026-07-12.filling-mode-fix"
+BRIDGE_BUILD_ID = "2026-07-13.c23e357-zero-spread-policy"
 
 
 @app.get("/version")
