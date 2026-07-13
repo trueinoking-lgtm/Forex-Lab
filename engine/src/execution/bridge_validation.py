@@ -168,6 +168,15 @@ class ZeroSpreadPolicy:
             return False
         return broker.lower() in self.zero_spread_demo_brokers
 
+    def allows_identity(self, company: str, server: str) -> bool:
+        """True if EITHER the broker's company OR server name is whitelisted.
+
+        The upstream demo broker reports ``company='MetaQuotes Ltd.'`` (vendor)
+        and ``server='MetaQuotes-Demo'`` (the demo server). The zero-spread
+        exception must key off the ``server`` value, so we test both fields.
+        """
+        return self.allows_zero_spread(company) or self.allows_zero_spread(server)
+
 
 def _advisory_weekend_closed(now: Optional[datetime] = None) -> bool:
     """Advisory only: True during the widely-known FX weekend close
@@ -248,6 +257,8 @@ def check_symbol_tradable(
     now: Optional[datetime] = None,
     broker: str = "unknown",
     broker_mode: str = "demo",
+    broker_company: str = "",
+    broker_server: str = "",
     zero_spread_policy: Optional[ZeroSpreadPolicy] = None,
 ) -> tuple[bool, Optional[str], list]:
     """Tick-evidence market-open preflight (broker-aware zero-spread policy).
@@ -282,6 +293,7 @@ def check_symbol_tradable(
     warnings: list = []
     policy = zero_spread_policy or ZeroSpreadPolicy()
     is_demo = str(broker_mode).lower() == "demo"
+    zero_spread_allowed = policy.allows_identity(broker_company, broker_server)
 
     for label, (tb, ta, tts) in (
         ("first", (tick1_bid, tick1_ask, tick1_ts)),
@@ -295,14 +307,17 @@ def check_symbol_tradable(
         if zero_spread:
             # Zero-spread tick: allowed ONLY for an explicitly configured demo
             # broker (never real/unknown).
-            if is_demo and policy.allows_zero_spread(broker):
+            if is_demo and zero_spread_allowed:
                 warnings.append(
                     f"zero_spread_tick: {label} tick bid==ask ({tb}) on demo "
-                    f"broker {broker!r} — allowed per explicit zero-spread policy")
+                    f"broker {broker!r} (company={broker_company!r}, "
+                    f"server={broker_server!r}) — allowed per explicit "
+                    f"zero-spread policy")
                 continue
             return False, (f"{label} tick zero-spread (bid==ask) rejected: "
-                           f"broker {broker!r} (mode={broker_mode}) is not "
-                           f"explicitly whitelisted for zero-spread ticks"), warnings
+                           f"broker {broker!r} (company={broker_company!r}, "
+                           f"server={broker_server!r}, mode={broker_mode}) is "
+                           f"not explicitly whitelisted for zero-spread ticks"), warnings
         return False, f"{label} tick invalid: {reason}", warnings
 
     # ---- advisory-only diagnostics (never reject) ----

@@ -1267,10 +1267,16 @@ def cmd_remote_mt5_order(args) -> int:
         # reports company/server (e.g. "MetaQuotes-Demo"); we feed whichever is
         # set into the preflight so the zero-spread exception applies ONLY to an
         # explicitly whitelisted demo broker, never to real/unknown ones.
+        broker_identity = "unknown"
+        broker_mode = "demo"
+        broker_company = ""
+        broker_server = ""
         try:
             acct = a.get_account()
             broker_identity = acct.company or acct.server or "unknown"
             broker_mode = acct.broker_mode or "demo"
+            broker_company = acct.company or ""
+            broker_server = acct.server or ""
         except Exception:
             broker_identity = "unknown"
             broker_mode = "demo"
@@ -1278,6 +1284,7 @@ def cmd_remote_mt5_order(args) -> int:
             q1.bid, q1.ask, q1.timestamp, q2.bid, q2.ask, q2.timestamp,
             session_open=q1.session_open,
             broker=broker_identity, broker_mode=broker_mode,
+            broker_company=broker_company, broker_server=broker_server,
         )
         for w in warnings:
             print(f"ADVISORY: preflight: {w}")

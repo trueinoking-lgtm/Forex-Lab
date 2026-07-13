@@ -1364,11 +1364,13 @@ def test_preflight_weekend_calendar_fresh_tick_allowed_with_warning():
 # ---- Broker-specific zero-spread policy (MetaQuotes-Demo) ----
 
 def test_preflight_metatrader_demo_zero_spread_allowed_with_warning():
-    # MetaQuotes-Demo + fresh bid==ask -> ALLOWED with zero_spread_tick warning.
+    # MetaQuotes-Demo (via server field) + fresh bid==ask -> ALLOWED with
+    # zero_spread_tick warning. The exception keys off the broker server value.
     ok, reason, warnings = check_symbol_tradable(
         1.14140, 1.14140, _ts(-1),
         1.14141, 1.14141, _ts(-1),
         broker="MetaQuotes-Demo", broker_mode="demo",
+        broker_company="MetaQuotes Ltd.", broker_server="MetaQuotes-Demo",
     )
     assert ok is True and reason is None
     assert any("zero_spread_tick" in w for w in warnings)
@@ -1425,5 +1427,32 @@ def test_preflight_realtime_zero_spread_blocks_real_broker():
         broker="MetaQuotes-Demo", broker_mode="real",
     )
     assert ok is False and "not" in reason
+
+
+def test_preflight_zero_spread_matches_server_not_company():
+    # Regression: upstream demo broker reports company='MetaQuotes Ltd.'
+    # (vendor) but server='MetaQuotes-Demo' (the demo server to whitelist).
+    # The exception must key off server, so company-only does NOT match unless
+    # server also matches. Here server matches -> allowed.
+    ok, reason, warnings = check_symbol_tradable(
+        1.14140, 1.14140, _ts(-1),
+        1.14141, 1.14141, _ts(-1),
+        broker="MetaQuotes Ltd.", broker_mode="demo",
+        broker_company="MetaQuotes Ltd.", broker_server="MetaQuotes-Demo",
+    )
+    assert ok is True
+    assert any("zero_spread_tick" in w for w in warnings)
+
+
+def test_preflight_zero_spread_company_only_no_server_unlisted_blocked():
+    # company holds the vendor name and server is empty/unknown -> NOT whitelisted
+    # (the whitelist is keyed to 'MetaQuotes-Demo', which is the server value).
+    ok, reason, _ = check_symbol_tradable(
+        1.14140, 1.14140, _ts(-1),
+        1.14141, 1.14141, _ts(-1),
+        broker="MetaQuotes Ltd.", broker_mode="demo",
+        broker_company="MetaQuotes Ltd.", broker_server="",
+    )
+    assert ok is False and "not explicitly whitelisted" in reason
 
 
