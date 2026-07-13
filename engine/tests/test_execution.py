@@ -1361,3 +1361,69 @@ def test_preflight_weekend_calendar_fresh_tick_allowed_with_warning():
     assert any("weekend" in w for w in warnings)
 
 
+# ---- Broker-specific zero-spread policy (MetaQuotes-Demo) ----
+
+def test_preflight_metatrader_demo_zero_spread_allowed_with_warning():
+    # MetaQuotes-Demo + fresh bid==ask -> ALLOWED with zero_spread_tick warning.
+    ok, reason, warnings = check_symbol_tradable(
+        1.14140, 1.14140, _ts(-1),
+        1.14141, 1.14141, _ts(-1),
+        broker="MetaQuotes-Demo", broker_mode="demo",
+    )
+    assert ok is True and reason is None
+    assert any("zero_spread_tick" in w for w in warnings)
+
+
+def test_preflight_unknown_broker_zero_spread_blocked():
+    # non-demo/unknown broker + bid==ask -> BLOCKED (not whitelisted).
+    ok, reason, warnings = check_symbol_tradable(
+        1.14140, 1.14140, _ts(-1),
+        1.14141, 1.14141, _ts(-1),
+        broker="some-real-broker", broker_mode="demo",
+    )
+    assert ok is False
+    assert "zero-spread" in reason
+    assert not any("zero_spread_tick" in w for w in warnings)
+
+
+def test_preflight_positive_spread_allowed():
+    # bid < ask -> ALLOWED (normal case, no warning needed).
+    ok, reason, warnings = check_symbol_tradable(
+        1.14140, 1.14143, _ts(-1),
+        1.14140, 1.14143, _ts(-1),
+        broker="unknown", broker_mode="demo",
+    )
+    assert ok is True and reason is None
+
+
+def test_preflight_bid_gt_ask_blocked_malformed():
+    # bid > ask -> ALWAYS blocked as malformed, regardless of broker/session.
+    ok, reason, _ = check_symbol_tradable(
+        1.14143, 1.14140, _ts(-1),
+        1.14143, 1.14140, _ts(-1),
+        broker="MetaQuotes-Demo", broker_mode="demo",
+    )
+    assert ok is False and "bid > ask" in reason
+
+
+def test_preflight_stale_zero_spread_blocked():
+    # Stale zero-spread tick -> BLOCKED (fresh timestamp is the primary gate).
+    ok, reason, _ = check_symbol_tradable(
+        1.14140, 1.14140, _ts(-120),   # 2 minutes old -> stale
+        1.14140, 1.14140, _ts(-120),
+        broker="MetaQuotes-Demo", broker_mode="demo",
+    )
+    assert ok is False and "stale" in reason
+
+
+def test_preflight_realtime_zero_spread_blocks_real_broker():
+    # Even with a fresh zero-spread tick, a non-demo broker is never granted the
+    # exception. Explicitly guards against silent global application.
+    ok, reason, _ = check_symbol_tradable(
+        1.14140, 1.14140, _ts(-1),
+        1.14141, 1.14141, _ts(-1),
+        broker="MetaQuotes-Demo", broker_mode="real",
+    )
+    assert ok is False and "not" in reason
+
+

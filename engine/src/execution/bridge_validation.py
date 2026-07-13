@@ -137,6 +137,37 @@ _ADVISORY_FX_WEEK_CLOSE_HOUR = 22    # 22:00 UTC
 # How stale a tick may be before we consider the feed dead (seconds).
 DEFAULT_MAX_TICK_AGE_SECONDS = 30.0
 
+# ---- Broker-specific zero-spread policy (MetaQuotes-Demo) ----
+# Upstream MetaQuotes-Demo behaviour (confirmed by Kade's PC diagnostics):
+#   * symbol_info bid/ask can be EQUAL (zero spread) on most live EURUSD ticks
+#   * occasional ticks carry a 1-2 point spread
+#   * timestamps AND prices continue updating (feed is live)
+# The preflight must therefore ALLOW a fresh bid==ask tick ONLY for an
+# explicitly whitelisted demo broker (e.g. "MetaQuotes-Demo"). For any
+# non-demo or unknown broker, bid==ask is treated as malformed and BLOCKED.
+# This is NEVER applied silently to real/live brokers.
+ZERO_SPREAD_DEMO_BROKERS = frozenset({"MetaQuotes-Demo"})
+
+
+class ZeroSpreadPolicy:
+    """Controls whether a fresh bid==ask (zero-spread) tick is permitted.
+
+    - ``zero_spread_demo_brokers``: demo-broker identifiers for which a fresh
+      bid==ask tick is allowed (with a ``zero_spread_tick`` warning). The
+      identifier is matched case-insensitively against the broker's
+      ``company`` or ``server`` name reported by the bridge.
+    - For any broker NOT in this set (including all real/live brokers and any
+      unknown/empty identity), a bid==ask tick is rejected as malformed.
+    """
+
+    def __init__(self, brokers=frozenset(ZERO_SPREAD_DEMO_BROKERS)):
+        self.zero_spread_demo_brokers = frozenset(b.lower() for b in brokers)
+
+    def allows_zero_spread(self, broker: str) -> bool:
+        if not broker:
+            return False
+        return broker.lower() in self.zero_spread_demo_brokers
+
 
 def _advisory_weekend_closed(now: Optional[datetime] = None) -> bool:
     """Advisory only: True during the widely-known FX weekend close
@@ -171,26 +202,41 @@ def tick_age_seconds(timestamp: Optional[str], now: Optional[datetime] = None) -
 
 def validate_tick(bid, ask, timestamp: Optional[str],
                   max_age_seconds: float = DEFAULT_MAX_TICK_AGE_SECONDS,
-                  now: Optional[datetime] = None) -> Optional[str]:
-    """Validate a single broker tick. Return a rejection reason string, or None
-    if the tick is acceptable (finite, positive, bid<ask, recent timestamp).
-    A fresh valid tick is sufficient evidence of an open market.
+                  now: Optional[datetime] = None) -> Optional[tuple]:
+    """Validate a single broker tick.
+
+    Returns None when the tick passes the GLOBAL checks, or a 2-tuple
+    ``(reason, zero_spread)`` when it fails, where ``zero_spread`` is True
+    iff the only problem is ``bid == ask`` (a zero-spread tick). The caller
+    (check_symbol_tradable) decides whether a zero-spread tick is permitted
+    for the specific broker.
+
+    GLOBAL checks (apply to EVERY broker, demo or real):
+      * bid/ask numeric and finite
+      * bid > 0 and ask > 0
+      * bid <= ask                       (bid == ask is a zero-spread tick)
+      * timestamp present and parseable
+      * tick age <= max_age_seconds      (staleness is the primary liveness gate)
     """
     try:
         b = float(bid); a = float(ask)
     except (TypeError, ValueError):
-        return "tick bid/ask not numeric"
+        return ("tick bid/ask not numeric", False)
     if not (math.isfinite(b) and math.isfinite(a)):
-        return "tick bid/ask not finite"
+        return ("tick bid/ask not finite", False)
     if b <= 0 or a <= 0:
-        return "tick bid/ask not positive"
-    if b >= a:
-        return f"tick bid >= ask ({b} >= {a})"
+        return ("tick bid/ask not positive", False)
+    if b > a:
+        # Malformed: a bid above the ask can never be valid. Always reject.
+        return (f"tick bid > ask (malformed): {b} > {a}", False)
     age = tick_age_seconds(timestamp, now=now)
     if age is None:
-        return "tick timestamp missing/unparseable"
+        return ("tick timestamp missing/unparseable", False)
     if age > float(max_age_seconds):
-        return f"tick stale: age {age:.0f}s > {max_age_seconds:.0f}s max"
+        return (f"tick stale: age {age:.0f}s > {max_age_seconds:.0f}s max", False)
+    if b == a:
+        # Zero-spread tick: passes GLOBAL checks but needs a broker policy.
+        return (f"tick bid == ask (zero-spread): {b}", True)
     return None
 
 
@@ -200,36 +246,65 @@ def check_symbol_tradable(
     session_open: Optional[bool] = None,
     max_tick_age_seconds: float = DEFAULT_MAX_TICK_AGE_SECONDS,
     now: Optional[datetime] = None,
+    broker: str = "unknown",
+    broker_mode: str = "demo",
+    zero_spread_policy: Optional[ZeroSpreadPolicy] = None,
 ) -> tuple[bool, Optional[str], list]:
-    """Tick-evidence market-open preflight.
+    """Tick-evidence market-open preflight (broker-aware zero-spread policy).
 
     Returns (tradable, reject_reason, warnings).
 
-    REJECT (tradable=False) ONLY when a tick is invalid or stale:
+    REJECT (tradable=False) when ANY tick fails a GLOBAL check:
       * bid/ask not numeric / not finite / not positive
-      * bid >= ask
-      * missing or unparseable timestamp
-      * tick age beyond ``max_tick_age_seconds`` (default 30s)
+      * bid > ask                                    -> MALFORMED, always blocked
+      * missing / unparseable / stale timestamp        -> FEED DEAD, blocked
+      * bid == ask (zero-spread) for a broker that is NOT whitelisted for it
+        -> blocked unless the broker is an explicitly configured demo broker
+
+    ALLOW a zero-spread (bid == ask) tick ONLY when:
+      * it is fresh (timestamp present, age within threshold), AND
+      * the broker identity matches an explicitly configured demo broker
+        (default whitelist: "MetaQuotes-Demo"), AND broker_mode == "demo".
+      In that case the tick is allowed and a ``zero_spread_tick`` WARNING is
+      emitted. Real/live brokers and any unknown broker are NEVER granted this
+      exception — the zero-spread policy is demo-only and explicit.
 
     ADVISORY ONLY (never a reject) — surfaced in ``warnings``:
-      * ``session_open is False`` — diagnostic metadata only; the real MT5
-        symbol_info() does not expose this field, so it is not a trusted gate.
+      * ``session_open is False`` — diagnostic metadata only.
       * Inside the FX weekend window — a fresh valid tick still proceeds.
 
     The broker order attempt (TRADE_RETCODE_MARKET_CLOSED = 10018) remains the
-    authoritative closure signal. Two identical-but-fresh ticks are allowed; the
-    price is NOT required to change between samples.
+    authoritative closure signal. Two identical-but-fresh ticks are allowed;
+    the price is NOT required to change between samples. Fresh timestamp is the
+    primary liveness evidence.
     """
     now = now or datetime.now(timezone.utc)
     warnings: list = []
-    r1 = validate_tick(tick1_bid, tick1_ask, tick1_ts,
-                       max_age_seconds=max_tick_age_seconds, now=now)
-    if r1:
-        return False, f"first tick invalid: {r1}", warnings
-    r2 = validate_tick(tick2_bid, tick2_ask, tick2_ts,
-                       max_age_seconds=max_tick_age_seconds, now=now)
-    if r2:
-        return False, f"second tick invalid: {r2}", warnings
+    policy = zero_spread_policy or ZeroSpreadPolicy()
+    is_demo = str(broker_mode).lower() == "demo"
+
+    for label, (tb, ta, tts) in (
+        ("first", (tick1_bid, tick1_ask, tick1_ts)),
+        ("second", (tick2_bid, tick2_ask, tick2_ts)),
+    ):
+        res = validate_tick(tb, ta, tts,
+                            max_age_seconds=max_tick_age_seconds, now=now)
+        if res is None:
+            continue  # globally valid (incl. positive spread)
+        reason, zero_spread = res
+        if zero_spread:
+            # Zero-spread tick: allowed ONLY for an explicitly configured demo
+            # broker (never real/unknown).
+            if is_demo and policy.allows_zero_spread(broker):
+                warnings.append(
+                    f"zero_spread_tick: {label} tick bid==ask ({tb}) on demo "
+                    f"broker {broker!r} — allowed per explicit zero-spread policy")
+                continue
+            return False, (f"{label} tick zero-spread (bid==ask) rejected: "
+                           f"broker {broker!r} (mode={broker_mode}) is not "
+                           f"explicitly whitelisted for zero-spread ticks"), warnings
+        return False, f"{label} tick invalid: {reason}", warnings
+
     # ---- advisory-only diagnostics (never reject) ----
     if session_open is False:
         warnings.append(

@@ -1263,9 +1263,21 @@ def cmd_remote_mt5_order(args) -> int:
                               "broker_mode": "demo", "signal_id": getattr(signal, "id", None),
                               "rejection_reason": reason}, indent=2))
             return 2
+        # Broker identity for the demo-specific zero-spread policy. The bridge
+        # reports company/server (e.g. "MetaQuotes-Demo"); we feed whichever is
+        # set into the preflight so the zero-spread exception applies ONLY to an
+        # explicitly whitelisted demo broker, never to real/unknown ones.
+        try:
+            acct = a.get_account()
+            broker_identity = acct.company or acct.server or "unknown"
+            broker_mode = acct.broker_mode or "demo"
+        except Exception:
+            broker_identity = "unknown"
+            broker_mode = "demo"
         tradable, preason, warnings = check_symbol_tradable(
             q1.bid, q1.ask, q1.timestamp, q2.bid, q2.ask, q2.timestamp,
             session_open=q1.session_open,
+            broker=broker_identity, broker_mode=broker_mode,
         )
         for w in warnings:
             print(f"ADVISORY: preflight: {w}")

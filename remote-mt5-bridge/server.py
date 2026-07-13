@@ -204,9 +204,14 @@ def account(_=Depends(_require_auth)):
     mt5 = _mt5()
     _ensure_demo_account(mt5)
     info = mt5.account_info()
+    # company / server identify the broker (e.g. "MetaQuotes-Demo" / the
+    # specific demo server). The VPS preflight uses these to apply
+    # broker-specific policies (e.g. the zero-spread exception). Not secrets.
     return {
         "broker": "mt5_demo",
         "broker_mode": "demo",
+        "company": str(getattr(info, "company", "") or ""),
+        "server": str(getattr(info, "server", "") or ""),
         "balance": float(info.balance),
         "equity": float(info.equity),
         "currency": str(info.currency or "USD"),

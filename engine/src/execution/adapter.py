@@ -39,6 +39,11 @@ class AccountInfo:
     broker_mode: str                # always 'demo'
     balance: float
     currency: str = "USD"
+    # Broker identity (company/server) reported by the bridge's account_info().
+    # Used by the preflight to apply broker-specific policies (e.g. the
+    # MetaQuotes-Demo zero-spread exception). Empty when unknown.
+    company: str = ""
+    server: str = ""
     raw_redacted: str = ""
 
 

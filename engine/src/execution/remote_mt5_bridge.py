@@ -87,6 +87,8 @@ class RemoteMT5BridgeAdapter(ExecutionAdapter):
             broker=self.name, broker_mode="demo",
             balance=float(body.get("balance", 0.0)),
             currency=str(body.get("currency", "USD")),
+            company=str(body.get("company", "") or ""),
+            server=str(body.get("server", "") or ""),
             raw_redacted=redact(json.dumps({k: v for k, v in body.items() if k != "login"})),
         )
 
