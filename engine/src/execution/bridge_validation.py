@@ -9,6 +9,7 @@ target is self-contained (the PC bridge ships without the engine).
 """
 from __future__ import annotations
 
+import math
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -105,3 +106,137 @@ def is_stale_signal(
     if age is None:
         return False
     return age > float(max_age_minutes)
+
+
+# ---- Market-session preflight (revised, tick-evidence based) ----
+# Authoritative source of "is the market open" is the BROKER:
+#   * a FRESH, VALID tick is sufficient evidence the market is live, OR
+#   * TRADE_RETCODE_MARKET_CLOSED (10018) returned on the order attempt itself.
+# Design rules (per Kade):
+#   * A fresh tick (finite, positive, bid<ask, recent timestamp) is enough to
+#     proceed. We do NOT require the price to change between two samples — two
+#     identical fresh ticks are NOT proof the market is closed.
+#   * session_open (from symbol_info().session_open, IF present AND a real bool)
+#     is OPTIONAL DIAGNOSTIC METADATA ONLY. It never causes a reject. NOTE: in the
+#     real MetaTrader5 Python SDK, symbol_info().session_open is a PRICE field (or
+#     0.0), NOT a market-open boolean — session state requires
+#     mt5.symbol_info_session_trade(). The bridge therefore returns null unless it
+#     is actually a bool, and the preflight never blocks on it.
+#   * The weekly calendar (FX spot Sun 22:00 -> Fri 22:00 UTC) is purely ADVISORY:
+#     a fresh valid tick is NEVER rejected for being inside the weekend window.
+#   * trade_mode is NOT a market-open signal (it reports the account/symbol
+#     trading mode/status only). No hard-coded daily closure is used.
+# Keep in sync with remote-mt5-bridge/bridge_validation.py (intentional duplicate).
+
+# Advisory-only weekly window. Used for a WARNING, never a reject.
+_ADVISORY_FX_WEEK_OPEN_WEEKDAY = 6   # Sunday
+_ADVISORY_FX_WEEK_OPEN_HOUR = 22     # 22:00 UTC
+_ADVISORY_FX_WEEK_CLOSE_WEEKDAY = 4  # Friday
+_ADVISORY_FX_WEEK_CLOSE_HOUR = 22    # 22:00 UTC
+
+# How stale a tick may be before we consider the feed dead (seconds).
+DEFAULT_MAX_TICK_AGE_SECONDS = 30.0
+
+
+def _advisory_weekend_closed(now: Optional[datetime] = None) -> bool:
+    """Advisory only: True during the widely-known FX weekend close
+    (Friday 22:00 UTC -> Sunday 22:00 UTC). Returns False otherwise. This is
+    NEVER used to reject an otherwise fresh, valid tick.
+    """
+    now = now or datetime.now(timezone.utc)
+    wd = now.weekday()  # Monday=0 .. Sunday=6
+    h = now.hour
+    if wd == _ADVISORY_FX_WEEK_CLOSE_WEEKDAY and h >= _ADVISORY_FX_WEEK_CLOSE_HOUR:
+        return True
+    if wd == 5:  # Saturday
+        return True
+    if wd == _ADVISORY_FX_WEEK_OPEN_WEEKDAY and h < _ADVISORY_FX_WEEK_OPEN_HOUR:
+        return True
+    return False
+
+
+def tick_age_seconds(timestamp: Optional[str], now: Optional[datetime] = None) -> Optional[float]:
+    """Age of a tick timestamp in seconds, or None if unparseable/missing."""
+    if not timestamp:
+        return None
+    try:
+        ts = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    now = now or datetime.now(timezone.utc)
+    return (now - ts).total_seconds()
+
+
+def validate_tick(bid, ask, timestamp: Optional[str],
+                  max_age_seconds: float = DEFAULT_MAX_TICK_AGE_SECONDS,
+                  now: Optional[datetime] = None) -> Optional[str]:
+    """Validate a single broker tick. Return a rejection reason string, or None
+    if the tick is acceptable (finite, positive, bid<ask, recent timestamp).
+    A fresh valid tick is sufficient evidence of an open market.
+    """
+    try:
+        b = float(bid); a = float(ask)
+    except (TypeError, ValueError):
+        return "tick bid/ask not numeric"
+    if not (math.isfinite(b) and math.isfinite(a)):
+        return "tick bid/ask not finite"
+    if b <= 0 or a <= 0:
+        return "tick bid/ask not positive"
+    if b >= a:
+        return f"tick bid >= ask ({b} >= {a})"
+    age = tick_age_seconds(timestamp, now=now)
+    if age is None:
+        return "tick timestamp missing/unparseable"
+    if age > float(max_age_seconds):
+        return f"tick stale: age {age:.0f}s > {max_age_seconds:.0f}s max"
+    return None
+
+
+def check_symbol_tradable(
+    tick1_bid, tick1_ask, tick1_ts: Optional[str],
+    tick2_bid, tick2_ask, tick2_ts: Optional[str],
+    session_open: Optional[bool] = None,
+    max_tick_age_seconds: float = DEFAULT_MAX_TICK_AGE_SECONDS,
+    now: Optional[datetime] = None,
+) -> tuple[bool, Optional[str], list]:
+    """Tick-evidence market-open preflight.
+
+    Returns (tradable, reject_reason, warnings).
+
+    REJECT (tradable=False) ONLY when a tick is invalid or stale:
+      * bid/ask not numeric / not finite / not positive
+      * bid >= ask
+      * missing or unparseable timestamp
+      * tick age beyond ``max_tick_age_seconds`` (default 30s)
+
+    ADVISORY ONLY (never a reject) — surfaced in ``warnings``:
+      * ``session_open is False`` — diagnostic metadata only; the real MT5
+        symbol_info() does not expose this field, so it is not a trusted gate.
+      * Inside the FX weekend window — a fresh valid tick still proceeds.
+
+    The broker order attempt (TRADE_RETCODE_MARKET_CLOSED = 10018) remains the
+    authoritative closure signal. Two identical-but-fresh ticks are allowed; the
+    price is NOT required to change between samples.
+    """
+    now = now or datetime.now(timezone.utc)
+    warnings: list = []
+    r1 = validate_tick(tick1_bid, tick1_ask, tick1_ts,
+                       max_age_seconds=max_tick_age_seconds, now=now)
+    if r1:
+        return False, f"first tick invalid: {r1}", warnings
+    r2 = validate_tick(tick2_bid, tick2_ask, tick2_ts,
+                       max_age_seconds=max_tick_age_seconds, now=now)
+    if r2:
+        return False, f"second tick invalid: {r2}", warnings
+    # ---- advisory-only diagnostics (never reject) ----
+    if session_open is False:
+        warnings.append(
+            "broker session_open=False reported (diagnostic only; not a hard "
+            "gate — symbol_info().session_open is a price field, not a market "
+            "open/close boolean in MT5 Python)")
+    if _advisory_weekend_closed(now=now):
+        warnings.append(
+            "advisory: within FX weekend close window (Fri22:00 -> Sun22:00 UTC)")
+    return True, None, warnings

@@ -49,6 +49,10 @@ class PriceQuote:
     ask: float
     spread: float
     timestamp: str = ""
+    # Broker session signal from symbol_info().session_open, if the Python API
+    # exposes it. None means "unknown" — the preflight must fall back to tick
+    # evidence and must NOT treat trade_mode as a market-open signal.
+    session_open: Optional[bool] = None
 
 
 @dataclass

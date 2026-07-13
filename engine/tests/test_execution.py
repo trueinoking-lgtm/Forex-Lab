@@ -1098,8 +1098,12 @@ def _patch_order_bridge(monkeypatch, *, dry_run_payload=None, place_status="fill
                             "spread_at_entry": 0.0003, "slippage": 0.0001,
                             "broker_mode": "demo"})
         if base.endswith("/quote"):
+            # Two identical-but-fresh ticks must be ACCEPTED by the preflight
+            # (the price is NOT required to change between samples).
             return _R(200, {"symbol": "EURUSD", "bid": 1.14140,
-                            "ask": 1.14143, "spread": 0.0003})
+                            "ask": 1.14143, "spread": 0.0003,
+                            "session_open": None,
+                            "timestamp": datetime.now(timezone.utc).isoformat()})
         return _R(200, {})
     monkeypatch.setattr(requests, "request", make)
     monkeypatch.setattr(requests, "get", lambda u, **k: make("get", u, **k))
@@ -1285,5 +1289,75 @@ def test_remote_mt5_dry_run_invalid_units_shows_units_and_fails(monkeypatch, tmp
     assert out["prepared_order_units"] is None
     assert out["signal_units"] == 0.0
     assert out["signal_id"] == 6
+
+
+# ===== market-session preflight (tick-evidence based, per Kade rev 2) =====
+from src.execution.bridge_validation import check_symbol_tradable  # noqa: E402
+from datetime import timedelta
+
+
+def _ts(delta_sec=0):
+    return (datetime.now(timezone.utc) + timedelta(seconds=delta_sec)).isoformat()
+
+
+def test_preflight_two_identical_fresh_ticks_allowed():
+    # Two identical-but-fresh valid ticks -> allowed (price need not change).
+    ok, reason, warnings = check_symbol_tradable(
+        1.14140, 1.14143, _ts(-1),
+        1.14140, 1.14143, _ts(-1),
+        session_open=None,
+    )
+    assert ok is True and reason is None
+
+
+def test_preflight_stale_tick_blocked():
+    ok, reason, _ = check_symbol_tradable(
+        1.14140, 1.14143, _ts(-120),   # 2 minutes old -> stale
+        1.14140, 1.14143, _ts(-120),
+        session_open=None,
+    )
+    assert ok is False and "stale" in reason
+
+
+def test_preflight_invalid_bid_ask_blocked():
+    ok, reason, _ = check_symbol_tradable(
+        1.14143, 1.14140, _ts(-1),     # bid > ask
+        1.14143, 1.14140, _ts(-1),
+    )
+    assert ok is False and "bid" in reason
+
+
+def test_preflight_session_open_null_allowed_when_fresh():
+    ok, reason, warnings = check_symbol_tradable(
+        1.14140, 1.14143, _ts(-1),
+        1.14140, 1.14143, _ts(-1),
+        session_open=None,   # unknown -> diagnostic only, never blocks
+    )
+    assert ok is True and "session_open" not in " ".join(warnings)
+
+
+def test_preflight_session_open_false_advisory_not_block():
+    # session_open=False is diagnostic metadata only (MT5 symbol_info() does not
+    # expose this field); it must NOT reject an otherwise fresh valid tick.
+    ok, reason, warnings = check_symbol_tradable(
+        1.14140, 1.14143, _ts(-1),
+        1.14140, 1.14143, _ts(-1),
+        session_open=False,
+    )
+    assert ok is True
+    assert any("session_open=False" in w for w in warnings)
+
+
+def test_preflight_weekend_calendar_fresh_tick_allowed_with_warning():
+    # Inside the FX weekend close window (Friday 23:00 UTC) but a fresh valid
+    # tick -> allowed, with an advisory warning (never rejected).
+    fri_close = datetime(2026, 7, 10, 23, 0, tzinfo=timezone.utc)  # Friday 23:00
+    ok, reason, warnings = check_symbol_tradable(
+        1.14140, 1.14143, fri_close.isoformat(),
+        1.14140, 1.14143, fri_close.isoformat(),
+        session_open=None, now=fri_close,
+    )
+    assert ok is True
+    assert any("weekend" in w for w in warnings)
 
 

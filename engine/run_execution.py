@@ -22,6 +22,7 @@ import json
 import os
 import sqlite3
 import sys
+import time
 import math
 from datetime import datetime, timezone
 
@@ -36,7 +37,9 @@ from src.execution import (  # noqa: E402
     execution_mode, primary_demo_broker, mirror_demo_enabled,
     dry_run, demo_autotrade_enabled, can_place_real_demo, broker_names,
 )
-from src.execution.bridge_validation import validate_price_geometry  # noqa: E402
+from src.execution.bridge_validation import (  # noqa: E402
+    validate_price_geometry, check_symbol_tradable,
+)
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "forex_lab.db")
 CFG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
@@ -862,6 +865,23 @@ def _persist_remote_bridge(db, *, reachable, tailscale_url_configured, pc_bridge
     db.commit()
 
 
+def _persist_preflight_reject(db, signal, reason: str) -> None:
+    """Record a market-session preflight rejection as a faithful (non-filled)
+    DemoExecutionOrder row so forensics never lose the signal linkage.
+    """
+    db.execute(
+        """INSERT INTO DemoExecutionOrder
+           (signal_id,broker,broker_mode,symbol,side,requested_entry,stop_loss,
+            take_profit,units,requested_at,status,rejection_reason)
+           VALUES (?,?,?,?,?,?,?,?,?,?,'rejected',?)""",
+        (getattr(signal, "id", None), "remote_mt5", "demo", signal.pair,
+         "buy" if signal.direction > 0 else "sell",
+         signal.entry, signal.stop_loss, signal.take_profit,
+         getattr(signal, "units", 0.0), _now(), reason),
+    )
+    db.commit()
+
+
 def cmd_remote_mt5_check(args) -> int:
     cfg = _cfg()
     if cfg.get("allow_live_orders"):
@@ -1221,6 +1241,45 @@ def cmd_remote_mt5_order(args) -> int:
         print(f"REJECTED: could not verify bridge dry-run: {redact(str(exc))[:200]}")
         return 2
     run_id = args.run_id or f"remote-mt5-{args.signal_id}"
+    # ---- Market-session preflight (tick-evidence; fresh tick is sufficient) ----
+    # Authoritative gate is the broker: a FRESH, VALID tick is enough to proceed;
+    # TRADE_RETCODE_MARKET_CLOSED (10018) on the attempt is final. We do NOT
+    # require the price to change between samples (two identical fresh ticks are
+    # NOT proof of a closed market). session_open and the weekend calendar are
+    # advisory diagnostics only, never a reject. --skip-preflight is recovery-only.
+    if getattr(args, "skip_preflight", False):
+        print("WARNING: --skip-preflight set: market-session preflight BYPASSED. "
+              "The broker's TRADE_RETCODE_MARKET_CLOSED (10018) remains the final "
+              "authoritative gate.")
+    else:
+        try:
+            q1 = a.get_prices(signal.pair)
+            time.sleep(float(os.environ.get("REMOTE_MT5_TICK_GAP_SECONDS", "3")))
+            q2 = a.get_prices(signal.pair)
+        except Exception as exc:
+            reason = f"preflight tick fetch failed: {redact(str(exc))[:200]}"
+            _persist_preflight_reject(db, signal, reason)
+            print(json.dumps({"status": "rejected", "broker": "remote_mt5",
+                              "broker_mode": "demo", "signal_id": getattr(signal, "id", None),
+                              "rejection_reason": reason}, indent=2))
+            return 2
+        tradable, preason, warnings = check_symbol_tradable(
+            q1.bid, q1.ask, q1.timestamp, q2.bid, q2.ask, q2.timestamp,
+            session_open=q1.session_open,
+        )
+        for w in warnings:
+            print(f"ADVISORY: preflight: {w}")
+        if not tradable:
+            reason = (f"market-session preflight: {preason} "
+                      f"(q1 bid={q1.bid} ask={q1.ask} ts={q1.timestamp}; "
+                      f"q2 bid={q2.bid} ask={q2.ask} ts={q2.timestamp}; "
+                      f"session_open={q1.session_open})")
+            _persist_preflight_reject(db, signal, reason)
+            print(json.dumps({"status": "rejected", "broker": "remote_mt5",
+                              "broker_mode": "demo", "signal_id": getattr(signal, "id", None),
+                              "market_session_open": False,
+                              "rejection_reason": reason}, indent=2))
+            return 2
     res = _place_real_demo(db, cfg, ctrl, "remote_mt5", signal, run_id, a)
     print(json.dumps({**res, "broker_mode": "demo",
                       "signal_units": vps_order.units,
@@ -1331,6 +1390,10 @@ def main(argv=None) -> int:
     prmo = sub.add_parser("remote-mt5-order")
     prmo.add_argument("--signal-id", type=int, required=True)
     prmo.add_argument("--run-id", type=str, default=None)
+    prmo.add_argument("--skip-preflight", action="store_true",
+                      help="Bypass the market-session preflight (debug only; "
+                           "the broker's TRADE_RETCODE_MARKET_CLOSED 10018 is "
+                           "still the final authoritative gate)")
     prmo.set_defaults(func=cmd_remote_mt5_order)
 
     args = p.parse_args(argv)

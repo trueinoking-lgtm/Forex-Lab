@@ -228,9 +228,21 @@ def quote(symbol: str, _=Depends(_require_auth)):
     tick = mt5.symbol_info_tick(m)
     if not tick:
         raise HTTPException(status_code=404, detail=f"no tick for {m}")
+    # Broker session signal. NOTE: symbol_info().session_open is a PRICE field
+    # (or 0.0) in the real MT5 Python SDK, NOT a market-open boolean; true session
+    # state requires mt5.symbol_info_session_trade(). We only surface it when it is
+    # actually a Python bool (defensive), else null. The VPS preflight treats
+    # session_open as OPTIONAL DIAGNOSTIC METADATA ONLY — it never blocks an order.
+    sinfo = mt5.symbol_info(m)
+    session_open = None
+    if sinfo is not None:
+        so = getattr(sinfo, "session_open", None)
+        if isinstance(so, bool):
+            session_open = so
     return {
         "symbol": symbol, "bid": float(tick.bid), "ask": float(tick.ask),
         "spread": float(tick.ask - tick.bid),
+        "session_open": session_open,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

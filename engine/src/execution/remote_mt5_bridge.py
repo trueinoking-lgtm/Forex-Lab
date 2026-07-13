@@ -94,10 +94,14 @@ class RemoteMT5BridgeAdapter(ExecutionAdapter):
         resp = self._req("GET", f"/quote?symbol={symbol}")
         body = resp.json()
         self._assert_demo(body)
+        so = body.get("session_open", None)
+        if not isinstance(so, bool):
+            so = None
         return PriceQuote(
             symbol=symbol, bid=float(body["bid"]), ask=float(body["ask"]),
             spread=float(body.get("spread", body["ask"] - body["bid"])),
             timestamp=body.get("timestamp", ""),
+            session_open=so,
         )
 
     def place_demo_order(self, order: DemoOrderRequest) -> OrderStatus:
