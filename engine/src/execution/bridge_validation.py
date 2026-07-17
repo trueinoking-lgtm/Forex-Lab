@@ -27,14 +27,16 @@ DEFAULT_SIGNAL_MAX_AGE_MINUTES = 30
 
 
 def check_demo_trade_mode(trade_mode: int) -> None:
-    """Raise ValueError unless trade_mode indicates a non-live (demo/contest) account.
+    """Raise ValueError unless trade_mode is exactly ACCOUNT_TRADE_MODE_DEMO (0).
 
-    Only REAL (2) is refused. trade_mode == 0 (DEMO) and 1 (CONTEST) are accepted.
+    The hard invariant is demo-only (trade_mode == 0). Contest (1) and REAL (2)
+    and any unknown value are all refused — never place an order on a non-demo
+    account.
     """
     mode = int(trade_mode)
-    if mode == ACCOUNT_TRADE_MODE_REAL:
-        raise ValueError("LIVE account detected — demo bridge refuses")
-    # 0 (demo) and 1 (contest) are both acceptable for the demo bridge.
+    if mode != ACCOUNT_TRADE_MODE_DEMO:
+        raise ValueError(
+            f"non-demo trade_mode={mode} (required 0=DEMO) — demo bridge refuses")
 
 
 def is_live_trade_mode(trade_mode: int) -> bool:

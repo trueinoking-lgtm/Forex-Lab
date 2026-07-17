@@ -63,14 +63,16 @@ DEFAULT_SIGNAL_MAX_AGE_MINUTES = 30
 
 
 def check_demo_trade_mode(trade_mode: int) -> None:
-    """Raise ValueError unless trade_mode indicates a non-live (demo/contest) account.
+    """Raise ValueError unless trade_mode is exactly ACCOUNT_TRADE_MODE_DEMO (0).
 
-    Only REAL (2) is refused. trade_mode == 0 (DEMO) and 1 (CONTEST) are accepted.
+    The hard invariant is demo-only (trade_mode == 0). Contest (1) and REAL (2)
+    and any unknown value are all refused — never place an order on a non-demo
+    account.
     """
     mode = int(trade_mode)
-    if mode == ACCOUNT_TRADE_MODE_REAL:
-        raise ValueError("LIVE account detected — demo bridge refuses")
-    # 0 (demo) and 1 (contest) are both acceptable for the demo bridge.
+    if mode != ACCOUNT_TRADE_MODE_DEMO:
+        raise ValueError(
+            f"non-demo trade_mode={mode} (required 0=DEMO) — demo bridge refuses")
 
 
 def is_live_trade_mode(trade_mode: int) -> bool:
@@ -422,10 +424,8 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
             chosen_name = name
             break
         rc = int(getattr(result, "retcode", -1))
-        if rc in (
-            int(getattr(mt5, "TRADE_RETCODE_INVALID_FILL", 10018)),
-            int(getattr(mt5, "TRADE_RETCODE_UNSUPPORTED_FILLING_MODE", 10030)),
-        ):
+        # 10018 (MARKET_CLOSED) is terminal — never a filling-mode issue.
+        if rc == int(getattr(mt5, "TRADE_RETCODE_UNSUPPORTED_FILLING_MODE", 10030)):
             continue  # try next filling mode
         # Any other order_send failure is fatal (not a filling-mode issue).
         err = _safe_last_error(mt5)

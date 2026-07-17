@@ -603,16 +603,11 @@ def test_check_demo_trade_mode_demo_zero_accepted():
     assert is_live_trade_mode(0) is False
 
 
-def test_check_demo_trade_mode_contest_accepted():
-    assert check_demo_trade_mode(1) is None
-    assert is_live_trade_mode(1) is False
-
-
-def test_check_demo_trade_mode_real_rejected():
-    # REAL == 2 must be refused.
+@pytest.mark.parametrize("mode", [1, 2, -1, 3, "not-a-number"])
+def test_check_demo_trade_mode_non_demo_rejected(mode):
     assert is_live_trade_mode(2) is True
     with pytest.raises(ValueError):
-        check_demo_trade_mode(2)
+        check_demo_trade_mode(mode)
 
 
 def test_guard_rejects_stale_signal():
@@ -1454,5 +1449,4 @@ def test_preflight_zero_spread_company_only_no_server_unlisted_blocked():
         broker_company="MetaQuotes Ltd.", broker_server="",
     )
     assert ok is False and "not explicitly whitelisted" in reason
-
 

@@ -1246,24 +1246,19 @@ def cmd_remote_mt5_order(args) -> int:
     # TRADE_RETCODE_MARKET_CLOSED (10018) on the attempt is final. We do NOT
     # require the price to change between samples (two identical fresh ticks are
     # NOT proof of a closed market). session_open and the weekend calendar are
-    # advisory diagnostics only, never a reject. --skip-preflight is recovery-only.
-    if getattr(args, "skip_preflight", False):
-        print("WARNING: --skip-preflight set: market-session preflight BYPASSED. "
-              "The broker's TRADE_RETCODE_MARKET_CLOSED (10018) remains the final "
-              "authoritative gate.")
-    else:
-        try:
-            q1 = a.get_prices(signal.pair)
-            time.sleep(float(os.environ.get("REMOTE_MT5_TICK_GAP_SECONDS", "3")))
-            q2 = a.get_prices(signal.pair)
-        except Exception as exc:
-            reason = f"preflight tick fetch failed: {redact(str(exc))[:200]}"
-            _persist_preflight_reject(db, signal, reason)
-            print(json.dumps({"status": "rejected", "broker": "remote_mt5",
-                              "broker_mode": "demo", "signal_id": getattr(signal, "id", None),
-                              "rejection_reason": reason}, indent=2))
-            return 2
-        # Broker identity for the demo-specific zero-spread policy. The bridge
+    # advisory diagnostics only, never a reject. This preflight is mandatory.
+    try:
+        q1 = a.get_prices(signal.pair)
+        time.sleep(float(os.environ.get("REMOTE_MT5_TICK_GAP_SECONDS", "3")))
+        q2 = a.get_prices(signal.pair)
+    except Exception as exc:
+        reason = f"preflight tick fetch failed: {redact(str(exc))[:200]}"
+        _persist_preflight_reject(db, signal, reason)
+        print(json.dumps({"status": "rejected", "broker": "remote_mt5",
+                          "broker_mode": "demo", "signal_id": getattr(signal, "id", None),
+                          "rejection_reason": reason}, indent=2))
+        return 2
+    # Broker identity for the demo-specific zero-spread policy. The bridge
         # reports company/server (e.g. "MetaQuotes-Demo"); we feed whichever is
         # set into the preflight so the zero-spread exception applies ONLY to an
         # explicitly whitelisted demo broker, never to real/unknown ones.
@@ -1409,10 +1404,6 @@ def main(argv=None) -> int:
     prmo = sub.add_parser("remote-mt5-order")
     prmo.add_argument("--signal-id", type=int, required=True)
     prmo.add_argument("--run-id", type=str, default=None)
-    prmo.add_argument("--skip-preflight", action="store_true",
-                      help="Bypass the market-session preflight (debug only; "
-                           "the broker's TRADE_RETCODE_MARKET_CLOSED 10018 is "
-                           "still the final authoritative gate)")
     prmo.set_defaults(func=cmd_remote_mt5_order)
 
     args = p.parse_args(argv)

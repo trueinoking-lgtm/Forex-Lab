@@ -55,7 +55,7 @@ class FakeMt5:
     TRADE_RETCODE_PLACED = 10008
     TRADE_RETCODE_DONE = 10009
     TRADE_RETCODE_DONE_PARTIAL = 10010
-    TRADE_RETCODE_INVALID_FILL = 10018
+    TRADE_RETCODE_MARKET_CLOSED = 10018
     TRADE_RETCODE_UNSUPPORTED_FILLING_MODE = 10030
 
     def __init__(self):
@@ -166,8 +166,10 @@ def test_market_execution_request_keeps_live_price_and_no_leak():
 
 
 class FakeMt5FokRejected(FakeMt5):
-    """Variant: broker rejects FOK (10018) but accepts IOC — forces a real
-    fall-through-from-FOK-to-IOC with a successful fill."""
+    """Variant: broker rejects FOK with UNSUPPORTED_FILLING_MODE (10030) but
+    accepts IOC — forces a real fall-through-from-FOK-to-IOC with a fill.
+    NOTE: 10018 (MARKET_CLOSED) is terminal and must NOT trigger a fallback;
+    only 10030 may."""
 
     def order_check(self, request):
         # Accept everything at check; the FOK rejection happens at send.
@@ -179,17 +181,19 @@ class FakeMt5FokRejected(FakeMt5):
         filling = request.get("type_filling")
         self.sends.append(filling)
         if filling == self.ORDER_FILLING_FOK:
-            self._last_error = {"code": self.TRADE_RETCODE_INVALID_FILL,
-                                "description": "INVALID_FILL"}
-            return _FakeResult(retcode=self.TRADE_RETCODE_INVALID_FILL)
+            self._last_error = {"code": self.TRADE_RETCODE_UNSUPPORTED_FILLING_MODE,
+                                "description": "unsupported filling mode"}
+            return _FakeResult(retcode=self.TRADE_RETCODE_UNSUPPORTED_FILLING_MODE)
         self.opens += 1
         return _FakeResult(retcode=self.TRADE_RETCODE_DONE)
 
 
 def test_fok_rejected_falls_through_to_ioc_success():
     # Symbol lists both FOK and IOC (filling_mode=3). FOK is tried first but the
-    # broker rejects it (10018) -> fall through to IOC, which succeeds. Exactly
-    # one position. FOK reached order_send (rejected) and IOC then succeeded.
+    # broker rejects it (10030, unsupported filling mode) -> fall through to IOC,
+    # which succeeds. Exactly one position. FOK reached order_send (rejected) and
+    # IOC then succeeded. A 10018 (MARKET_CLOSED) result would be terminal and
+    # must NOT fall through.
     mt5 = FakeMt5FokRejected()
     mt5.symbol_info = lambda m: _symbol_info(filling_mode=3, trade_exemode=2)
     res = execute_demo_order(mt5, _make_request(), "EURUSD", broker_mode="demo")

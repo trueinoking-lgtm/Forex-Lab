@@ -244,11 +244,23 @@ def quote(symbol: str, _=Depends(_require_auth)):
         so = getattr(sinfo, "session_open", None)
         if isinstance(so, bool):
             session_open = so
+    # Broker tick time is the liveness evidence; never substitute server time.
+    ts_val = getattr(tick, "time_msc", None)
+    if not ts_val:
+        ts_val = getattr(tick, "time", None)
+    if ts_val:
+        ts = datetime.fromtimestamp(
+            ts_val / 1000.0 if ts_val > 1e11 else ts_val,
+            tz=timezone.utc,
+        ).isoformat()
+    else:
+        ts = None
     return {
         "symbol": symbol, "bid": float(tick.bid), "ask": float(tick.ask),
         "spread": float(tick.ask - tick.bid),
         "session_open": session_open,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": ts,
+        "broker_tick_time": ts,
     }
 
 
