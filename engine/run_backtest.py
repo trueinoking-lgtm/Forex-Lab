@@ -12,6 +12,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 from src import data, backtest, metrics, score, log
+from src.paper_sim import overfitting_flags
 from strategies.registry import REGISTRY, build_signal
 
 CFG = yaml.safe_load(open("config.yaml"))
@@ -59,6 +60,13 @@ def main():
         sc["oos_return"] = round(oos["metrics"].get("total_return", 0.0), 4)
         sc["bh_oos_return"] = round(bh_ret, 4)
         sc["beats_bh"] = bool(oos["metrics"].get("total_return", 0) > bh_ret)
+        sc["overfitting_flags"] = overfitting_flags(
+            oos["metrics"], in_sample_return=ins_ret,
+            oos_return=oos["metrics"].get("total_return", 0.0))
+        min_trades = CFG["backtest"].get("min_trades", 20)
+        sc["min_trades_warning"] = (f"Insufficient sample: {sc.get('trade_count', 0)} "
+                                    f"trades; minimum is {min_trades}."
+                                    if sc.get("trade_count", 0) < min_trades else None)
         results.append(sc)
         log.log(f"[backtest] {name:22s} score={sc['score']:5.1f} "
                 f"oos={sc['oos_return']:+.3f} rob={sc['robustness']:.2f}")
