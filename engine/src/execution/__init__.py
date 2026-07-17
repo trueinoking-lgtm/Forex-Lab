@@ -29,6 +29,7 @@ from .guards import (
     run_pretrade_guards,
     MAX_OPEN_DEMO_TRADES_DEFAULT,
 )
+from .risk_budget import PortfolioRiskState, load_risk_cfg
 from .bridge_validation import (
     validate_price_geometry, is_stale_signal, check_demo_trade_mode,
     is_live_trade_mode, DEFAULT_SIGNAL_MAX_AGE_MINUTES,
@@ -57,6 +58,8 @@ __all__ = [
     "GuardError",
     "run_pretrade_guards",
     "MAX_OPEN_DEMO_TRADES_DEFAULT",
+    "PortfolioRiskState",
+    "load_risk_cfg",
     "validate_price_geometry",
     "is_stale_signal",
     "check_demo_trade_mode",

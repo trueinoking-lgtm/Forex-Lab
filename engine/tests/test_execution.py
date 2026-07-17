@@ -21,6 +21,7 @@ from src.execution import (
     build_adapter,
     available_adapters,
     MAX_OPEN_DEMO_TRADES_DEFAULT,
+    PortfolioRiskState,
     validate_price_geometry,
     check_demo_trade_mode,
     is_live_trade_mode,
@@ -220,6 +221,18 @@ def test_kill_switch_rejects():
                               open_demo_trades=0, kill_switch=True)
     assert not res.passed
     assert any("kill switch" in r for r in res.reasons)
+
+
+def test_portfolio_risk_circuit_breaker_rejects():
+    portfolio_risk = PortfolioRiskState({"initial_equity": 10000})
+    portfolio_risk.update_equity(9000)
+    res = run_pretrade_guards(
+        _good_order(), broker_mode="demo", allow_live_orders=False, account=10000,
+        risk_pct=0.75, signal=_signal(), open_demo_trades=0,
+        portfolio_risk=portfolio_risk,
+    )
+    assert not res.passed
+    assert any("portfolio risk circuit breaker: drawdown" in r for r in res.reasons)
 
 
 # --- mock adapter works ---

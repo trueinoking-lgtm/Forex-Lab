@@ -21,6 +21,7 @@ from typing import Optional
 
 from ..signals import risk_check, PaperSignal
 from .adapter import DemoOrderRequest, PriceQuote
+from .risk_budget import PortfolioRiskState
 from .bridge_validation import (  # shared, zero-dependency validation
     validate_price_geometry, is_stale_signal, DEFAULT_SIGNAL_MAX_AGE_MINUTES,
 )
@@ -58,6 +59,7 @@ def run_pretrade_guards(
     signal_timestamp: Optional[str] = None,
     execution_class: str = "paper",
     signal_max_age_minutes: float = DEFAULT_SIGNAL_MAX_AGE_MINUTES,
+    portfolio_risk: Optional[PortfolioRiskState] = None,
 ) -> GuardResult:
     """Evaluate all deterministic pre-trade guards. Raises nothing; returns result.
 
@@ -150,5 +152,10 @@ def run_pretrade_guards(
         reasons.append(
             f"open demo trades for {broker} {open_demo_trades_by_broker} >= per-broker cap {cap_b}"
         )
+
+    # 9. Portfolio circuit breaker (additive; unavailable equity fails closed).
+    if portfolio_risk is not None and portfolio_risk.halt_new_entries():
+        why = "; ".join(portfolio_risk.halt_reasons())
+        reasons.append(f"portfolio risk circuit breaker: {why}")
 
     return GuardResult(passed=len(reasons) == 0, reasons=reasons, risk=risk)
