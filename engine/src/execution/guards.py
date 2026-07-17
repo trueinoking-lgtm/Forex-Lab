@@ -154,7 +154,12 @@ def run_pretrade_guards(
         )
 
     # 9. Portfolio circuit breaker (additive; unavailable equity fails closed).
-    if portfolio_risk is not None and portfolio_risk.halt_new_entries():
+    # 9. Portfolio risk circuit breaker (mandatory). If no portfolio state is
+    #    supplied we cannot prove the portfolio is safe, so we refuse by default
+    #    (fail closed) rather than silently skip the halt.
+    if portfolio_risk is None:
+        reasons.append("portfolio risk state unavailable — refusing entry (fail-closed)")
+    elif portfolio_risk.halt_new_entries():
         why = "; ".join(portfolio_risk.halt_reasons())
         reasons.append(f"portfolio risk circuit breaker: {why}")
 

@@ -35,3 +35,21 @@ def test_metrics_empty_and_all_loss_do_not_crash():
     assert losses["profit_factor"] == 0
     wins = metrics_from_returns([0.01], [10000, 10100])
     assert math.isinf(wins["profit_factor"])
+
+
+def test_simulate_gap_through_stop_fills_at_observed_close():
+    # CRITICAL/honesty fix: when price gaps through the stop, exit at the
+    # OBSERVED close (not the stop level) so P&L is not overstated.
+    index = pd.date_range("2025-01-01", periods=4, freq="D", tz="UTC")
+    # buy @100, SL=99; next bar gaps to 95 (below stop) -> exit at 95.
+    price = pd.Series([100, 95, 96, 97], index=index)
+    signal = {"symbol": "TEST", "side": "buy", "entry": 100, "stop_loss": 99,
+              "take_profit": 104, "units": 1, "timestamp": str(index[0]),
+              "tradeable": True}
+    result = simulate([signal], price, cost_bps=0)
+    trade = result["trades"][0]
+    assert trade["reason"] == "stop_loss"
+    # exit must be the observed close 95, not the stop 99
+    assert trade["exit"] == 95.0
+    # P&L uses the OBSERVED close (honest gap fill): (95-100)*units, not (99-100).
+    assert trade["pnl"] == (95 - 100) * trade["units"]

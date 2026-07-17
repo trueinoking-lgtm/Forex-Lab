@@ -32,6 +32,12 @@ from src.execution.adapter import PriceQuote
 from src.execution.bridge_validation import is_stale_signal
 
 
+def _ok_risk():
+    """Healthy portfolio state used by pass/reject-path guard tests so they
+    exercise their specific rejection rather than the circuit breaker."""
+    return PortfolioRiskState({"initial_equity": 10000})
+
+
 FIXED_TEST_NOW = datetime(2030, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
 
 
@@ -133,7 +139,7 @@ def test_live_mode_rejected():
     order = _good_order()
     res = run_pretrade_guards(
         order, broker_mode="live", allow_live_orders=False, account=10000,
-        risk_pct=0.75, signal=_signal(), open_demo_trades=0,
+        risk_pct=0.75, signal=_signal(), open_demo_trades=0, portfolio_risk=_ok_risk(),
     )
     assert not res.passed
     assert any("broker_mode" in r for r in res.reasons)
@@ -143,7 +149,7 @@ def test_allow_live_orders_true_rejected():
     order = _good_order()
     res = run_pretrade_guards(
         order, broker_mode="demo", allow_live_orders=True, account=10000,
-        risk_pct=0.75, signal=_signal(), open_demo_trades=0,
+        risk_pct=0.75, signal=_signal(), open_demo_trades=0, portfolio_risk=_ok_risk(),
     )
     assert not res.passed
     assert any("ALLOW_LIVE_ORDERS" in r for r in res.reasons)
@@ -157,7 +163,7 @@ def test_missing_sl_rejects():
                              signal_id=1, signal_timestamp=s.timestamp,
                              execution_class="paper", requested_entry=1.1)
     res = run_pretrade_guards(order, broker_mode="demo", allow_live_orders=False,
-                              account=10000, risk_pct=0.75, signal=s, open_demo_trades=0)
+                              account=10000, risk_pct=0.75, signal=s, open_demo_trades=0, portfolio_risk=_ok_risk())
     assert not res.passed
     assert any("stop_loss" in r for r in res.reasons)
 
@@ -169,7 +175,7 @@ def test_missing_tp_rejects():
                              signal_id=1, signal_timestamp=s.timestamp,
                              execution_class="paper", requested_entry=1.1)
     res = run_pretrade_guards(order, broker_mode="demo", allow_live_orders=False,
-                              account=10000, risk_pct=0.75, signal=s, open_demo_trades=0)
+                              account=10000, risk_pct=0.75, signal=s, open_demo_trades=0, portfolio_risk=_ok_risk())
     assert not res.passed
     assert any("take_profit" in r for r in res.reasons)
 
@@ -180,7 +186,7 @@ def test_risk_check_required():
     s = _signal(sl=1.1000, tp=1.1050)
     order = _good_order(signal=s, entry=1.1000)
     res = run_pretrade_guards(order, broker_mode="demo", allow_live_orders=False,
-                              account=10000, risk_pct=0.75, signal=s, open_demo_trades=0)
+                              account=10000, risk_pct=0.75, signal=s, open_demo_trades=0, portfolio_risk=_ok_risk())
     assert not res.passed
     assert any("risk_check" in r for r in res.reasons)
 
@@ -189,7 +195,7 @@ def test_risk_check_required():
 def test_paper_signal_required():
     order = _good_order()
     res = run_pretrade_guards(order, broker_mode="demo", allow_live_orders=False,
-                              account=10000, risk_pct=0.75, signal=None, open_demo_trades=0)
+                              account=10000, risk_pct=0.75, signal=None, open_demo_trades=0, portfolio_risk=_ok_risk())
     assert not res.passed
     assert any("paper Signal" in r for r in res.reasons)
 
@@ -208,7 +214,7 @@ def test_max_open_demo_trades_enforced():
 def test_valid_order_passes():
     order = _good_order()
     res = run_pretrade_guards(order, broker_mode="demo", allow_live_orders=False,
-                              account=10000, risk_pct=0.75, signal=_signal(), open_demo_trades=0)
+                              account=10000, risk_pct=0.75, signal=_signal(), open_demo_trades=0, portfolio_risk=_ok_risk())
     assert res.passed, res.reasons
     assert res.risk and res.risk["pass"]
 
@@ -233,6 +239,18 @@ def test_portfolio_risk_circuit_breaker_rejects():
     )
     assert not res.passed
     assert any("portfolio risk circuit breaker: drawdown" in r for r in res.reasons)
+
+
+def test_portfolio_risk_absent_fails_closed():
+    # CRITICAL #1 fix: without portfolio state we cannot prove safety, so the
+    # guard must refuse rather than silently skip the circuit breaker.
+    res = run_pretrade_guards(
+        _good_order(), broker_mode="demo", allow_live_orders=False, account=10000,
+        risk_pct=0.75, signal=_signal(), open_demo_trades=0,
+        portfolio_risk=None,
+    )
+    assert not res.passed
+    assert any("portfolio risk state unavailable" in r for r in res.reasons)
 
 
 # --- mock adapter works ---
@@ -641,8 +659,8 @@ def test_guard_rejects_stale_signal():
     order = _good_order()
     res = run_pretrade_guards(
         order, broker_mode="demo", allow_live_orders=False, account=10000,
-        risk_pct=0.75, signal=_signal(), open_demo_trades=0,
-        signal_timestamp=old_ts, execution_class="paper",
+        risk_pct=0.75, signal=_signal(), open_demo_trades=0, portfolio_risk=_ok_risk(),
+ signal_timestamp=old_ts, execution_class="paper",
     )
     assert not res.passed
     assert any("stale signal" in r for r in res.reasons)
@@ -653,8 +671,8 @@ def test_guard_accepts_fresh_signal():
     order = _good_order()
     res = run_pretrade_guards(
         order, broker_mode="demo", allow_live_orders=False, account=10000,
-        risk_pct=0.75, signal=_signal(), open_demo_trades=0,
-        signal_timestamp=fresh_ts, execution_class="paper",
+        risk_pct=0.75, signal=_signal(), open_demo_trades=0, portfolio_risk=_ok_risk(),
+ signal_timestamp=fresh_ts, execution_class="paper",
     )
     assert res.passed, res.reasons
 
@@ -688,8 +706,8 @@ def test_guard_exempts_backtest_only_signal_from_staleness():
     order = _good_order()
     res = run_pretrade_guards(
         order, broker_mode="demo", allow_live_orders=False, account=10000,
-        risk_pct=0.75, signal=_signal(), open_demo_trades=0,
-        signal_timestamp=old_ts, execution_class="backtest_only",
+        risk_pct=0.75, signal=_signal(), open_demo_trades=0, portfolio_risk=_ok_risk(),
+ signal_timestamp=old_ts, execution_class="backtest_only",
     )
     assert res.passed, res.reasons  # exempt: never executed
 
@@ -706,7 +724,7 @@ def test_guard_rejects_invalid_buy_geometry_vs_live_quote():
                       timestamp=datetime.now(timezone.utc).isoformat())
     res = run_pretrade_guards(
         order, broker_mode="demo", allow_live_orders=False, account=10000,
-        risk_pct=0.75, signal=stale_signal, open_demo_trades=0,
+        risk_pct=0.75, signal=stale_signal, open_demo_trades=0, portfolio_risk=_ok_risk(),
         live_quote=live, signal_timestamp=stale_signal.timestamp, execution_class="paper",
     )
     assert not res.passed
@@ -725,7 +743,7 @@ def test_guard_passes_valid_buy_geometry_vs_live_quote():
                       timestamp=fresh_ts)
     res = run_pretrade_guards(
         order, broker_mode="demo", allow_live_orders=False, account=10000,
-        risk_pct=0.75, signal=sig, open_demo_trades=0,
+        risk_pct=0.75, signal=sig, open_demo_trades=0, portfolio_risk=_ok_risk(),
         live_quote=live, signal_timestamp=fresh_ts, execution_class="paper",
     )
     assert res.passed, res.reasons

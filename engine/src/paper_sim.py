@@ -122,7 +122,7 @@ def simulate(signals: list[dict], price: pd.Series, cost_bps: float,
     for timestamp, signal in indexed:
         if risk_state is not None and risk_state.halt_new_entries():  # pragma: no cover
             continue
-        fill_pos = int(series.index.searchsorted(timestamp, side="right"))
+        fill_pos = int(series.index.searchsorted(timestamp, side="left"))
         # This close-only simulator holds one position at a time. Skipping an
         # overlapping entry prevents a later signal from being sized with P&L
         # that, at its timestamp, had not yet been realized.
@@ -144,10 +144,10 @@ def simulate(signals: list[dict], price: pd.Series, cost_bps: float,
         for pos in range(fill_pos + 1, len(series)):
             current = float(series.iloc[pos])
             if (direction > 0 and current <= stop) or (direction < 0 and current >= stop):
-                exit_pos, exit_price, reason = pos, stop, "stop_loss"
+                exit_pos, exit_price, reason = pos, current, "stop_loss"
                 break
             if (direction > 0 and current >= target) or (direction < 0 and current <= target):
-                exit_pos, exit_price, reason = pos, target, "take_profit"
+                exit_pos, exit_price, reason = pos, current, "take_profit"
                 break
         gross = direction * (exit_price - entry) * units
         cost = (entry + exit_price) * units * max(0.0, float(cost_bps)) / 10000.0

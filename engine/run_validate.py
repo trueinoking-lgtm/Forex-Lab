@@ -63,14 +63,19 @@ def main():
         raise SystemExit(f"[validate] unable to load {args.pair}: {exc}") from exc
     price = frame["close"].astype(float)
     cutoff = pd.Timestamp(args.cutoff) if args.cutoff else price.index[-1] - pd.Timedelta(days=365)
+    # Reserve the post-cutoff window from ALL development scoring (in-sample,
+    # walk-forward, BH) so the held-out result is not contaminated by data it is
+    # later compared against. held_out_validate() re-splits at the cutoff itself.
+    dev = price[price.index < cutoff]
 
     results = []
+    failed = 0
     for name, (fn, params) in REGISTRY.items():
         try:
             signal_fn = lambda p, _fn=fn, _params=params, **k: _fn(p, **_params)
-            ins = backtest.run(price, signal_fn(price), cost_bps, ctx["initial_capital"],
+            ins = backtest.run(dev, signal_fn(dev), cost_bps, ctx["initial_capital"],
                                ctx["periods_per_year"], ctx["risk_free_rate"])
-            wf = backtest.walk_forward(price, signal_fn, ctx)
+            wf = backtest.walk_forward(dev, signal_fn, ctx)
             scored = score.score_strategy(wf["metrics"], wf["window_returns"],
                                           ins["metrics"]["total_return"],
                                           min_trades=CFG["backtest"].get("min_trades", 20))
@@ -93,21 +98,35 @@ def main():
                 "readiness_score": report["score"], "reasons": report["reasons"],
             })
         except Exception as exc:
+            failed += 1
             log.log(f"[validate] skip {name}: {exc}")
+            results.append({
+                "strategy": name, "go": False, "error": str(exc),
+                "reasons": ["evaluation failed"], "readiness_score": 0.0,
+            })
     results.sort(key=lambda item: (item["go"], item["readiness_score"]), reverse=True)
     payload = {"generated_at": str(pd.Timestamp.now(tz="UTC")), "pair": args.pair,
                "cutoff": str(cutoff), "paper_only": True, "results": results}
+    if failed:
+        payload["evaluation_errors"] = failed
     output_dir = BASE / "results"
     output_dir.mkdir(exist_ok=True)
     path = output_dir / f"readiness_{args.pair.replace('/', '')}.json"
     path.write_text(json.dumps(_json_safe(payload), indent=2, allow_nan=False))
     log.log("strategy                 wf_score  robust  oos_ret  held_ret  hit_rate  go")
     for row in results:
+        if "error" in row:
+            log.log(f"{row['strategy']:24s} {'ERROR':>8s} {row['error'][:40]}")
+            continue
         log.log(f"{row['strategy']:24s} {row['walk_forward_score']:8.1f} "
                 f"{row['robustness']:7.2f} {row['oos_return']:8.3f} "
                 f"{row['held_out_return']:9.3f} {row['directional_hit_rate']:8.2f} "
                 f"{'GO' if row['go'] else 'NO-GO'}")
     log.log(f"[validate] wrote {path}")
+    # Fail closed: if every strategy failed evaluation, signal nonzero so callers
+    # (cron, CI) know the readiness report is incomplete, not clean.
+    if failed and failed == len(results):
+        raise SystemExit(f"[validate] all {failed} strategies failed evaluation")
 
 
 if __name__ == "__main__":

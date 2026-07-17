@@ -38,6 +38,13 @@ class PortfolioRiskState:
         self.daily_loss_limit_pct = float(defaults["daily_loss_limit_pct"])
         self.max_portfolio_risk_pct = float(defaults["max_portfolio_risk_pct"])
         self.per_strategy_risk_pct = float(defaults["per_strategy_risk_pct"])
+        # Fail closed at construction if a threshold is non-finite / negative.
+        if any(not math.isfinite(v) or v < 0 for v in (
+            self.max_drawdown_limit_pct, self.daily_loss_limit_pct,
+            self.max_portfolio_risk_pct, self.per_strategy_risk_pct,
+        )):
+            raise ValueError("risk thresholds must be finite and non-negative")
+        self._corrupt = False
 
     @staticmethod
     def _valid_equity(value: Any) -> bool:
@@ -57,11 +64,22 @@ class PortfolioRiskState:
             self.peak = equity
 
     def register_open(self, strategy: str, risk_amt: float):
+        if not math.isfinite(risk_amt) or risk_amt < 0:
+            self._corrupt = True
+            return
         self.open_risk += risk_amt
         self.open_by_strategy[strategy] = self.open_by_strategy.get(strategy, 0.0) + risk_amt
 
-    def register_close(self, pnl: float):
+    def register_close(self, pnl: float, strategy: str | None = None, risk_amt: float | None = None):
+        if not math.isfinite(pnl):
+            self._corrupt = True
+            return
         self.daily_pnl += pnl
+        # Release the reserved risk for the closed position so capacity recovers.
+        if strategy is not None and risk_amt is not None and math.isfinite(risk_amt):
+            self.open_risk = max(0.0, self.open_risk - risk_amt)
+            released = min(self.open_by_strategy.get(strategy, 0.0), risk_amt)
+            self.open_by_strategy[strategy] = max(0.0, self.open_by_strategy.get(strategy, 0.0) - released)
 
     def max_drawdown_pct(self) -> float:
         """Return drawdown from the equity high-water mark to current equity."""
@@ -74,7 +92,19 @@ class PortfolioRiskState:
         return self.max_drawdown_pct()
 
     def halt_reasons(self) -> list[str]:
-        """Describe every active breaker condition; unavailable equity fails closed."""
+        """Describe every active breaker condition; unavailable/corrupt state fails closed."""
+        # Fail closed on corrupt state: any non-finite threshold or mutable amount
+        # would make IEEE comparisons silently False (NaN >= x is False), so we
+        # must refuse rather than let a corrupted state skip the halt.
+        if self._corrupt:
+            return ["corrupt risk state (non-finite value observed)"]
+        thresholds = (self.max_drawdown_limit_pct, self.daily_loss_limit_pct,
+                      self.max_portfolio_risk_pct, self.per_strategy_risk_pct)
+        if any(not math.isfinite(t) for t in thresholds):
+            return ["corrupt risk state (non-finite threshold)"]
+        if not math.isfinite(self.open_risk) or not math.isfinite(self.daily_pnl):
+            return ["corrupt risk state (non-finite open risk or daily pnl)"]
+
         equity = self._current_equity()
         if equity is None:
             return ["equity unavailable"]

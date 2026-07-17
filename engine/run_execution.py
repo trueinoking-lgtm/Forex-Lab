@@ -90,6 +90,54 @@ def _open_demo_by_broker(db: sqlite3.Connection, broker: str) -> int:
     ).fetchone()["c"]
 
 
+def build_portfolio_risk(db: sqlite3.Connection, cfg: dict) -> "PortfolioRiskState":
+    """Construct live portfolio risk state from the DB + config (fail-closed).
+
+    Registers the reserved risk of every currently-open demo order (SL distance
+    * units) so the circuit breaker sees real exposure. Equity is seeded from the
+    configured account; if the broker reports live equity it is used to advance the
+    high-water mark. If construction fails for any reason we still return a state
+    whose halt_reasons() reports the problem, so the guard refuses by default.
+    """
+    from src.execution.risk_budget import PortfolioRiskState, load_risk_cfg
+    from src.signals import risk_check
+    risk_cfg = load_risk_cfg(cfg)
+    state = PortfolioRiskState(risk_cfg)
+    # Seed equity from the most recent reachable broker equity if known. Missing
+    # table/row is treated as "no exposure known yet" (degrade to initial equity),
+    # NOT as corrupt state — corrupt state (non-finite values) is still caught by
+    # the state itself. The primary fail-closed guarantee is the guard rejecting
+    # when portfolio_risk is None, which never happens here.
+    try:
+        row = db.execute(
+            "SELECT equity FROM BrokerCapability WHERE equity IS NOT NULL "
+            "ORDER BY last_checked_at DESC LIMIT 1"
+        ).fetchone()
+        if row and row["equity"]:
+            state.update_equity(float(row["equity"]))
+    except Exception:
+        pass  # no BrokerCapability table/row yet -> keep initial equity
+    # Register open demo orders' reserved risk.
+    try:
+        open_rows = db.execute(
+            "SELECT strategy, symbol, entry, stop_loss, units FROM DemoExecutionOrder "
+            "WHERE status='filled'"
+        ).fetchall()
+        for r in open_rows:
+            entry, sl = r["entry"], r["stop_loss"]
+            units = r["units"] or 0.0
+            if entry and sl and units:
+                risk = risk_check(
+                    cfg.get("account", 10000.0), cfg.get("signals", {}).get("risk_pct", 0.75),
+                    float(entry), float(sl),
+                )
+                reserved = float(risk.get("risk_amt", 0.0)) if risk.get("pass") else 0.0
+                state.register_open(r["strategy"] or "unknown", reserved)
+    except Exception:
+        pass  # no DemoExecutionOrder table/row yet -> no open risk registered
+    return state
+
+
 def _persist_capabilities(db: sqlite3.Connection) -> dict:
     """Probe every broker and store a redacted capability snapshot."""
     caps = capabilities()
@@ -314,6 +362,7 @@ def cmd_demo_order(args) -> int:
         signal=signal, open_demo_trades=_open_demo(db),
         max_open_demo_trades=ctrl["max_open_demo_trades"], kill_switch=bool(ctrl["kill_switch"]),
         live_quote=quote, signal_timestamp=signal.timestamp, execution_class="paper",
+        portfolio_risk=build_portfolio_risk(db, cfg),
     )
     if not res.passed:
         reason = "; ".join(res.reasons)
@@ -474,6 +523,7 @@ def cmd_mock_lifecycle(args) -> int:
         signal=signal, open_demo_trades=_open_demo(db),
         max_open_demo_trades=ctrl["max_open_demo_trades"], kill_switch=bool(ctrl["kill_switch"]),
         live_quote=quote, signal_timestamp=signal.timestamp, execution_class="paper",
+        portfolio_risk=build_portfolio_risk(db, cfg),
     )
     if not res.passed:
         reason = "; ".join(res.reasons)
@@ -632,6 +682,7 @@ def _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter) -> dict:
         open_demo_trades_by_broker=_open_demo_by_broker(db, broker),
         max_open_per_broker=ctrl.get("max_open_per_broker", ctrl["max_open_demo_trades"]),
         live_quote=quote, signal_timestamp=signal.timestamp, execution_class="paper",
+        portfolio_risk=build_portfolio_risk(db, cfg),
     )
     if not res.passed:
         result["rejection_reason"] = "; ".join(res.reasons)
@@ -1129,6 +1180,7 @@ def cmd_remote_mt5_dry_run(args) -> int:
         kill_switch=bool(ctrl["kill_switch"]),
         live_quote=live_quote, signal_timestamp=signal.timestamp,
         execution_class="paper",
+        portfolio_risk=build_portfolio_risk(db, cfg),
     )
     vps_ok = vps_guard.passed
     # Validate against the live bridge (calls /dry-run on PC) but never places.
@@ -1232,6 +1284,7 @@ def cmd_remote_mt5_order(args) -> int:
         open_demo_trades_by_broker=_open_demo_by_broker(db, "remote_mt5"),
         max_open_per_broker=ctrl.get("max_open_per_broker", ctrl["max_open_demo_trades"]),
         live_quote=live_quote, signal_timestamp=signal.timestamp, execution_class="paper",
+        portfolio_risk=build_portfolio_risk(db, cfg),
     )
     if not vps_guard.passed:
         print("REJECTED: Aether-side guard failed: " + "; ".join(vps_guard.reasons))

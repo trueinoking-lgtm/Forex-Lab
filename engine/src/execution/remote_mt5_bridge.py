@@ -53,12 +53,17 @@ class RemoteMT5BridgeAdapter(ExecutionAdapter):
         self._retries = int(os.environ.get("REMOTE_MT5_BRIDGE_RETRIES", DEFAULT_RETRIES))
 
     # ---- HTTP helper ----
-    def _req(self, method: str, path: str, **kw):
+    def _req(self, method: str, path: str, retry: bool = True, **kw):
         headers = {"Authorization": f"Bearer {self._token}"}
         kw.setdefault("headers", {}).update(headers)
         kw.setdefault("timeout", self._timeout)
         last_err: Optional[Exception] = None
-        for attempt in range(self._retries + 1):
+        # Order-placing POSTs are NOT retried: a lost response on retry would
+        # submit the same demo order twice (duplicate position). The bridge has
+        # no idempotency key, so we send exactly once and fail loud on transport
+        # error. Safe reads (GET) and the read-only dry-run stay retryable.
+        attempts = 1 if not retry else self._retries + 1
+        for attempt in range(attempts):
             try:
                 resp = requests.request(method, f"{self._url}{path}", **kw)
                 if resp.status_code == 401:
@@ -71,7 +76,7 @@ class RemoteMT5BridgeAdapter(ExecutionAdapter):
             except requests.RequestException as exc:
                 last_err = exc
                 continue
-        raise RuntimeError(f"remote_mt5 unreachable after {self._retries + 1} tries: {last_err}")
+        raise RuntimeError(f"remote_mt5 unreachable after {attempts} tries: {last_err}")
 
     def _assert_demo(self, body: dict) -> None:
         mode = body.get("broker_mode")
@@ -115,7 +120,7 @@ class RemoteMT5BridgeAdapter(ExecutionAdapter):
             "execution_class": order.execution_class,
             "requested_entry": order.requested_entry,
         }
-        resp = self._req("POST", "/place-demo-order", json=payload)
+        resp = self._req("POST", "/place-demo-order", retry=False, json=payload)
         body = resp.json()
         self._assert_demo(body)
         status = body.get("status", "rejected")

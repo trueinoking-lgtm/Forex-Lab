@@ -43,16 +43,28 @@ def main():
     price = df["close"].astype(float)
     log.log(f"[backtest] {len(price)} bars {price.index[0].date()}..{price.index[-1].date()}")
 
-    bh = backtest.walk_forward_bh(price, ctx)
+    # If a held-out cutoff is given, reserve the post-cutoff window from ALL
+    # development scoring (in-sample return, walk-forward, BH) so the held-out
+    # result is not contaminated by data it is later compared against.
+    if args.held_out_cutoff:
+        cutoff = pd.Timestamp(args.held_out_cutoff)
+        dev = price[price.index < cutoff]
+        future = price[price.index >= cutoff]
+        log.log(f"[backtest] development {dev.index[0].date()}..{dev.index[-1].date()} "
+                f"({len(dev)} bars); held-out {future.index[0].date()}..{future.index[-1].date()}")
+    else:
+        dev = price
+
+    bh = backtest.walk_forward_bh(dev, ctx)
     bh_ret = bh["metrics"].get("total_return", 0.0)
 
     results = []
     for name, (fn, params) in REGISTRY.items():
-        # full-period (in-sample) return for the OOS gap
-        ins = backtest.run(price, fn(price, **params), cost_bps, ctx["initial_capital"],
+        # full-period (in-sample) return for the OOS gap — on DEVELOPMENT only
+        ins = backtest.run(dev, fn(dev, **params), cost_bps, ctx["initial_capital"],
                            ctx["periods_per_year"], ctx["risk_free_rate"])
         ins_ret = ins["metrics"]["total_return"]
-        oos = backtest.walk_forward(price, lambda p, **k: fn(p, **params), ctx)
+        oos = backtest.walk_forward(dev, lambda p, **k: fn(p, **params), ctx)
         sc = score.score_strategy(oos["metrics"], oos["window_returns"], ins_ret,
                                   min_trades=CFG["backtest"].get("min_trades", 20))
         sc["strategy"] = name
