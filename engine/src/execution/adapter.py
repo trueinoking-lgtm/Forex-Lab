@@ -2,22 +2,84 @@
 from __future__ import annotations
 
 import re
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional
+from urllib.parse import parse_qsl, urlsplit, urlunsplit
 
 # Anything that looks like a credential is replaced before logging / storing.
+SENSITIVE_KEYS = frozenset({
+    "token", "secret", "apikey", "api_key", "password", "passwd",
+    "authorization", "bearer", "key", "auth",
+})
 _SECRET_RE = re.compile(
-    r"(?i)(api[_-]?key|apikey|secret|token|password|passwd|bearer)\s*[:=]\s*['\"]?[\w\-./+]{6,}",
-    re.IGNORECASE,
+    r"(?i)\b(api[_-]?key|apikey|secret|token|password|passwd|authorization|auth|key)"
+    r"(\s*[:=]\s*['\"]?)[^\s,'\"&}]{6,}"
 )
+_BEARER_RE = re.compile(r"(?i)\bbearer\s+[^\s,;\"']+")
+_URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
+
+
+def redact_obj(obj):
+    """Recursively redact values whose field names identify credentials."""
+    try:
+        if isinstance(obj, dict):
+            return {
+                key: ("[REDACTED]" if str(key).lower() in SENSITIVE_KEYS
+                      else redact_obj(value))
+                for key, value in obj.items()
+            }
+        if isinstance(obj, list):
+            return [redact_obj(value) for value in obj]
+        if isinstance(obj, tuple):
+            return tuple(redact_obj(value) for value in obj)
+        return obj
+    except Exception:
+        try:
+            return str(obj)
+        except Exception:
+            return "[UNPRINTABLE]"
+
+
+def _redact_url(match: re.Match) -> str:
+    try:
+        parts = urlsplit(match.group(0))
+        hostname = parts.hostname or ""
+        if parts.port is not None:
+            hostname += f":{parts.port}"
+        query = "&".join(
+            f"{key}={'[REDACTED]' if key.lower() in SENSITIVE_KEYS else value}"
+            for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        )
+        return urlunsplit((parts.scheme, hostname, parts.path, query, parts.fragment))
+    except Exception:
+        return "[REDACTED URL]"
 
 
 def redact(text: str) -> str:
-    """Redact credential-like values from a string (logs + raw responses)."""
+    """Redact credentials in structured JSON and free-form log strings."""
     if not text:
         return ""
-    return _SECRET_RE.sub(lambda m: f"{m.group(1)}=[REDACTED]", text)
+    try:
+        if not isinstance(text, str):
+            transformed = redact_obj(text)
+            return str(transformed)
+        try:
+            parsed = json.loads(text)
+        except (TypeError, ValueError):
+            parsed = None
+        if isinstance(parsed, (dict, list)):
+            return json.dumps(redact_obj(parsed))
+        result = _URL_RE.sub(_redact_url, text)
+        result = _BEARER_RE.sub("Bearer [REDACTED]", result)
+        return _SECRET_RE.sub(
+            lambda match: f"{match.group(1)}{match.group(2)}[REDACTED]", result)
+    except Exception:
+        try:
+            return str(text)
+        except Exception:
+            return "[UNPRINTABLE]"
 
 
 @dataclass

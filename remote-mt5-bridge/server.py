@@ -22,10 +22,10 @@ import os
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import FastAPI, Header, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, confloat, field_validator
 
 # Load .env (MT5 creds, bridge token, DRY_RUN/autotrade/kill-switch) into the
 # process environment. Without this the running bridge ignores its own .env and
@@ -153,14 +153,21 @@ def _symbol_map() -> dict:
 # ---------- request models ----------
 class OrderReq(BaseModel):
     symbol: str
-    side: str            # buy | sell
-    units: float
-    stop_loss: float
-    take_profit: float
+    side: Literal["buy", "sell"]
+    units: confloat(gt=0, allow_inf_nan=False)
+    stop_loss: confloat(allow_inf_nan=False)
+    take_profit: confloat(allow_inf_nan=False)
     signal_id: Optional[int] = None
-    requested_entry: Optional[float] = None
+    requested_entry: Optional[confloat(allow_inf_nan=False)] = None
     signal_timestamp: Optional[str] = None     # paper signal generated_at (staleness)
     execution_class: Optional[str] = None       # backtest_only|paper_only|paper
+
+    @field_validator("symbol")
+    @classmethod
+    def validate_symbol(cls, value: str) -> str:
+        if value not in _symbol_map():
+            raise ValueError(f"unsupported symbol: {value}")
+        return value
 
 
 def _reject_stale(req: OrderReq) -> None:

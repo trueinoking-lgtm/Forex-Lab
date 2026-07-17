@@ -24,6 +24,7 @@ ACCOUNT_TRADE_MODE_REAL = 2
 # real demo order (minutes). A stale signal's SL/TP geometry no longer matches
 # the live market, so execution must be refused.
 DEFAULT_SIGNAL_MAX_AGE_MINUTES = 30
+FUTURE_TOLERANCE_SECONDS = 5.0
 
 
 def check_demo_trade_mode(trade_mode: int) -> None:
@@ -208,7 +209,10 @@ def tick_age_seconds(timestamp: Optional[str], now: Optional[datetime] = None) -
     if ts.tzinfo is None:
         ts = ts.replace(tzinfo=timezone.utc)
     now = now or datetime.now(timezone.utc)
-    return (now - ts).total_seconds()
+    age = (now - ts).total_seconds()
+    if age < -FUTURE_TOLERANCE_SECONDS:
+        return None
+    return age
 
 
 def validate_tick(bid, ask, timestamp: Optional[str],

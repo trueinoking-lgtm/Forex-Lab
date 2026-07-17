@@ -60,6 +60,7 @@ def trade_retcode_name(mt5, code: int) -> str:
 # real demo order (minutes). A stale signal's SL/TP geometry no longer matches
 # the live market, so execution must be refused.
 DEFAULT_SIGNAL_MAX_AGE_MINUTES = 30
+FUTURE_TOLERANCE_SECONDS = 5.0
 
 
 def check_demo_trade_mode(trade_mode: int) -> None:
@@ -123,7 +124,10 @@ def signal_age_minutes(
     if ts.tzinfo is None:
         ts = ts.replace(tzinfo=timezone.utc)
     now = now or datetime.now(timezone.utc)
-    return (now - ts).total_seconds() / 60.0
+    age_seconds = (now - ts).total_seconds()
+    if age_seconds < -FUTURE_TOLERANCE_SECONDS:
+        return None
+    return age_seconds / 60.0
 
 
 def is_stale_signal(
@@ -142,7 +146,7 @@ def is_stale_signal(
         return False
     age = signal_age_minutes(timestamp, now=now)
     if age is None:
-        return False
+        return True
     return age > float(max_age_minutes)
 
 

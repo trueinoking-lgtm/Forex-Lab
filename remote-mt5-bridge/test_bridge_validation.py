@@ -19,12 +19,49 @@ The test asserts:
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
+import pytest
+from pydantic import ValidationError
+
 from bridge_validation import (
     execute_demo_order,
     _order_check_passed,
     _order_send_succeeded,
     UNITS_PER_LOT,
+    is_stale_signal,
 )
+from server import OrderReq
+
+
+NOW = datetime(2026, 7, 17, 12, 0, tzinfo=timezone.utc)
+
+
+def _valid_order(**overrides):
+    values = {
+        "symbol": "EURUSD", "side": "buy", "units": 2000,
+        "stop_loss": 1.1, "take_profit": 1.2,
+    }
+    values.update(overrides)
+    return values
+
+
+def test_unknown_signal_age_is_stale_for_executable_class():
+    assert is_stale_signal(None, 30, "paper", NOW) is True
+    future = (NOW + timedelta(minutes=10)).isoformat()
+    assert is_stale_signal(future, 30, "paper", NOW) is True
+    recent = (NOW - timedelta(minutes=1)).isoformat()
+    assert is_stale_signal(recent, 30, "paper", NOW) is False
+
+
+@pytest.mark.parametrize("override", [
+    {"side": "hold"},
+    {"units": float("nan")},
+    {"symbol": "UNKNOWN"},
+])
+def test_order_request_rejects_invalid_boundary_fields(override):
+    with pytest.raises(ValidationError):
+        OrderReq(**_valid_order(**override))
 
 
 class _FakeCheck:
