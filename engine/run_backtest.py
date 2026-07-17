@@ -13,6 +13,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent))
 from src import data, backtest, metrics, score, log
 from src.paper_sim import overfitting_flags
+from src.validation import directional_accuracy, held_out_validate
 from strategies.registry import REGISTRY, build_signal
 
 CFG = yaml.safe_load(open("config.yaml"))
@@ -28,6 +29,7 @@ def ctx_for(cost_bps):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pair", default=None)
+    ap.add_argument("--held-out-cutoff", help="optional held-out start date (YYYY-MM-DD)")
     args = ap.parse_args()
     d = CFG["data"]
     symbol = args.pair or d["symbol"]
@@ -67,6 +69,12 @@ def main():
         sc["min_trades_warning"] = (f"Insufficient sample: {sc.get('trade_count', 0)} "
                                     f"trades; minimum is {min_trades}."
                                     if sc.get("trade_count", 0) < min_trades else None)
+        if args.held_out_cutoff:
+            ho = held_out_validate(price, lambda p, **k: fn(p, **params), ctx,
+                                   pd.Timestamp(args.held_out_cutoff))
+            sc["held_out"] = {"cutoff": args.held_out_cutoff, "metrics": ho["metrics"],
+                              "n": ho["n"], "future_window_days": ho["future_window_days"],
+                              "directional_accuracy": directional_accuracy(ho["trades"])}
         results.append(sc)
         log.log(f"[backtest] {name:22s} score={sc['score']:5.1f} "
                 f"oos={sc['oos_return']:+.3f} rob={sc['robustness']:.2f}")
