@@ -146,6 +146,7 @@ class OrderStatus:
     position_id: Optional[str] = None
     type_filling_used: Optional[str] = None
     partial: bool = False
+    filled_units: Optional[float] = None
     raw_redacted: str = ""
 
 

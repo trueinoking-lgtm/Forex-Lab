@@ -360,7 +360,10 @@ def place(req: OrderReq, _=Depends(_require_auth)):
         "calculated_lots": norm["calculated_lots"],
         "spread_at_entry": float(tick.ask - tick.bid),
     }
-    result = execute_demo_order(mt5, request, m, broker_mode="demo")
+    # Re-read at the final sending boundary so a switch flip during preflight
+    # cannot race through to order_send.
+    result = execute_demo_order(
+        mt5, request, m, broker_mode="demo", kill_switch_active=_bridge_kill())
     return result
 
 

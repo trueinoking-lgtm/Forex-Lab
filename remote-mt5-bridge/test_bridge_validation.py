@@ -30,6 +30,8 @@ from bridge_validation import (
     _order_send_succeeded,
     UNITS_PER_LOT,
     is_stale_signal,
+    normalize_volume,
+    VolumeInfo,
 )
 from server import OrderReq
 
@@ -104,6 +106,9 @@ class FakeMt5:
 
     def last_error(self):
         return type("E", (), self._last_error)()
+
+    def account_info(self):
+        return type("Account", (), {"trade_mode": 0})()
 
     def order_check(self, request):
         self.check_requests.append(dict(request))
@@ -259,3 +264,32 @@ def test_volume_units_to_lots():
     norm = normalize_volume(2000, v)
     assert norm["valid"] is True
     assert norm["normalized_lots"] == 0.02
+
+
+def test_arbitrary_decimal_step_and_constraints():
+    info = VolumeInfo(0.01, 0.25, 500.0)
+    norm = normalize_volume(25000, info)
+    assert norm["valid"] is True
+    assert norm["normalized_lots"] == 0.25
+    with pytest.raises(ValueError):
+        VolumeInfo(float("nan"), 0.01, 100)
+    with pytest.raises(ValueError):
+        VolumeInfo(0.01, 0.01, 0.005)
+
+
+def test_volume_above_max_is_rejected_not_clamped():
+    norm = normalize_volume(200000, VolumeInfo(0.01, 0.25, 1.0))
+    assert norm["valid"] is False
+    assert norm["normalized_lots"] == 2.0
+    assert "exceeds" in norm["reason"]
+    assert "volume_max" in norm["reason"]
+
+
+def test_kill_switch_rechecked_before_send():
+    mt5 = FakeMt5()
+    mt5.symbol_info = lambda m: _symbol_info()
+    result = execute_demo_order(
+        mt5, _make_request(), "EURUSD", broker_mode="demo", kill_switch_active=True)
+    assert result["status"] == "rejected"
+    assert "kill switch" in result["rejection_reason"]
+    assert mt5.sends == []

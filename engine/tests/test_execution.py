@@ -1056,7 +1056,8 @@ def _make_order_db(tmp_path, *, sid=6, units=2000.0, direction=1,
 
 
 def _patch_order_bridge(monkeypatch, *, dry_run_payload=None, place_status="filled",
-                        place_reason=None, captured=None, raise_exc=None):
+                        place_reason=None, captured=None, raise_exc=None,
+                        place_fields=None):
     """Patch the bridge HTTP layer used by RemoteMT5BridgeAdapter.
 
     Returns canned /dry-run and /place-demo-order responses and records every
@@ -1086,12 +1087,14 @@ def _patch_order_bridge(monkeypatch, *, dry_run_payload=None, place_status="fill
         if base.endswith("/dry-run"):
             return _R(200, dry_run_payload)
         if base.endswith("/place-demo-order"):
-            return _R(200, {"status": place_status,
+            body = {"status": place_status,
                             "rejection_reason": place_reason,
                             "filled_entry": (k.get("json") or {}).get("requested_entry"),
                             "order_id": "PC123",
                             "spread_at_entry": 0.0003, "slippage": 0.0001,
-                            "broker_mode": "demo"})
+                            "broker_mode": "demo"}
+            body.update(place_fields or {})
+            return _R(200, body)
         if base.endswith("/quote"):
             # Two identical-but-fresh ticks must be ACCEPTED by the preflight
             # (the price is NOT required to change between samples).
@@ -1187,6 +1190,34 @@ def test_remote_mt5_order_sends_units_2000_to_bridge(monkeypatch, tmp_path):
     assert row["signal_id"] == 6
     assert row["units"] == 2000.0
     assert row["status"] == "filled"
+
+
+@pytest.mark.parametrize("accepted_status", ["placed", "done_partial"])
+def test_remote_mt5_accepted_status_persisted_and_succeeds(
+        monkeypatch, tmp_path, accepted_status):
+    import run_execution, sqlite3
+    dbp = _make_order_db(tmp_path, sid=6, units=2000.0)
+    monkeypatch.setattr(run_execution, "DB_PATH", str(dbp))
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
+    monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
+    _patch_order_bridge(
+        monkeypatch, place_status=accepted_status,
+        place_fields={"deal_id": "D7", "position_id": "P8",
+                      "type_filling_used": "IOC", "partial": True,
+                      "filled_units": 1250.0})
+
+    rc = run_execution.cmd_remote_mt5_order(
+        _args(signal_id=6, run_id=f"accepted-{accepted_status}"))
+
+    assert rc == 0
+    db = sqlite3.connect(str(dbp)); db.row_factory = sqlite3.Row
+    row = db.execute("SELECT * FROM DemoExecutionOrder ORDER BY id DESC LIMIT 1").fetchone()
+    assert row["status"] == accepted_status
+    assert row["deal_id"] == "D7"
+    assert row["position_id"] == "P8"
+    assert row["type_filling_used"] == "IOC"
+    assert row["partial"] == 1
+    assert row["filled_units"] == 1250.0
 
 
 def test_remote_mt5_dry_run_and_order_share_prepared_units(monkeypatch, tmp_path, capsys):
@@ -1449,4 +1480,3 @@ def test_preflight_zero_spread_company_only_no_server_unlisted_blocked():
         broker_company="MetaQuotes Ltd.", broker_server="",
     )
     assert ok is False and "not explicitly whitelisted" in reason
-

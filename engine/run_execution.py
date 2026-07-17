@@ -215,7 +215,7 @@ def _ensure_signal_lineage_col(db: sqlite3.Connection) -> None:
 def _ensure_demo_order_cols(db: sqlite3.Connection) -> None:
     """Idempotent migration: add broker result fields to DemoExecutionOrder.
 
-    Adds deal_id, position_id, type_filling_used, partial so the live bridge
+    Adds deal_id, position_id, type_filling_used, partial, filled_units so the live bridge
     result (order/deal/position ids, filling mode, partial-fill flag) can be
     persisted. Safe to call on every open — no-op once columns exist.
     """
@@ -229,6 +229,7 @@ def _ensure_demo_order_cols(db: sqlite3.Connection) -> None:
         ("position_id", "TEXT"),
         ("type_filling_used", "TEXT"),
         ("partial", "INTEGER"),
+        ("filled_units", "REAL"),
     ):
         if col not in cols:
             db.execute(f"ALTER TABLE DemoExecutionOrder ADD COLUMN {col} {ctype}")
@@ -328,19 +329,22 @@ def cmd_demo_order(args) -> int:
     # Passed — submit to adapter.
     status = adapter.place_demo_order(order)
     last_id = None
-    if status.status in ("filled", "placed"):
+    if status.status in ("filled", "placed", "done_partial"):
+        filled_units = getattr(status, "filled_units", None)
+        if filled_units is None:
+            filled_units = order.units
         cur = db.execute(
             """INSERT INTO DemoExecutionOrder
                (signal_id,broker,broker_mode,symbol,side,requested_entry,filled_entry,
                 stop_loss,take_profit,units,requested_at,filled_at,status,
                 spread_at_entry,slippage,deal_id,position_id,type_filling_used,
-                partial,raw_response_redacted_json)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                partial,filled_units,raw_response_redacted_json)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (args.signal_id, adapter.name, "demo", order.symbol, order.side, requested_entry,
              status.filled_entry, order.stop_loss, order.take_profit, order.units,
              _now(), _now(), status.status, status.spread_at_entry, status.slippage,
              status.deal_id, status.position_id, status.type_filling_used,
-             status.partial, status.raw_redacted),
+             status.partial, filled_units, status.raw_redacted),
         )
         last_id = cur.lastrowid
     else:
@@ -559,6 +563,7 @@ def _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter) -> dict:
     The adapter itself ALSO gatekeeps DRY_RUN / DEMO_AUTOTRADE_ENABLED and returns a
     'skipped' status if not permitted — so even a misconfigured env cannot place.
     """
+    _ensure_demo_order_cols(db)
     result = {"broker": broker, "status": "rejected", "order_id": "",
               "filled_entry": None, "rejection_reason": None}
     if cfg.get("allow_live_orders"):
@@ -629,17 +634,24 @@ def _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter) -> dict:
         return result
 
     status = adapter.place_demo_order(order)
-    if status.status == "filled":
+    if status.status in {"filled", "placed", "done_partial"}:
+        filled_units = getattr(status, "filled_units", None)
+        if filled_units is None:
+            filled_units = order.units
         cur = db.execute(
             """INSERT INTO DemoExecutionOrder
                (signal_id,broker,broker_mode,symbol,side,requested_entry,filled_entry,
                 stop_loss,take_profit,units,requested_at,filled_at,status,
-                spread_at_entry,slippage,raw_response_redacted_json)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                spread_at_entry,slippage,deal_id,position_id,type_filling_used,
+                partial,filled_units,raw_response_redacted_json)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (signal.id if hasattr(signal, "id") else None, broker, "demo",
              order.symbol, order.side, requested_entry, status.filled_entry,
              order.stop_loss, order.take_profit, order.units,
-             _now(), _now(), "filled", status.spread_at_entry, status.slippage,
+             _now(), _now(), status.status, status.spread_at_entry, status.slippage,
+             getattr(status, "deal_id", None), getattr(status, "position_id", None),
+             getattr(status, "type_filling_used", None), int(bool(getattr(status, "partial", False))),
+             filled_units,
              status.raw_redacted),
         )
         order_id = cur.lastrowid
@@ -648,7 +660,7 @@ def _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter) -> dict:
             result["status"] = "skipped"
             result["rejection_reason"] = "duplicate lock acquired concurrently"
             return result
-        result.update({"status": "filled", "order_id": status.order_id,
+        result.update({"status": status.status, "order_id": status.order_id,
                        "filled_entry": status.filled_entry,
                        "spread": status.spread_at_entry, "slippage": status.slippage})
     elif status.status == "skipped":
@@ -812,7 +824,7 @@ def cmd_real_demo_order(args) -> int:
     run_id = args.run_id or f"real-{broker}-{args.signal_id}"
     res = _place_real_demo(db, cfg, ctrl, broker, signal, run_id, adapter)
     print(json.dumps(res, indent=2))
-    return 0 if res["status"] == "filled" else 2
+    return 0 if res["status"] in {"filled", "placed", "done_partial"} else 2
 
 
 def cmd_mirror_demo_order(args) -> int:
@@ -1298,7 +1310,7 @@ def cmd_remote_mt5_order(args) -> int:
     print(json.dumps({**res, "broker_mode": "demo",
                       "signal_units": vps_order.units,
                       "prepared_order_units": vps_order.units}, indent=2))
-    return 0 if res["status"] == "filled" else 2
+    return 0 if res["status"] in {"filled", "placed", "done_partial"} else 2
 
 
 def cmd_kill_switch(args) -> int:

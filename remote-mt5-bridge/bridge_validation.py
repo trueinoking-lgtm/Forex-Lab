@@ -7,6 +7,7 @@ and on either host without heavy dependencies.
 from __future__ import annotations
 
 import math
+from decimal import Decimal
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -177,35 +178,38 @@ class VolumeInfo:
         self.volume_min = float(volume_min)
         self.volume_step = float(volume_step)
         self.volume_max = float(volume_max)
+        if not all(math.isfinite(value) for value in (
+                self.volume_min, self.volume_step, self.volume_max)):
+            raise ValueError("volume constraints must be finite")
+        if not (0 < self.volume_min <= self.volume_max):
+            raise ValueError("volume constraints require 0 < volume_min <= volume_max")
+        if self.volume_step <= 0:
+            raise ValueError("volume_step must be positive")
 
 
 def _step_decimals(step: float) -> int:
-    """Number of decimal places implied by a volume_step (0.01 -> 2)."""
-    if step <= 0:
-        return 2
-    d = -math.log10(step)
-    return max(0, int(round(d)))
+    """Decimal precision encoded by the broker's step, including e.g. 0.25."""
+    return max(0, -Decimal(str(step)).as_tuple().exponent)
 
 
-def _snap_to_step(value: float, step: float, vmin: float, vmax: float) -> tuple[float, bool]:
-    """Snap `value` to a whole multiple of `step`, clamped to [vmin, vmax].
+def _snap_to_step(value: float, step: float, vmin: float, vmax: float) -> tuple[float, bool, bool]:
+    """Snap `value` to a whole multiple of `step` and report range violations.
 
     Built from an INTEGER step count (not repeated float addition) and rounded to
     the step's decimal places so MT5's `volume % volume_step == 0` check passes
     without float-drift rejections (e.g. 0.2 lots vs step 0.01). Returns
-    ``(snapped, too_small)`` where ``too_small`` is True when the snapped value
-    falls below volume_min — the caller must reject rather than bump to vmin.
+    ``(snapped, too_small, too_large)``. The caller rejects either violation;
+    requests are never silently inflated or clamped.
     """
     if step <= 0:
-        clamped = max(vmin, min(vmax, value))
-        return clamped, clamped < vmin
+        return value, value < vmin, value > vmax
     n = int(round(value / step))
     if n <= 0:
-        return 0.0, True
+        return 0.0, True, False
     snapped = round(n * step, _step_decimals(step))
     if snapped < vmin:
-        return snapped, True
-    return min(snapped, vmax), False
+        return snapped, True, False
+    return snapped, False, snapped > vmax
 
 
 def normalize_volume(units: float, info: VolumeInfo) -> dict:
@@ -221,7 +225,7 @@ def normalize_volume(units: float, info: VolumeInfo) -> dict:
     ``valid`` flag so callers can reject before touching the broker.
     """
     requested_units = float(units)
-    if requested_units <= 0:
+    if not math.isfinite(requested_units) or requested_units <= 0:
         return {
             "requested_units": requested_units,
             "calculated_lots": 0.0,
@@ -230,17 +234,26 @@ def normalize_volume(units: float, info: VolumeInfo) -> dict:
             "volume_step": info.volume_step,
             "volume_max": info.volume_max,
             "valid": False,
-            "reason": "units must be positive",
+            "reason": "units must be finite and positive",
         }
     if requested_units >= 1.0:
         calculated = requested_units / UNITS_PER_LOT
     else:
         calculated = requested_units  # already in lots
-    normalized, too_small = _snap_to_step(
+    if not math.isfinite(calculated):
+        return {
+            "requested_units": requested_units, "calculated_lots": calculated,
+            "normalized_lots": 0.0, "volume_min": info.volume_min,
+            "volume_step": info.volume_step, "volume_max": info.volume_max,
+            "valid": False, "reason": "calculated volume must be finite",
+        }
+    normalized, too_small, too_large = _snap_to_step(
         calculated, info.volume_step, info.volume_min, info.volume_max)
-    valid = (not too_small) and normalized >= info.volume_min and normalized <= info.volume_max and normalized > 0
+    valid = not too_small and not too_large and normalized > 0
     reason = None
-    if not valid:
+    if too_large:
+        reason = f"normalized volume {normalized:g} exceeds volume_max {info.volume_max:g}"
+    elif not valid:
         reason = (
             f"normalized volume {normalized:g} outside [{info.volume_min:g}, {info.volume_max:g}] "
             f"(step {info.volume_step:g})"
@@ -304,7 +317,7 @@ def _order_send_succeeded(mt5, result) -> bool:
 
 
 def execute_demo_order(mt5, request: dict, symbol_mapped: str,
-                       broker_mode: str = "demo") -> dict:
+                       broker_mode: str = "demo", kill_switch_active: bool = False) -> dict:
     """Send a demo order after running mt5.order_check.
 
     `mt5` is the imported MetaTrader5 module (injected so this stays testable
@@ -421,6 +434,18 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
 
         # order_check passed (or unavailable). order_send is the authoritative
         # filling-mode test; fall through on fill-related rejections.
+        if kill_switch_active:
+            return {"status": "rejected", "rejection_reason": "kill switch engaged",
+                    "broker_mode": broker_mode}
+        try:
+            account = mt5.account_info()
+            check_demo_trade_mode(int(account.trade_mode))
+        except (AttributeError, TypeError, ValueError):
+            return {
+                "status": "rejected",
+                "rejection_reason": "account_mode changed away from demo",
+                "broker_mode": broker_mode,
+            }
         result = mt5.order_send(attempt)
         if _order_send_succeeded(mt5, result):
             request = attempt
@@ -496,13 +521,18 @@ def execute_demo_order(mt5, request: dict, symbol_mapped: str,
         or (requested_volume > 0 and 0 < filled_volume < requested_volume)
     )
     return {
-        "status": "placed" if retcode == int(getattr(mt5, "TRADE_RETCODE_PLACED", 10008)) else "filled",
+        "status": (
+            "placed" if retcode == int(getattr(mt5, "TRADE_RETCODE_PLACED", 10008))
+            else "done_partial" if retcode == int(getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010))
+            else "filled"
+        ),
         "partial": is_partial,
         "order_id": str(getattr(result, "order", "")),
         "deal_id": str(getattr(result, "deal", "")),
         "position_id": str(getattr(result, "position", "")),
         "filled_entry": float(getattr(result, "price", 0.0)),
         "filled_volume": filled_volume,
+        "filled_units": filled_volume * UNITS_PER_LOT,
         "requested_volume": requested_volume,
         "sent_volume": vol,
         "mt5_retcode": retcode,

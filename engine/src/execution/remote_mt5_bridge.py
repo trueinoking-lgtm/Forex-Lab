@@ -126,6 +126,7 @@ class RemoteMT5BridgeAdapter(ExecutionAdapter):
             position_id=str(body.get("position_id", "")) or None,
             type_filling_used=body.get("type_filling_used"),
             partial=bool(body.get("partial", False)),
+            filled_units=body.get("filled_units"),
             raw_redacted=redact(json.dumps({k: v for k, v in body.items()
                                             if k not in ("order_id",)})),
         )
