@@ -106,8 +106,17 @@ def _good_order(signal=None, entry=1.1000):
     return DemoOrderRequest(
         symbol=s.pair, side="buy" if s.direction > 0 else "sell",
         units=s.units, stop_loss=s.stop_loss, take_profit=s.take_profit,
-        signal_id=1, requested_entry=entry,
+        signal_id=1, signal_timestamp=s.timestamp, execution_class="paper",
+        requested_entry=entry,
     )
+
+
+def test_demo_order_request_requires_complete_lineage():
+    with pytest.raises(TypeError):
+        DemoOrderRequest(
+            symbol="EURUSD", side="buy", units=2000.0,
+            stop_loss=1.095, take_profit=1.105, signal_id=1,
+        )
 
 
 # --- redaction ---
@@ -144,7 +153,8 @@ def test_missing_sl_rejects():
     s = _signal()
     order = DemoOrderRequest(symbol=s.pair, side="buy", units=s.units,
                              stop_loss=None, take_profit=s.take_profit,
-                             signal_id=1, requested_entry=1.1)
+                             signal_id=1, signal_timestamp=s.timestamp,
+                             execution_class="paper", requested_entry=1.1)
     res = run_pretrade_guards(order, broker_mode="demo", allow_live_orders=False,
                               account=10000, risk_pct=0.75, signal=s, open_demo_trades=0)
     assert not res.passed
@@ -155,7 +165,8 @@ def test_missing_tp_rejects():
     s = _signal()
     order = DemoOrderRequest(symbol=s.pair, side="buy", units=s.units,
                              stop_loss=s.stop_loss, take_profit=None,
-                             signal_id=1, requested_entry=1.1)
+                             signal_id=1, signal_timestamp=s.timestamp,
+                             execution_class="paper", requested_entry=1.1)
     res = run_pretrade_guards(order, broker_mode="demo", allow_live_orders=False,
                               account=10000, risk_pct=0.75, signal=s, open_demo_trades=0)
     assert not res.passed
@@ -676,7 +687,8 @@ def test_guard_rejects_invalid_buy_geometry_vs_live_quote():
     stale_signal = _signal(entry=1.1000, sl=1.095, tp=1.105, direction=1)
     order = DemoOrderRequest(symbol="EURUSD", side="buy", units=2000.0,
                              stop_loss=1.095, take_profit=1.105,
-                             signal_id=1, requested_entry=1.14143)
+                             signal_id=1, signal_timestamp=stale_signal.timestamp,
+                             execution_class="paper", requested_entry=1.14143)
     live = PriceQuote(symbol="EURUSD", bid=1.14140, ask=1.14143, spread=0.00003,
                       timestamp=datetime.now(timezone.utc).isoformat())
     res = run_pretrade_guards(
@@ -694,7 +706,8 @@ def test_guard_passes_valid_buy_geometry_vs_live_quote():
     sig = _signal(entry=1.14143, sl=1.095, tp=1.160, direction=1, timestamp=fresh_ts)
     order = DemoOrderRequest(symbol="EURUSD", side="buy", units=2000.0,
                              stop_loss=1.095, take_profit=1.160,
-                             signal_id=1, requested_entry=1.14143)
+                             signal_id=1, signal_timestamp=fresh_ts,
+                             execution_class="paper", requested_entry=1.14143)
     live = PriceQuote(symbol="EURUSD", bid=1.14140, ask=1.14143, spread=0.00003,
                       timestamp=fresh_ts)
     res = run_pretrade_guards(
@@ -776,8 +789,8 @@ def test_bridge_reports_non_demo_rejected(monkeypatch):
         a.get_account()
 
 
-def test_bridge_supports_sl_tp_payload(monkeypatch):
-    # The adapter must forward SL/TP to the bridge (no fallback to mock).
+def test_bridge_supports_sl_tp_and_lineage_payload(monkeypatch):
+    # The adapter must forward SL/TP and complete lineage to the bridge.
     monkeypatch.setenv("REMOTE_MT5_BRIDGE_URL", "https://pc.tailnet.ts.net")
     monkeypatch.setenv("REMOTE_MT5_BRIDGE_TOKEN", "tok")
     import requests
@@ -798,6 +811,9 @@ def test_bridge_supports_sl_tp_payload(monkeypatch):
     a.place_demo_order(order)
     assert captured["json"]["stop_loss"] == order.stop_loss
     assert captured["json"]["take_profit"] == order.take_profit
+    assert captured["json"]["signal_id"] == order.signal_id
+    assert captured["json"]["signal_timestamp"] == order.signal_timestamp
+    assert captured["json"]["execution_class"] == order.execution_class
 
 
 def test_remote_bridge_status_table_no_secret_columns(monkeypatch):
@@ -1117,6 +1133,8 @@ def test_prepare_demo_order_preserves_signal_id_and_units():
     s = _signal(units=2000.0, sid=6, timestamp=datetime.now(timezone.utc).isoformat())
     o = prepare_demo_order_from_signal(s, "remote_mt5", 1.14143)
     assert o.signal_id == 6
+    assert o.signal_timestamp == s.timestamp
+    assert o.execution_class == "paper"
     assert o.units == 2000.0
     assert o.symbol == "EURUSD"
     assert o.side == "buy"

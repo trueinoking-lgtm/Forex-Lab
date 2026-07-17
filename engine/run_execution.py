@@ -198,6 +198,8 @@ def prepare_demo_order_from_signal(signal: PaperSignal, broker: str,
         stop_loss=signal.stop_loss,
         take_profit=signal.take_profit,
         signal_id=signal.id,
+        signal_timestamp=signal.timestamp,
+        execution_class="paper",
         requested_entry=requested_entry if requested_entry is not None else signal.entry,
     )
 
@@ -303,6 +305,7 @@ def cmd_demo_order(args) -> int:
         symbol=signal.pair, side="buy" if signal.direction > 0 else "sell",
         units=signal.units or 0.0, stop_loss=signal.stop_loss,
         take_profit=signal.take_profit, signal_id=signal.id if hasattr(signal, "id") else args.signal_id,
+        signal_timestamp=signal.timestamp, execution_class="paper",
         requested_entry=requested_entry,
     )
     res = run_pretrade_guards(
@@ -462,6 +465,7 @@ def cmd_mock_lifecycle(args) -> int:
         symbol=signal.pair, side="buy" if signal.direction > 0 else "sell",
         units=signal.units or 0.0, stop_loss=signal.stop_loss,
         take_profit=signal.take_profit, signal_id=args.signal_id,
+        signal_timestamp=signal.timestamp, execution_class="paper",
         requested_entry=requested_entry,
     )
     res = run_pretrade_guards(

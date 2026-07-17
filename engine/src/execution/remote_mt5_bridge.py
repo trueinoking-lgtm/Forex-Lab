@@ -110,7 +110,10 @@ class RemoteMT5BridgeAdapter(ExecutionAdapter):
         payload = {
             "symbol": order.symbol, "side": order.side, "units": order.units,
             "stop_loss": order.stop_loss, "take_profit": order.take_profit,
-            "signal_id": order.signal_id, "requested_entry": order.requested_entry,
+            "signal_id": order.signal_id,
+            "signal_timestamp": order.signal_timestamp,
+            "execution_class": order.execution_class,
+            "requested_entry": order.requested_entry,
         }
         resp = self._req("POST", "/place-demo-order", json=payload)
         body = resp.json()

@@ -84,14 +84,16 @@ def redact(text: str) -> str:
 
 @dataclass
 class DemoOrderRequest:
-    """A forward-test order derived from a paper signal. SL+TP are mandatory."""
+    """A forward-test order with mandatory SL, TP, and signal lineage."""
 
     symbol: str
     side: str                       # 'buy' | 'sell'
     units: float
     stop_loss: float
     take_profit: float
-    signal_id: Optional[int] = None
+    signal_id: int
+    signal_timestamp: str
+    execution_class: str
     requested_entry: Optional[float] = None
 
 

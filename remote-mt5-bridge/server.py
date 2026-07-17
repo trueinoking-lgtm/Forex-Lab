@@ -157,16 +157,24 @@ class OrderReq(BaseModel):
     units: confloat(gt=0, allow_inf_nan=False)
     stop_loss: confloat(allow_inf_nan=False)
     take_profit: confloat(allow_inf_nan=False)
-    signal_id: Optional[int] = None
+    signal_id: int
     requested_entry: Optional[confloat(allow_inf_nan=False)] = None
-    signal_timestamp: Optional[str] = None     # paper signal generated_at (staleness)
-    execution_class: Optional[str] = None       # backtest_only|paper_only|paper
+    signal_timestamp: str                     # paper signal generated_at (staleness)
+    execution_class: str                      # backtest_only|paper_only|paper
 
     @field_validator("symbol")
     @classmethod
     def validate_symbol(cls, value: str) -> str:
         if value not in _symbol_map():
             raise ValueError(f"unsupported symbol: {value}")
+        return value
+
+    @field_validator("execution_class")
+    @classmethod
+    def validate_execution_class(cls, value: str) -> str:
+        allowed = {"paper", "paper_only", "backtest_only"}
+        if value not in allowed:
+            raise ValueError(f"execution_class must be one of {sorted(allowed)}")
         return value
 
 

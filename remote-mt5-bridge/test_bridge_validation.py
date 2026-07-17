@@ -43,6 +43,9 @@ def _valid_order(**overrides):
     values = {
         "symbol": "EURUSD", "side": "buy", "units": 2000,
         "stop_loss": 1.1, "take_profit": 1.2,
+        "signal_id": 123,
+        "signal_timestamp": "2026-07-17T11:59:00+00:00",
+        "execution_class": "paper",
     }
     values.update(overrides)
     return values
@@ -64,6 +67,27 @@ def test_unknown_signal_age_is_stale_for_executable_class():
 def test_order_request_rejects_invalid_boundary_fields(override):
     with pytest.raises(ValidationError):
         OrderReq(**_valid_order(**override))
+
+
+@pytest.mark.parametrize("missing", [
+    "signal_id", "signal_timestamp", "execution_class",
+])
+def test_order_request_requires_signal_lineage(missing):
+    values = _valid_order()
+    values.pop(missing)
+    with pytest.raises(ValidationError):
+        OrderReq(**values)
+
+
+def test_order_request_accepts_complete_signal_lineage():
+    req = OrderReq(**_valid_order())
+    assert (req.signal_id, req.signal_timestamp, req.execution_class) == (
+        123, "2026-07-17T11:59:00+00:00", "paper")
+
+
+def test_order_request_rejects_unknown_execution_class():
+    with pytest.raises(ValidationError, match="execution_class must be one of"):
+        OrderReq(**_valid_order(execution_class="live"))
 
 
 class _FakeCheck:
