@@ -6,6 +6,7 @@ Demo/seed data must be explicitly labeled (is_demo=True) by the caller.
 from __future__ import annotations
 from pathlib import Path
 import pandas as pd
+from .data_manifest import is_cache_fresh
 
 try:
     import yfinance as yf
@@ -36,14 +37,17 @@ def fetch_yfinance(symbol: str, timeframe: str = "1d", lookback_days: int = 1095
         raise RuntimeError("[DATA ERROR] yfinance not installed (pip install yfinance)")
     Path(cache_dir).mkdir(parents=True, exist_ok=True)
     cache = Path(cache_dir) / f"yf_{symbol.replace('/', '')}_{timeframe}.csv"
-    if cache.exists() and (pd.Timestamp.now(tz="UTC") - pd.to_datetime(
-            pd.read_csv(cache, nrows=1)["timestamp"].iloc[0], utc=True)).days < 5:
-        return load_csv(str(cache))
+    if cache.exists():
+        cached = load_csv(str(cache))
+        if is_cache_fresh(cached, timeframe):
+            return cached
     end = pd.Timestamp.now(tz="UTC")
     start = end - pd.Timedelta(days=lookback_days + 30)
     raw = yf.download(symbol, start=start, end=end, interval=timeframe,
                       auto_adjust=True, progress=False)
     if raw is None or len(raw) == 0:
+        if cache.exists() and is_cache_fresh(cached, timeframe):
+            return cached
         raise RuntimeError(f"[DATA ERROR] yfinance returned no data for {symbol}")
     if isinstance(raw.columns, pd.MultiIndex):
         raw.columns = [c[0] for c in raw.columns]
