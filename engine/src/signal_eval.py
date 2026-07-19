@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from src import signals
+from src.canonical_eval import gate_outcomes
 from strategies.registry import REGISTRY
 
 TREND_LIKE = ("ema_crossover", "ema_trend_pullback",
@@ -65,10 +66,14 @@ def evaluate_strategies(cfg, scores: dict, price: pd.Series,
         preferred_regime = ("trend" if trend_like else "range") if s["regime_gate"] else "any"
         regime_allowed = (preferred_regime == "any" or preferred_regime == regime)
         sig_score = signals.score_signal(sc, regime, regime_allowed)
-        gate = signals.approve_for_trading(
-            sc, sc.get("robustness"), sc.get("oos_return", sc.get("total_return")),
-            preferred_regime, regime, s["min_signal_score"],
-            s.get("min_robustness", 0.3), s.get("min_profit_factor", 1.3))
+        locked = gate_outcomes({**sc, "oos_return": sc.get("oos_return", sc.get("total_return"))},
+                               {"score": s["min_signal_score"],
+                                "robustness": s.get("min_robustness", .3),
+                                "profit_factor": s.get("min_profit_factor", 1.3)})
+        regime_matches = preferred_regime == "any" or (regime != "unknown" and preferred_regime == regime)
+        reasons = [k for k, passed in locked.items() if not passed]
+        if not regime_matches: reasons.append("preferred regime does not match current regime")
+        gate = signals.TradeGate(not reasons, reasons)
         sl, tp = signals.compute_sl_tp(a, direction, atrv, s["sl_mult"], s["tp_mult"])
         rc = signals.risk_check(s["account"], s["risk_pct"], a, sl)
         units = float(rc.get("units", 0.0)) if rc["pass"] else 0.0

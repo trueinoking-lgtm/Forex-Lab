@@ -80,20 +80,8 @@ def git_commit(repo: Path | str) -> str | None:
 
 
 def gate_outcomes(metrics: Mapping[str, Any]) -> dict[str, bool]:
-    """Apply the locked research gates; missing/non-finite values fail closed."""
-    def passes(name: str, predicate) -> bool:
-        value = metrics.get(name)
-        try:
-            return bool(math.isfinite(float(value)) and predicate(float(value)))
-        except (TypeError, ValueError):
-            return False
-
-    return {
-        "score_gte_40": passes("score", lambda value: value >= 40.0),
-        "robustness_gte_0_3": passes("robustness", lambda value: value >= 0.3),
-        "oos_return_gt_0": passes("oos_return", lambda value: value > 0.0),
-        "profit_factor_gte_1_3": passes("profit_factor", lambda value: value >= 1.3),
-    }
+    from .canonical_eval import gate_outcomes as canonical_gates
+    return canonical_gates(dict(metrics))
 
 
 def build_experiment(payload: Mapping[str, Any], *, created_at: str | None = None) -> dict[str, Any]:

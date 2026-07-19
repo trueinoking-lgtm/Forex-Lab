@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import backtest
+from .canonical_eval import evaluate_strategy_canonical
 
 
 DEFAULT_RANDOM_SEEDS = (7, 19, 41)
@@ -63,10 +63,17 @@ def _metrics(result: dict) -> dict:
     return {key: _finite(value) for key, value in result.get("metrics", {}).items()}
 
 
-def _evaluate(price: pd.Series, signal_fn, ctx: dict) -> dict:
-    result = backtest.walk_forward(price, signal_fn, ctx)
-    return {"metrics": _metrics(result),
-            "window_returns": [_finite(value) for value in result["window_returns"]]}
+def _evaluate(price: pd.Series, signal_fn, ctx: dict, name="control", symbol="unknown") -> dict:
+    result = evaluate_strategy_canonical(price, lambda p: signal_fn(p), ctx,
+                                         strategy=name, symbol=symbol,
+                                         spread_bps=ctx.get("spread_bps", ctx["cost_bps"]),
+                                         slippage_bps=ctx.get("slippage_bps", 0),
+                                         commission_bps=ctx.get("commission_bps", 0))
+    return {"metrics": _metrics({"metrics": result["portfolio_metrics"]}),
+            "window_returns": [_finite(value) for value in result["window_returns"]],
+            "canonical": {k: result[k] for k in ("lifecycle_metrics", "score", "robustness",
+                                                   "oos_return", "profit_factor", "gates",
+                                                   "rejection_reasons", "eligible")}}
 
 
 def build_report(price: pd.Series, strategies: dict, ctx: dict, *, symbol: str,
@@ -74,21 +81,21 @@ def build_report(price: pd.Series, strategies: dict, ctx: dict, *, symbol: str,
                  random_seeds: tuple[int, ...] = DEFAULT_RANDOM_SEEDS) -> dict:
     """Compare registered strategies with deterministic research controls."""
     controls = {
-        "no_trade": {"parameters": {}, "result": _evaluate(price, no_trade, ctx)},
-        "buy_and_hold": {"parameters": {}, "result": _evaluate(price, buy_and_hold, ctx)},
+        "no_trade": {"parameters": {}, "result": _evaluate(price, no_trade, ctx, "no_trade", symbol)},
+        "buy_and_hold": {"parameters": {}, "result": _evaluate(price, buy_and_hold, ctx, "buy_and_hold", symbol)},
         "fixed_period_momentum": {
             "parameters": {"period": 20},
-            "result": _evaluate(price, lambda p: fixed_period_momentum(p, 20), ctx),
+            "result": _evaluate(price, lambda p: fixed_period_momentum(p, 20), ctx, "fixed_period_momentum", symbol),
         },
         "sma_crossover": {
             "parameters": {"fast": 20, "slow": 50},
-            "result": _evaluate(price, lambda p: sma_crossover(p, 20, 50), ctx),
+            "result": _evaluate(price, lambda p: sma_crossover(p, 20, 50), ctx, "sma_crossover", symbol),
         },
     }
     strategy_results = {}
     for name in sorted(strategies):
         fn, params = strategies[name]
-        actual = _evaluate(price, lambda p, f=fn, kw=params: f(p, **kw), ctx)
+        actual = _evaluate(price, lambda p, f=fn, kw=params: f(p, **kw), ctx, name, symbol)
         randomized = []
         for seed in random_seeds:
             randomized.append({

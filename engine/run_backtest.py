@@ -12,6 +12,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 from src import data, backtest, metrics, score, log
+from src.canonical_eval import evaluate_strategy_canonical
 from src.paper_sim import overfitting_flags
 from src.validation import directional_accuracy, held_out_validate
 from strategies.registry import REGISTRY, build_signal
@@ -36,6 +37,7 @@ def main():
     cost = CFG["cost"]
     cost_bps = cost["fee_bps"] + cost["slippage_bps"] + cost["spread_bps"]
     ctx = ctx_for(cost_bps)
+    ctx["min_trades"] = CFG["backtest"].get("min_trades", 20)
 
     log.log(f"[backtest] loading {symbol} via {d['source']}")
     df = data.load_pair(symbol, d["source"], timeframe=d["timeframe"],
@@ -60,13 +62,22 @@ def main():
 
     results = []
     for name, (fn, params) in REGISTRY.items():
+        canonical = evaluate_strategy_canonical(dev, fn, ctx, strategy=name, symbol=symbol,
+                    params=params, spread_bps=cost["spread_bps"],
+                    slippage_bps=cost["slippage_bps"], commission_bps=cost["fee_bps"])
         # full-period (in-sample) return for the OOS gap — on DEVELOPMENT only
         ins = backtest.run(dev, fn(dev, **params), cost_bps, ctx["initial_capital"],
                            ctx["periods_per_year"], ctx["risk_free_rate"])
         ins_ret = ins["metrics"]["total_return"]
         oos = backtest.walk_forward(dev, lambda p, **k: fn(p, **params), ctx)
-        sc = score.score_strategy(oos["metrics"], oos["window_returns"], ins_ret,
-                                  min_trades=CFG["backtest"].get("min_trades", 20))
+        sc = {k: canonical[k] for k in ("score", "robustness", "profit_factor")}
+        sc.update({"trade_count": canonical["lifecycle_metrics"]["trade_count"],
+                   "win_rate": canonical["lifecycle_metrics"]["win_rate"],
+                   "total_return": canonical["oos_return"],
+                   "max_drawdown": canonical["portfolio_metrics"].get("max_drawdown"),
+                   "sharpe": canonical["portfolio_metrics"].get("sharpe"),
+                   "gates": canonical["gates"], "eligible": canonical["eligible"],
+                   "rejection_reasons": canonical["rejection_reasons"]})
         sc["strategy"] = name
         sc["pair"] = symbol
         sc["timeframe"] = d["timeframe"]
