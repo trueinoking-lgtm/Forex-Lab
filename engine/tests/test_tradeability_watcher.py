@@ -123,11 +123,14 @@ def fake_eval_tradeable(monkeypatch):
                  "reasons": ["ok"], "gate_reasons": []},
     }
     monkeypatch.setattr("tradeability_watcher.evaluate_strategies", lambda *a, **k: ev)
+    # run_cycle loads market data before calling the evaluator. Keep this safety
+    # test wholly offline and independent of the production yfinance cache.
+    monkeypatch.setattr(data_mod, "load_pair", lambda *a, **k: _make_prices())
     return ev
 
 
 @pytest.fixture
-def fake_scores(tmp_path):
+def fake_scores(tmp_path, monkeypatch):
     """Backtest scores that make ema_crossover tradeable, others not."""
     scores = {
         "ema_crossover": {"strategy": "ema_crossover", "score": 61.0,
@@ -144,6 +147,9 @@ def fake_scores(tmp_path):
     }
     p = tmp_path / "backtest_EURUSD=X.json"
     p.write_text(json.dumps({"results": list(scores.values())}))
+    # The watcher uses a fixed relative result path. Inject the intended fixture
+    # scores rather than accidentally reading a repository artifact.
+    monkeypatch.setattr("tradeability_watcher.load_scores", lambda *a, **k: scores)
     return p
 
 
@@ -228,7 +234,19 @@ def clean_state(tmp_path, monkeypatch):
 # --------------------------------------------------------------------------- #
 # Tests
 # --------------------------------------------------------------------------- #
-def test_no_signal_when_all_fail(tmp_db, market_all_fail, fake_scores, fake_broker):
+def test_no_signal_when_all_fail(tmp_db, market_all_fail, fake_scores, fake_broker,
+                                 monkeypatch):
+    monkeypatch.setattr(
+        "tradeability_watcher.load_scores",
+        lambda *a, **k: {
+            name: {"strategy": name, "score": 0.0, "robustness": 0.0,
+                   "oos_return": -0.01, "profit_factor": 0.0}
+            for name in (
+                "ema_crossover", "ema_trend_pullback", "rsi_mean_reversion",
+                "macd_trend_confirmation", "london_breakout",
+            )
+        },
+    )
     notifier = LogNotifier()
     res = run_cycle(notifier, dry_adapter=fake_broker)
     assert res["tradeable"] is False
