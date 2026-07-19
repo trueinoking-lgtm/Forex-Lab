@@ -32,17 +32,20 @@ def load_csv(path: str, is_demo: bool = False) -> pd.DataFrame:
 
 
 def fetch_yfinance(symbol: str, timeframe: str = "1d", lookback_days: int = 1095,
-                   cache_dir: str = "data") -> pd.DataFrame:
+                   cache_dir: str = "data", start=None, end=None) -> pd.DataFrame:
     if yf is None:
         raise RuntimeError("[DATA ERROR] yfinance not installed (pip install yfinance)")
     Path(cache_dir).mkdir(parents=True, exist_ok=True)
     cache = Path(cache_dir) / f"yf_{symbol.replace('/', '')}_{timeframe}.csv"
-    if cache.exists():
+    if cache.exists() and start is None and end is None:
         cached = load_csv(str(cache))
         if is_cache_fresh(cached, timeframe):
             return cached
-    end = pd.Timestamp.now(tz="UTC")
-    start = end - pd.Timedelta(days=lookback_days + 30)
+    end = pd.Timestamp.now(tz="UTC") if end is None else pd.Timestamp(end)
+    if end.tzinfo is None: end = end.tz_localize("UTC")
+    explicit_start = start is not None
+    start = end - pd.Timedelta(days=lookback_days + 30) if start is None else pd.Timestamp(start)
+    if start.tzinfo is None: start = start.tz_localize("UTC")
     raw = yf.download(symbol, start=start, end=end, interval=timeframe,
                       auto_adjust=True, progress=False)
     if raw is None or len(raw) == 0:
@@ -55,7 +58,8 @@ def fetch_yfinance(symbol: str, timeframe: str = "1d", lookback_days: int = 1095
     df.columns = ["open", "high", "low", "close", "volume"]
     df.index = pd.to_datetime(df.index, utc=True)
     df = df.sort_index()
-    df = df[df.index >= end - pd.Timedelta(days=lookback_days)]
+    if not explicit_start:
+        df = df[df.index >= end - pd.Timedelta(days=lookback_days)]
     df.index.name = "timestamp"
     df.to_csv(cache)
     return df
