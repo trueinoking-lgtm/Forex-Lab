@@ -1,6 +1,7 @@
 """Market-data integrity manifest helpers."""
 from __future__ import annotations
 import hashlib, json, os, tempfile
+import numpy as np
 from pathlib import Path
 import pandas as pd
 
@@ -33,7 +34,9 @@ def is_cache_fresh(df, timeframe="1d", now=None, tolerance_intervals=2):
     return now - last <= INTERVALS[timeframe] * tolerance_intervals
 
 
-def build_manifest(df, *, source, symbol, timeframe, download_ts=None):
+def build_manifest(df, *, source, symbol, timeframe, download_ts=None,
+                   provider_symbol=None, requested_start=None, requested_end=None,
+                   timezone_before="unknown", transformations=None, software_version=None):
     clean, duplicates = normalize_frame(df)
     interval = INTERVALS[timeframe]
     diffs = clean.index.to_series().diff().dropna()
@@ -41,13 +44,26 @@ def build_manifest(df, *, source, symbol, timeframe, download_ts=None):
             for i, delta in enumerate(diffs, 1) if delta > interval]
     hashed = hashlib.sha256(pd.util.hash_pandas_object(clean, index=True).values.tobytes()).hexdigest()
     last = last_fully_closed(clean, timeframe, download_ts)
-    return {"source": source, "symbol": symbol, "timeframe": timeframe,
+    cols = {str(c).lower(): c for c in clean.columns}
+    invalid = 0
+    if all(k in cols for k in ("open", "high", "low", "close")):
+        o,h,l,c = (pd.to_numeric(clean[cols[k]], errors="coerce") for k in ("open","high","low","close"))
+        values = pd.concat([o,h,l,c], axis=1)
+        invalid = int((~np.isfinite(values).all(axis=1) |
+                       (h < pd.concat([o,c],axis=1).max(axis=1)) | (l > pd.concat([o,c],axis=1).min(axis=1)) |
+                       (h < l) | (pd.concat([o,h,l,c],axis=1) <= 0).any(axis=1)).sum())
+    return {"source": source, "symbol": symbol, "provider_symbol": provider_symbol or symbol,
+            "timeframe": timeframe,
             "download_ts": pd.Timestamp(download_ts or pd.Timestamp.now(tz="UTC")).isoformat(),
+            "retrieval_ts": pd.Timestamp(download_ts or pd.Timestamp.now(tz="UTC")).isoformat(),
+            "requested_start": requested_start, "requested_end": requested_end,
             "first_candle": clean.index[0].isoformat() if len(clean) else None,
             "last_fully_closed_candle": last.isoformat() if last is not None else None,
-            "row_count": len(clean), "duplicate_count": duplicates,
+            "row_count": len(clean), "duplicate_count": duplicates, "invalid_ohlc_count": invalid,
             "missing_interval_summary": {"gap_count": len(gaps), "gaps": gaps},
-            "timezone": "UTC", "sha256_fingerprint": hashed}
+            "timezone_before": timezone_before, "timezone_after": "UTC", "timezone": "UTC",
+            "transformation_steps": transformations or [], "software_version": software_version,
+            "sha256_fingerprint": hashed}
 
 
 def write_manifest(manifest, path):
@@ -59,4 +75,3 @@ def write_manifest(manifest, path):
         os.replace(tmp, path)
     finally:
         Path(tmp).unlink(missing_ok=True)
-
