@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 # run_watcher.sh — cwd-independent launcher for the tradeability watcher.
-# Safe to call from cron (which may run with $HOME as cwd).
+# Safe to call from cron (which may run with $HOME as cwd and a minimal PATH).
+#
+# The watcher needs pandas/yfinance (heavy deps) that only exist in a specific
+# venv. Cron's minimal PATH would otherwise resolve `python3` to a bare
+# /usr/bin/python3 without those deps and crash silently. We pin the interpreter
+# explicitly and VALIDATE it before running — no silent fallback.
 set -u
 
 PROJECT_DIR="/root/aether-forex-lab"
 ENGINE_DIR="$PROJECT_DIR/engine"
 ENV_FILE="$ENGINE_DIR/.env"
-LOCK_FD=200
+
+# Optional override; defaults to the only Python on this host with the engine deps.
+PYTHON_BIN="${WATCHER_PYTHON:-/usr/local/lib/hermes-agent/venv/bin/python3}"
 
 # 1) cd to project root (absolute, cwd-independent).
 cd "$PROJECT_DIR" || { echo "cd $PROJECT_DIR failed" >&2; exit 1; }
@@ -19,16 +26,18 @@ if [ -f "$ENV_FILE" ]; then
   set +a
 fi
 
-# 3) Prefer the project virtualenv Python if it exists.
-if [ -x "$ENGINE_DIR/venv/bin/python" ]; then
-  PY="$ENGINE_DIR/venv/bin/python"
-elif [ -x "$PROJECT_DIR/venv/bin/python" ]; then
-  PY="$PROJECT_DIR/venv/bin/python"
-elif command -v python3 >/dev/null 2>&1; then
-  PY="$(command -v python3)"
-else
-  echo "no python3 found" >&2; exit 1
+# 3) Validate the interpreter before doing anything.
+if [ ! -x "$PYTHON_BIN" ]; then
+  logger -t aether-watcher "FATAL: interpreter not executable: $PYTHON_BIN"
+  echo "interpreter not executable: $PYTHON_BIN" >&2
+  exit 2
 fi
 
-# 4) exec the watcher using an absolute path.
-exec "$PY" "$ENGINE_DIR/tradeability_watcher.py"
+if ! "$PYTHON_BIN" -c "import pandas, yfinance" >/dev/null 2>&1; then
+  logger -t aether-watcher "FATAL: $PYTHON_BIN cannot import pandas/yfinance (wrong venv?)"
+  echo "$PYTHON_BIN missing engine deps (pandas/yfinance)" >&2
+  exit 3
+fi
+
+# 4) exec the watcher using absolute paths. Never falls back to /usr/bin/python3.
+exec "$PYTHON_BIN" "$ENGINE_DIR/tradeability_watcher.py"
