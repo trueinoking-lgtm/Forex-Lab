@@ -129,3 +129,36 @@ def test_export_default_end_is_current_utc_midnight(exporter_module, monkeypatch
     _, manifest = exporter_module.export(end=None, output=output)
 
     assert manifest["requested_end"] == expected_end.isoformat()
+
+
+def test_export_h1_uses_closed_hour_and_h1_manifest(exporter_module, monkeypatch, tmp_path):
+    expected_end = pd.Timestamp.now(tz="UTC").floor("h")
+
+    class Account:
+        company = "Test Broker"
+        server = "Demo"
+
+    class FakeMT5:
+        TIMEFRAME_D1 = 1
+        TIMEFRAME_H1 = 60
+
+        @staticmethod
+        def initialize(): return True
+        @staticmethod
+        def account_info(): return Account()
+        @staticmethod
+        def copy_rates_range(symbol, timeframe, start, end):
+            assert (symbol, timeframe) == ("GBPUSD", 60)
+            assert pd.Timestamp(end) == expected_end
+            candle = expected_end - pd.Timedelta(hours=1)
+            return [{"time": int(candle.timestamp()), "open": 1, "high": 2,
+                     "low": .5, "close": 1.5, "tick_volume": 10}]
+        @staticmethod
+        def shutdown(): pass
+
+    monkeypatch.setitem(sys.modules, "MetaTrader5", FakeMT5)
+    output = tmp_path / "raw_mt5_GBPUSD_1h.csv"
+    _, manifest = exporter_module.export(output=output, symbol="GBPUSD", timeframe="H1")
+    assert manifest["timeframe"] == "1h"
+    assert manifest["symbol"] == "GBPUSD"
+    assert manifest["requested_end"] == expected_end.isoformat()

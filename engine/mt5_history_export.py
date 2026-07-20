@@ -73,8 +73,7 @@ def build_manifest(frame, *, source, symbol, timeframe, download_ts=None,
                    transformations=None, software_version=None):
     """Build a data-integrity manifest (no engine modules required)."""
     clean, duplicates = normalize_frame(frame)
-    # interval for 1d
-    interval = pd.Timedelta(days=1) if timeframe == "1d" else None
+    interval = {"1d": pd.Timedelta(days=1), "1h": pd.Timedelta(hours=1)}.get(timeframe)
     diffs = clean.index.to_series().diff().dropna()
     gaps = []
     if interval is not None:
@@ -102,28 +101,39 @@ def build_manifest(frame, *, source, symbol, timeframe, download_ts=None,
     }
 
 
-def export(start="2010-01-01", end=None, output=None):
+def _timeframe_spec(mt5, timeframe):
+    key = str(timeframe).lower()
+    if key == "1d":
+        return "1d", mt5.TIMEFRAME_D1, pd.Timedelta(days=1)
+    if key in {"1h", "h1"}:
+        return "1h", mt5.TIMEFRAME_H1, pd.Timedelta(hours=1)
+    raise ValueError("timeframe must be 1d, 1h, or H1")
+
+
+def export(start="2010-01-01", end=None, output=None, *, symbol="EURUSD", timeframe="1d"):
     try:
         import MetaTrader5 as mt5
     except ImportError as exc:
         raise RuntimeError("MetaTrader5 unavailable; run on the logged-in demo-terminal PC") from exc
+    canonical_tf, mt5_tf, interval = _timeframe_spec(mt5, timeframe)
     start_ts = as_utc_timestamp(start)
-    end_ts = as_utc_timestamp(pd.Timestamp.now(tz="UTC").normalize() if end is None else end)
+    default_end = pd.Timestamp.now(tz="UTC").floor(interval)
+    end_ts = as_utc_timestamp(default_end if end is None else end)
     if not mt5.initialize():
         raise RuntimeError("MT5 terminal unavailable")
     try:
         account = mt5.account_info()
         rates = mt5.copy_rates_range(
-            "EURUSD", mt5.TIMEFRAME_D1,
+            symbol, mt5_tf,
             start_ts.to_pydatetime(), end_ts.to_pydatetime(),
         )
         frame = normalize_rates(rates, start_ts, end_ts)
         if frame.empty:
             raise RuntimeError("MT5 returned no closed candles")
-        path = Path(output or Path(__file__).parent / "data" / "raw_mt5_EURUSD_1d.csv")
+        path = Path(output or Path(__file__).parent / "data" / f"raw_mt5_{symbol}_{canonical_tf}.csv")
         atomic_csv(frame, path)
         manifest = build_manifest(
-            frame, source="MetaTrader5 demo history", symbol="EURUSD", timeframe="1d",
+            frame, source="MetaTrader5 demo history", symbol=symbol, timeframe=canonical_tf,
             requested_start=start_ts.isoformat(), requested_end=end_ts.isoformat(),
             timezone_before="MT5 epoch seconds",
             transformations=["epoch seconds to UTC", "sort/deduplicate", "exclude incomplete candle"],
@@ -162,8 +172,10 @@ def main():
     p.add_argument("--start", default="2010-01-01")
     p.add_argument("--end")
     p.add_argument("--output")
+    p.add_argument("--symbol", default="EURUSD")
+    p.add_argument("--timeframe", default="1d", choices=("1d", "1h", "H1"))
     a = p.parse_args()
-    path, m = export(a.start, a.end, a.output)
+    path, m = export(a.start, a.end, a.output, symbol=a.symbol, timeframe=a.timeframe)
     print(f"{path} rows={m['row_count']} sha256={m['file_sha256']}")
 
 
