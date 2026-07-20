@@ -6,10 +6,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.experiment_registry import build_experiment, canonical_json, register_experiment
+from src.accounting import accounting_metadata
 
 
 def payload(metrics=None):
     return {
+        **accounting_metadata(has_explicit_stop=False),
         "git_commit_hash": "a" * 40,
         "strategy_name": "ema_crossover",
         "strategy_parameters": {"slow": 26, "fast": 12},
