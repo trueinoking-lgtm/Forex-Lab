@@ -7,6 +7,7 @@ computed with history <= t only (no look-ahead). All satisfy the backtester's
 from __future__ import annotations
 import numpy as np
 import pandas as pd
+from .trend_continuation import trend_continuation
 
 
 def ema(price: pd.Series, span: int) -> pd.Series:
@@ -91,6 +92,12 @@ REGISTRY = {
     "rsi_mean_reversion": (rsi_mean_reversion, {"period": 14, "oversold": 30, "overbought": 70}),
     "macd_trend_confirmation": (macd_trend_confirmation, {"fast": 12, "slow": 26, "signal": 9}),
     "london_breakout": (london_breakout, {"lookback": 20, "k": 0.5}),
+    "trend_continuation": (
+        trend_continuation,
+        {"fast": 12, "slow": 60, "adx_threshold": 22, "atr_lookback": 14,
+         "vol_lookback": 20, "vol_low_pct": 20, "vol_high_pct": 90,
+         "stop_atr": 2.0, "trailing": True},
+    ),
 }
 
 

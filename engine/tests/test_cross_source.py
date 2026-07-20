@@ -26,8 +26,16 @@ def test_integrity_counts_defective_ohlc(tmp_path):
     assert finding["invalid_ohlc_count"] == 1
 
 
-def test_definitions_are_five_strategies_and_five_controls():
+def test_definitions_contain_baseline_strategies_and_controls():
+    # The five frozen baseline strategies + five controls remain the comparison
+    # set. Research strategies (e.g. trend_continuation) may be added without
+    # breaking this assertion, so check the baseline five are present as a subset
+    # rather than asserting an exact registry size.
+    baseline_strategies = {
+        "ema_crossover", "ema_trend_pullback", "rsi_mean_reversion",
+        "macd_trend_confirmation", "london_breakout",
+    }
     defs = cross.definitions()
-    assert len(cross.REGISTRY) == 5
-    assert len(defs) == 10
+    assert baseline_strategies.issubset(set(cross.REGISTRY))
+    assert len(defs) >= 10
     assert set(cross.REGISTRY).issubset(defs)
