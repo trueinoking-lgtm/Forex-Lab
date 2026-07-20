@@ -22,6 +22,13 @@ def sanitize(value):
     return re.sub(r"[^A-Za-z0-9 ._-]", "_", str(value or "unknown"))[:80]
 
 
+def as_utc_timestamp(value):
+    ts = pd.Timestamp(value)
+    if ts.tzinfo is None:
+        return ts.tz_localize("UTC")
+    return ts.tz_convert("UTC")
+
+
 def atomic_csv(frame, path):
     """Write a DataFrame atomically (temp file + fsync + rename)."""
     path = Path(path)
@@ -100,23 +107,24 @@ def export(start="2010-01-01", end=None, output=None):
         import MetaTrader5 as mt5
     except ImportError as exc:
         raise RuntimeError("MetaTrader5 unavailable; run on the logged-in demo-terminal PC") from exc
-    end = pd.Timestamp.now(tz="UTC").normalize() if end is None else pd.Timestamp(end, tz="UTC")
+    start_ts = as_utc_timestamp(start)
+    end_ts = as_utc_timestamp(pd.Timestamp.now(tz="UTC").normalize() if end is None else end)
     if not mt5.initialize():
         raise RuntimeError("MT5 terminal unavailable")
     try:
         account = mt5.account_info()
         rates = mt5.copy_rates_range(
             "EURUSD", mt5.TIMEFRAME_D1,
-            pd.Timestamp(start, tz="UTC").to_pydatetime(), end.to_pydatetime(),
+            start_ts.to_pydatetime(), end_ts.to_pydatetime(),
         )
-        frame = normalize_rates(rates, start, end)
+        frame = normalize_rates(rates, start_ts, end_ts)
         if frame.empty:
             raise RuntimeError("MT5 returned no closed candles")
         path = Path(output or Path(__file__).parent / "data" / "raw_mt5_EURUSD_1d.csv")
         atomic_csv(frame, path)
         manifest = build_manifest(
             frame, source="MetaTrader5 demo history", symbol="EURUSD", timeframe="1d",
-            requested_start=start, requested_end=end.isoformat(),
+            requested_start=start_ts.isoformat(), requested_end=end_ts.isoformat(),
             timezone_before="MT5 epoch seconds",
             transformations=["epoch seconds to UTC", "sort/deduplicate", "exclude incomplete candle"],
         )
@@ -144,7 +152,9 @@ def normalize_rates(rates, start, end):
     if "volume" not in frame:
         frame["volume"] = 0
     frame = normalize_frame(frame[["open", "high", "low", "close", "volume"]])[0]
-    return frame[(frame.index >= pd.Timestamp(start, tz="UTC")) & (frame.index < pd.Timestamp(end, tz="UTC"))]
+    start_ts = as_utc_timestamp(start)
+    end_ts = as_utc_timestamp(end)
+    return frame[(frame.index >= start_ts) & (frame.index < end_ts)]
 
 
 def main():
