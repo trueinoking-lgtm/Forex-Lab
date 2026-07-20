@@ -10,6 +10,7 @@ import pandas as pd
 from .trend_continuation import trend_continuation
 from .range_mean_reversion import (bollinger_range_reversion,
                                    rsi_range_reversion, zscore_range_reversion)
+from .session_breakout import session_breakout
 
 
 def ema(price: pd.Series, span: int) -> pd.Series:
@@ -103,6 +104,12 @@ REGISTRY = {
     "rsi_range_reversion": (rsi_range_reversion, {"rsi_period": 14, "rsi_lower": 25, "rsi_upper": 75, "adx_threshold": 20, "max_holding": 10, "atr_stop": 1.5, "profit_target_atr": 1.0, "trailing": False}),
     "zscore_range_reversion": (zscore_range_reversion, {"z_lookback": 20, "z_entry": 2.0, "adx_threshold": 20, "max_holding": 10, "atr_stop": 1.5, "profit_target_atr": 1.0}),
     "bollinger_range_reversion": (bollinger_range_reversion, {"bb_lookback": 20, "bb_width": 2.0, "adx_threshold": 20, "max_holding": 10, "atr_stop": 1.5, "profit_target_atr": 1.0}),
+    "session_breakout": (session_breakout, {"pair": "EURUSD", "range_start_hour": 0,
+        "range_end_hour": 7, "breakout_window": (7, 16), "breakout_buffer": 0,
+        "min_range_atr": None, "max_range_atr": None, "atr_lookback": 14,
+        "stop_mode": "opp_side", "stop_atr": None, "target_r": None,
+        "max_holding": "session_close", "session_end_hour": 16,
+        "long_allowed": True, "short_allowed": True}),
 }
 
 
