@@ -1,3 +1,5 @@
+> **SUPERSEDED — accounting only (2026-07-20).** Preserve all original metrics and classification below as historical record. PF, expectancy, gross PnL, and concentration used `legacy_raw_price_units_v1` (version 1). The corrected trend-continuation classification is **rejected** under `normalized_equal_risk_v1` (version 2); see [Canonical accounting migration](canonical_accounting_migration_2026-07-20.md).
+
 # Trend-continuation research — Phase 1 (2026-07-20)
 
 Research/paper/demo only. No order endpoint was called and no order was placed.

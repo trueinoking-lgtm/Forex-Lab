@@ -1,3 +1,5 @@
+> **SUPERSEDED — accounting only (2026-07-20).** Preserve all original metrics and classification below as historical record. PF, expectancy, gross PnL, and concentration used `legacy_raw_price_units_v1` (version 1). The corrected classification is **rejected** under `normalized_equal_risk_v1` (version 2); see [Canonical accounting migration](canonical_accounting_migration_2026-07-20.md).
+
 # Strategy research baseline — 2026-07-19
 
 ## Safety and reproducibility checkpoint

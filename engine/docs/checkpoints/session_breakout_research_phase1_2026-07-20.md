@@ -1,3 +1,5 @@
+> **SUPERSEDED — accounting only (2026-07-20).** Preserve all original metrics and classification below as historical record. PF, expectancy, gross PnL, and concentration used `legacy_raw_price_units_v1` (version 1). The corrected session-breakout classification is **rejected** (PF 0.708541, return -27.5993%, 857 trades) under `normalized_equal_risk_v1` (version 2); see [Canonical accounting migration](canonical_accounting_migration_2026-07-20.md).
+
 # Multi-Pair H1 Session Breakout — Phase 1 Results
 
 Date: 2026-07-20. Research/paper/demo only. This report does not fabricate data or results: it uses the delivered real H1 MetaTrader 5 demo-history CSVs. Fixed UTC sessions, chronological folds, costs, parameter bounds, gates, and rejection rules remain preregistered and unchanged.
