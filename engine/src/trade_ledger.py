@@ -9,6 +9,14 @@ import math
 import pandas as pd
 
 
+# Research-accounting convention.  Every pair receives the same account-currency
+# notional; this is deliberately not broker contract/tick metadata.
+ACCOUNT_CURRENCY = "USD"
+SHARED_NOTIONAL = 100_000.0
+PIP_SIZES = {"EURUSD": 0.0001, "GBPUSD": 0.0001,
+             "AUDUSD": 0.0001, "USDJPY": 0.01}
+
+
 def extract_trades(price: pd.Series, signal: pd.Series, *, strategy: str,
                    symbol: str, spread_bps: float = 0.0,
                    slippage_bps: float = 0.0, commission_bps: float = 0.0,
@@ -22,11 +30,14 @@ def extract_trades(price: pd.Series, signal: pd.Series, *, strategy: str,
         nonlocal opened
         entry_i, direction, signal_i = opened
         ep, xp = float(price.iloc[entry_i]), float(price.iloc[i])
-        gross = direction * (xp - ep)
-        spread = ep * spread_bps / 10000.0
-        slip = ep * slippage_bps / 10000.0
-        commission = ep * commission_bps / 10000.0
+        price_change = direction * (xp - ep)
+        gross_return = price_change / ep
+        gross = gross_return * SHARED_NOTIONAL
+        spread = SHARED_NOTIONAL * spread_bps / 10000.0
+        slip = SHARED_NOTIONAL * slippage_bps / 10000.0
+        commission = SHARED_NOTIONAL * commission_bps / 10000.0
         total = spread + slip + commission
+        net = gross - total
         identity = f"{strategy}|{symbol}|{price.index[entry_i].isoformat()}|{direction}"
         trades.append({
             "trade_id": hashlib.sha256(identity.encode()).hexdigest()[:20],
@@ -36,11 +47,19 @@ def extract_trades(price: pd.Series, signal: pd.Series, *, strategy: str,
             "entry_ts": price.index[entry_i].isoformat(), "entry_price": ep,
             "exit_ts": None if still_open else price.index[i].isoformat(),
             "exit_price": None if still_open else xp,
-            "holding_bars": int(i - entry_i), "gross_pnl": gross,
+            "holding_bars": int(i - entry_i),
+            "price_change": price_change,
+            "gross_return": gross_return,
+            "notional": SHARED_NOTIONAL,
+            "account_currency": ACCOUNT_CURRENCY,
+            "pip_size": PIP_SIZES.get(symbol),
+            "price_change_pips": (price_change / PIP_SIZES[symbol]
+                                  if symbol in PIP_SIZES else None),
+            "gross_pnl": gross,
             "spread_cost": spread, "slippage_cost": slip,
             "commission": commission, "total_cost": total,
-            "net_pnl": gross - total,
-            "return_pct": (gross - total) / ep,
+            "net_pnl": net,
+            "return_pct": net / SHARED_NOTIONAL,
             "exit_reason": reason, "still_open_at_end": still_open,
         })
         opened = None

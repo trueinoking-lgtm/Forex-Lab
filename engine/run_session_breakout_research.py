@@ -37,6 +37,12 @@ DEFAULT_PARAMS = {"range_start_hour": 0, "range_end_hour": 7, "breakout_window":
                   "atr_lookback": 14, "stop_mode": "opp_side", "stop_atr": None,
                   "target_r": None, "max_holding": "session_close", "session_end_hour": 16,
                   "long_allowed": True, "short_allowed": True}
+# Frozen by the original Phase 1 DEV+VAL evaluation.  Accounting repairs must
+# not reselect a strategy candidate on corrected monetary units.
+FROZEN_PHASE1_PARAMS = {**DEFAULT_PARAMS, "breakout_buffer": .10,
+                        "min_range_atr": None, "max_range_atr": 1.5,
+                        "stop_mode": "opp_side", "stop_atr": None,
+                        "target_r": 1.5, "max_holding": "session_close"}
 EXPECTED_SHA = {"EURUSD": "80cc20e9de10f929619902d618a32035f45d557751153d16484de46d8d5fcfc1",
  "GBPUSD": "99a2564ae0040d6c47ec20d1ce84c82a464be44dafac05898ea7e2e53d1fa789",
  "USDJPY": "3aad2f78b5b06f39ac7804d33845c40e31d2d00073937e2df8eb51512802db60",
@@ -128,13 +134,17 @@ def _metrics(trades, scope, *, pair=None):
     if scope not in SCOPES: raise ValueError(f"invalid result scope: {scope}")
     life = lifecycle_metrics(trades)
     net = sum(float(t["net_pnl"]) for t in trades if not t["still_open_at_end"])
-    ret = sum(float(t["return_pct"]) for t in trades if not t["still_open_at_end"])
+    # One shared USD 100k research account/notional.  PF, expectancy and return
+    # therefore all consume the same canonical account-currency PnL values.
+    initial_equity = 100_000.0
+    ret = net / initial_equity
     pf = life["profit_factor"]
     closed = [t for t in trades if not t["still_open_at_end"]]
-    returns = np.asarray([float(t["return_pct"]) for t in closed])
-    curve = np.cumprod(1 + returns) if len(returns) else np.asarray([1.])
+    pnls = np.asarray([float(t["net_pnl"]) for t in closed])
+    curve = initial_equity + np.cumsum(pnls) if len(pnls) else np.asarray([initial_equity])
     peak = np.maximum.accumulate(curve)
-    drawdown = float(np.min(curve / peak - 1))
+    drawdown = float(np.min(np.divide(curve, peak, out=np.zeros_like(curve), where=peak != 0) - 1))
+    returns = pnls / initial_equity
     sharpe = float(np.mean(returns) / np.std(returns) * np.sqrt(len(returns))) if len(returns) > 1 and np.std(returns) else 0.
     scored = score_strategy({"total_return": ret, "sharpe": sharpe,
         "profit_factor": pf if pf is not None else float("nan"),
@@ -149,6 +159,10 @@ def _metrics(trades, scope, *, pair=None):
             "wins": life["wins"], "losses": life["losses"], "win_rate": life["win_rate"],
             "gross_profit": life["gross_profit"], "gross_loss": life["gross_loss"],
             "profit_factor": pf, "return": ret, "net_pnl": net,
+            "initial_equity": initial_equity, "ending_equity": initial_equity + net,
+            "account_currency": "USD", "pnl_unit": "USD",
+            "capital_model": "shared_equity_equal_100000_notional_per_trade",
+            "bankrupt": initial_equity + net <= 0,
             "expectancy": life["expectancy"], "max_drawdown": drawdown,
             "exposure": exposure, "robustness": scored["robustness"],
             "score": scored["score"], "long_short": directions}
@@ -249,7 +263,10 @@ def research(frames, *, persist=False, synthetic_test_fixture=False, candidates=
             signal = pd.Series(rng.choice([-1., 0., 1.], len(f), p=[.03, .94, .03]), index=f.index)
             _, ledger = _run(f, pair, selected, "randomized_control", signal=signal)
             control_trades.extend(ledger)
-        controls.append({"seed": seed, **aggregate(control_trades, "randomized_control")})
+        control = aggregate(control_trades, "randomized_control")
+        control["classification"] = ("BANKRUPT" if control["bankrupt"]
+                                     else "SURVIVED")
+        controls.append({"seed": seed, **control})
     closed = [t for t in combined if not t["still_open_at_end"]]
     net = agg["net_pnl"]
     wins = sorted((float(t["net_pnl"]) for t in closed if t["net_pnl"] > 0), reverse=True)
@@ -288,6 +305,15 @@ def research(frames, *, persist=False, synthetic_test_fixture=False, candidates=
                "acceptance": acceptance,
                "classification": ("3 FORWARD-VALIDATION CANDIDATE" if all(acceptance.values())
                                   else "1 REJECT STRATEGY FAMILY")}
+    payload["accounting"] = {
+        "authoritative": "normalized_account_currency_pnl",
+        "formula": "direction * ((exit_price-entry_price)/entry_price) * 100000 - bps_costs * 100000",
+        "account_currency": "USD", "shared_notional": 100_000.0,
+        "initial_equity": 100_000.0,
+        "closed_trade_ids": [t["trade_id"] for t in closed],
+        "closed_trade_id_sha256": hashlib.sha256(
+            "\n".join(t["trade_id"] for t in closed).encode()).hexdigest(),
+    }
     if persist:
         RESULTS.mkdir(exist_ok=True)
         out = RESULTS / "session_breakout_phase1.json"
@@ -316,10 +342,40 @@ def main(argv=None):
             f"{finding['evaluated_end']}. Invalid OHLC: {finding['invalid_ohlc']}; duplicates: "
             f"{finding['duplicate_timestamps']}; negative volume: {finding['negative_volume']}; "
             f"unexpected long gaps: {len(finding['unexpected_long_gaps'])}.\n")
-    payload = research(frames, persist=False)
+    payload = research(frames, persist=False, candidates=[FROZEN_PHASE1_PARAMS])
+    payload["parameter_evaluation"].update({
+        "accounting_rerun": True,
+        "selection_frozen_from_original_phase1": True,
+        "original_screened_range_filters": 27,
+        "original_expanded_exit_combinations": 108,
+    })
     payload["inputs"] = findings
     (RESULTS / "session_breakout_phase1.json").write_text(
         json.dumps(payload, indent=2, default=str, allow_nan=False) + "\n")
+    (RESULTS / "session_breakout_phase1_audit.json").write_text(
+        json.dumps(payload, indent=2, default=str, allow_nan=False) + "\n")
+    reconciliation = {
+        "research": "session_breakout_phase1_accounting_reconciliation",
+        "same_frozen_candidate": payload["parameter_evaluation"]["selection_frozen_from_original_phase1"],
+        "selected_parameters": payload["selected_parameters"],
+        "fold_boundaries": payload["fold_boundaries"],
+        "closed_trade_count_before": 857,
+        "closed_trade_count_after": payload["aggregate_cross_pair_test"]["trade_count"],
+        "closed_trade_ids_after": payload["accounting"]["closed_trade_ids"],
+        "closed_trade_id_sha256_after": payload["accounting"]["closed_trade_id_sha256"],
+        "accounting_only_change": True,
+        "before": {"profit_factor": 1.3245445, "expectancy_raw_price_units": .00367178,
+                   "return": -.2759926, "usd_jpy_gross_profit_share": .947771},
+        "after": {"profit_factor": payload["aggregate_cross_pair_test"]["profit_factor"],
+                  "expectancy_usd": payload["aggregate_cross_pair_test"]["expectancy"],
+                  "return": payload["aggregate_cross_pair_test"]["return"],
+                  "usd_jpy_gross_profit_share":
+                      payload["pair_results"]["USDJPY"]["chronological_test"]["gross_profit"] /
+                      payload["aggregate_cross_pair_test"]["gross_profit"]},
+        "classification": payload["classification"],
+    }
+    (RESULTS / "session_breakout_phase1_reconciliation.json").write_text(
+        json.dumps(reconciliation, indent=2, default=str, allow_nan=False) + "\n")
 
 
 if __name__ == "__main__":

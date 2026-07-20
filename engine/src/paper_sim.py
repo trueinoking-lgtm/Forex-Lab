@@ -119,7 +119,10 @@ def simulate(signals: list[dict], price: pd.Series, cost_bps: float,
         except TypeError:
             risk_state = None
 
+    bankrupt = capital <= 0
     for timestamp, signal in indexed:
+        if bankrupt:
+            break
         if risk_state is not None and risk_state.halt_new_entries():  # pragma: no cover
             continue
         fill_pos = int(series.index.searchsorted(timestamp, side="left"))
@@ -151,9 +154,13 @@ def simulate(signals: list[dict], price: pd.Series, cost_bps: float,
                 break
         gross = direction * (exit_price - entry) * units
         cost = (entry + exit_price) * units * max(0.0, float(cost_bps)) / 10000.0
-        pnl = gross - cost
+        uncapped_pnl = gross - cost
         before = capital
-        capital += pnl
+        # Equity is limited liability in this paper account.  A gap can consume
+        # all remaining equity, but can never create negative account equity.
+        pnl = max(uncapped_pnl, -before)
+        capital = max(0.0, before + pnl)
+        bankrupt = capital <= 0
         trade_return = pnl / before if before else 0.0
         trade_returns.append(trade_return)
         curve.append(capital)
@@ -161,7 +168,9 @@ def simulate(signals: list[dict], price: pd.Series, cost_bps: float,
         trades.append({
             "entry": entry, "exit": exit_price,
             "side": "buy" if direction > 0 else "sell", "units": units,
-            "pnl": pnl, "reason": reason, "entry_time": str(series.index[fill_pos]),
+            "pnl": pnl, "uncapped_pnl": uncapped_pnl,
+            "loss_capped_at_equity": pnl != uncapped_pnl,
+            "reason": reason, "entry_time": str(series.index[fill_pos]),
             "exit_time": str(series.index[exit_pos]), "hold_bars": exit_pos - fill_pos,
         })
         if risk_state is not None:  # pragma: no cover
@@ -171,5 +180,7 @@ def simulate(signals: list[dict], price: pd.Series, cost_bps: float,
     metrics = metrics_from_returns(trade_returns, curve)
     metrics["avg_hold_bars"] = (float(np.mean([t["hold_bars"] for t in trades]))
                                 if trades else 0.0)
+    metrics["bankrupt"] = bankrupt
     return {"equity_curve": curve, "trades": trades, "metrics": metrics,
+            "bankrupt": bankrupt,
             "overfitting_flags": overfitting_flags(metrics)}

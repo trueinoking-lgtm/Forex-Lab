@@ -19,7 +19,7 @@ def test_costs_and_closed_metrics():
     p = series([100, 100, 110, 110])
     t = extract_trades(p, series([1, 1, 0, 0]), strategy="x", symbol="Y",
                        spread_bps=2, slippage_bps=1, commission_bps=1)
-    assert round(t[0]["total_cost"], 6) == .04
+    assert round(t[0]["total_cost"], 6) == 40.0
     m = lifecycle_metrics(t)
     assert m["trade_count"] == 1 and m["wins"] == 1
 
