@@ -9,9 +9,10 @@ import pytest
 
 try:
     from engine.run_session_breakout_research import (CORE_PAIRS, DEFAULT_PARAMS, aggregate,
-        load_h1, research)
+        load_h1, research, verify_input)
 except ImportError:
-    from run_session_breakout_research import CORE_PAIRS, DEFAULT_PARAMS, aggregate, load_h1, research
+    from run_session_breakout_research import (CORE_PAIRS, DEFAULT_PARAMS, aggregate,
+        load_h1, research, verify_input)
 
 
 def synthetic_h1(pair):
@@ -53,3 +54,12 @@ def test_aggregate_profit_factor_is_recomputed():
     # lifecycle_metrics consumes these additional fields only for winner concentration.
     for i, t in enumerate(trades): t.update({"exit_ts": "x", "entry_ts": str(i)})
     assert aggregate(trades)["profit_factor"] == 2.0
+
+
+def test_delivered_incomplete_final_h1_bar_is_excluded_without_mutating_raw():
+    frame, finding = verify_input("EURUSD")
+    assert finding["raw_end"] == "2026-07-20T19:00:00+00:00"
+    assert finding["evaluated_end"] == "2026-07-20T18:00:00+00:00"
+    assert finding["incomplete_final_bar_excluded"] is True
+    assert len(frame) + 1 == finding["raw_rows"]
+    assert finding["raw_sha256"] != finding["evaluated_sha256"]

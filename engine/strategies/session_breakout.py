@@ -60,19 +60,30 @@ def session_breakout(price, *, pair, range_start_hour=0, range_end_hour=7,
     prev_close = close.shift(1)
     tr = pd.concat((high-low, (high-prev_close).abs(), (low-prev_close).abs()), axis=1).max(axis=1)
     atr = tr.ewm(alpha=1/atr_lookback, adjust=False, min_periods=atr_lookback).mean()
-    out = pd.Series(0.0, index=close.index)
+    out_values = np.zeros(len(close), dtype=float)
+    # The range is only consumed at/after ``range_end_hour``, so computing the
+    # completed session range once per UTC day is exactly equivalent to
+    # repeatedly scanning all earlier bars at every timestamp.  The former is
+    # linear; the latter made real 16-year H1 research effectively quadratic.
+    range_mask = ((close.index.hour >= range_start_hour) &
+                  (close.index.hour < range_end_hour))
+    range_high = high[range_mask].groupby(high[range_mask].index.normalize()).max()
+    range_low = low[range_mask].groupby(low[range_mask].index.normalize()).min()
+    days = close.index.normalize()
+    hours = close.index.hour.to_numpy()
+    closes = close.to_numpy()
+    atr_values = atr.to_numpy()
+    day_high = days.map(range_high).to_numpy()
+    day_low = days.map(range_low).to_numpy()
     held = 0; entry = stop = target = np.nan; age = 0
     used_long = used_short = False; current_day = None; rh = rl = np.nan
 
-    for i, ts in enumerate(close.index):
-        day, hour, px = ts.normalize(), ts.hour, float(close.iloc[i])
+    for i in range(len(close)):
+        day, hour, px = days[i], hours[i], closes[i]
         if current_day is None or day != current_day:
             current_day = day; used_long = used_short = False
-            rh = rl = np.nan
-        mask = (close.index.normalize() == day) & (close.index.hour >= range_start_hour) & (close.index.hour < range_end_hour)
-        completed = mask & (close.index <= ts)
-        if completed.any():
-            rh = float(high.loc[completed].max()); rl = float(low.loc[completed].min())
+            rh = day_high[i]
+            rl = day_low[i]
 
         if held:
             age += 1
@@ -83,7 +94,7 @@ def session_breakout(price, *, pair, range_start_hour=0, range_end_hour=7,
                 held = 0; entry = stop = target = np.nan; age = 0
 
         complete_range = hour >= range_end_hour and np.isfinite(rh) and np.isfinite(rl)
-        distance = float(atr.iloc[i]) if np.isfinite(atr.iloc[i]) else np.nan
+        distance = atr_values[i] if np.isfinite(atr_values[i]) else np.nan
         range_ok = complete_range and np.isfinite(distance) and (
             min_range_atr is None or rh-rl >= min_range_atr*distance) and (
             max_range_atr is None or rh-rl <= max_range_atr*distance)
@@ -97,5 +108,5 @@ def session_breakout(price, *, pair, range_start_hour=0, range_end_hour=7,
             risk = (entry-rl if direction > 0 else rh-entry) if stop_mode == "opp_side" else stop_atr*distance
             stop = (rl if direction > 0 else rh) if stop_mode == "opp_side" else entry-direction*risk
             target = entry + direction*target_r*risk if target_r is not None else np.nan
-        out.iloc[i] = float(held)
-    return out.reindex(price.index).fillna(0.0)
+        out_values[i] = float(held)
+    return pd.Series(out_values, index=close.index).reindex(price.index).fillna(0.0)
