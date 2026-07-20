@@ -33,6 +33,8 @@ def load_csv(path: str, is_demo: bool = False) -> pd.DataFrame:
 
 def fetch_yfinance(symbol: str, timeframe: str = "1d", lookback_days: int = 1095,
                    cache_dir: str = "data", start=None, end=None) -> pd.DataFrame:
+    start_was_none = start is None
+    end_was_none = end is None
     if yf is None:
         raise RuntimeError("[DATA ERROR] yfinance not installed (pip install yfinance)")
     Path(cache_dir).mkdir(parents=True, exist_ok=True)
@@ -61,7 +63,11 @@ def fetch_yfinance(symbol: str, timeframe: str = "1d", lookback_days: int = 1095
     if not explicit_start:
         df = df[df.index >= end - pd.Timedelta(days=lookback_days)]
     df.index.name = "timestamp"
-    df.to_csv(cache)
+    # Only refresh the shared canonical cache for the default rolling-window fetch.
+    # Explicit start/end pulls (e.g. run_acquire_data extended history) must NOT
+    # clobber the V2/V3 canonical cache; the caller writes its own separate file.
+    if start_was_none and end_was_none:
+        df.to_csv(cache)
     return df
 
 
