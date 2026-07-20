@@ -8,6 +8,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from .trend_continuation import trend_continuation
+from .range_mean_reversion import (bollinger_range_reversion,
+                                   rsi_range_reversion, zscore_range_reversion)
 
 
 def ema(price: pd.Series, span: int) -> pd.Series:
@@ -98,6 +100,9 @@ REGISTRY = {
          "vol_lookback": 20, "vol_low_pct": 20, "vol_high_pct": 90,
          "stop_atr": 2.0, "trailing": True},
     ),
+    "rsi_range_reversion": (rsi_range_reversion, {"rsi_period": 14, "rsi_lower": 25, "rsi_upper": 75, "adx_threshold": 20, "max_holding": 10, "atr_stop": 1.5, "profit_target_atr": 1.0, "trailing": False}),
+    "zscore_range_reversion": (zscore_range_reversion, {"z_lookback": 20, "z_entry": 2.0, "adx_threshold": 20, "max_holding": 10, "atr_stop": 1.5, "profit_target_atr": 1.0}),
+    "bollinger_range_reversion": (bollinger_range_reversion, {"bb_lookback": 20, "bb_width": 2.0, "adx_threshold": 20, "max_holding": 10, "atr_stop": 1.5, "profit_target_atr": 1.0}),
 }
 
 
