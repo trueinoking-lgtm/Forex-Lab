@@ -12,6 +12,7 @@ import yaml
 BASE = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE))
 from src.experiment_registry import file_sha256, git_commit, register_experiment
+from src.accounting import accounting_metadata
 from strategies.registry import REGISTRY
 
 
@@ -41,6 +42,7 @@ def main() -> None:
     _, params = REGISTRY[args.strategy]
     costs = cfg["cost"]
     payload = {
+        **accounting_metadata(has_explicit_stop=False),
         "git_commit_hash": git_commit(BASE.parent),
         "strategy_name": args.strategy,
         "strategy_parameters": params,

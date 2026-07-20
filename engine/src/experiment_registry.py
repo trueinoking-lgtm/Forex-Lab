@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 REQUIRED_RESULT_METRICS = (
     "total_return", "max_drawdown", "profit_factor", "win_rate", "trade_count",
     "score", "robustness", "oos_return",
@@ -87,6 +87,8 @@ def gate_outcomes(metrics: Mapping[str, Any]) -> dict[str, bool]:
 def build_experiment(payload: Mapping[str, Any], *, created_at: str | None = None) -> dict[str, Any]:
     """Normalize a record and assign an ID from its timestamp-free contents."""
     clean = _safe(dict(payload))
+    from .accounting import require_accounting_metadata
+    require_accounting_metadata(clean)
     metrics = clean.get("performance_metrics")
     if not isinstance(metrics, dict):
         metrics = {}
@@ -177,6 +179,10 @@ def register_experiment(payload: Mapping[str, Any], store_path: Path | str,
         container = json.loads(store.read_text()) if store.exists() else {
             "schema_version": SCHEMA_VERSION, "experiments": [],
         }
+        if container.get("schema_version") != SCHEMA_VERSION:
+            # Existing entries remain append-only and readable, while new v2
+            # identities can never dedupe with their legacy counterparts.
+            container["schema_version"] = SCHEMA_VERSION
         proposed = build_experiment(payload, created_at=created_at)
         for existing in container.get("experiments", []):
             if existing.get("experiment_id") == proposed["experiment_id"]:
