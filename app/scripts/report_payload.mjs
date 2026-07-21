@@ -100,12 +100,13 @@ const lines = [
   `open risk: ${money(ledger.open_risk)}`,
   `maximum concurrent risk: ${ledger.max_concurrent_risk}`,
   `bankrupt: ${Boolean(ledger.bankrupt)}`,
-  `accounting version: ${ledger.accounting_version}`,
+  `Accounting version: ${ledger.accounting_version}`,
   `last ledger update: ${ledger.ledger_updated_at || "not yet updated"}`,
   `ignored legacy records: ${ledger.ignored_legacy_records}`, "",
   `*Accounting metadata*`,
   `accounting_model=normalized_equal_risk_v1`,
   `accounting_version=2`,
+  `Accounting model: normalized_equal_risk_v1`,
   `pnl_unit=account_currency_USD`,
   `paper starting equity=10000 USD; separate from the 100000 USD research notional`, "",
   `watcher-eligible strategies: ${watcherEligible}`, "",
@@ -122,11 +123,14 @@ lines.push("",
   `Report class: short_window_yfinance_advisory`,
   `Watcher eligible strategies: ${watcherEligible}`,
   `Canonical research source: MT5 D1`,
+  `Canonical fingerprint: ${CANONICAL_FINGERPRINT}`,
   `Advisory source: yfinance D1`,
   `Sources differ: ${sourcesDiffer}`,
   `All researched families: REJECTED`,
   `No signal created`,
-  `No order placed`);
+  `No order placed`,
+  `paper_only=true`,
+  `ALLOW_LIVE_ORDERS=false`);
 const message = lines.join("\n");
 
 const payload = {

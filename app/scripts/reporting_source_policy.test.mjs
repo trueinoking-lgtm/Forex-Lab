@@ -11,11 +11,16 @@ const requiredLines = [
   "Report class: short_window_yfinance_advisory",
   "Watcher eligible strategies: 0",
   "Canonical research source: MT5 D1",
+  "Canonical fingerprint: 4c306902c87854a92c279c83a1c50f00ac6a3f3b69994ff02193ba15c49568b2",
   "Advisory source: yfinance D1",
   "Sources differ: YES",
   "All researched families: REJECTED",
   "No signal created",
   "No order placed",
+  "Accounting model: normalized_equal_risk_v1",
+  "Accounting version: 2",
+  "paper_only=true",
+  "ALLOW_LIVE_ORDERS=false",
 ];
 
 test("generated report has hardened canonical/advisory source policy", () => {
