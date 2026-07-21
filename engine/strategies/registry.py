@@ -11,6 +11,7 @@ from .trend_continuation import trend_continuation
 from .range_mean_reversion import (bollinger_range_reversion,
                                    rsi_range_reversion, zscore_range_reversion)
 from .session_breakout import session_breakout
+from .currency_strength import currency_strength_signal
 
 
 def ema(price: pd.Series, span: int) -> pd.Series:
@@ -110,6 +111,8 @@ REGISTRY = {
         "stop_mode": "opp_side", "stop_atr": None, "target_r": None,
         "max_holding": "session_close", "session_end_hour": 16,
         "long_allowed": True, "short_allowed": True}),
+    "currency_strength": (currency_strength_signal, {"lookback": 24,
+        "method": "equal_weight", "signal_filter": "continuation"}),
 }
 
 
