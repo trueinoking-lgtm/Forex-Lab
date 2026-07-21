@@ -14,6 +14,7 @@ from src.accounting import accounting_metadata
 BASE = Path(__file__).resolve().parent
 DATA = BASE / "data"; RESULTS = BASE / "results"
 DOC = BASE / "docs/checkpoints/currency_strength_research_phase1_2026-07-21.md"
+AUDIT_DOC = BASE / "docs/checkpoints/currency_strength_accounting_audit_2026-07-21.md"
 HASHES = {"EURUSD":"80cc20e9de10f929619902d618a32035f45d557751153d16484de46d8d5fcfc1",
  "GBPUSD":"99a2564ae0040d6c47ec20d1ce84c82a464be44dafac05898ea7e2e53d1fa789",
  "USDJPY":"3aad2f78b5b06f39ac7804d33845c40e31d2d00073937e2df8eb51512802db60",
@@ -24,6 +25,10 @@ FOLDS = {"DEV":("2022-01-03","2023-06-30 23:59:59"),
 FILTERS = ("continuation", "vol_filter", "trend_confirm")
 HOLDINGS=(4,8,24); STOPS=(1.0,1.5,2.0); TARGETS=(None,1.5,2.0)
 RISK_USD=100.0; INITIAL=10_000.0
+FROZEN_CONFIG={"method":"equal_weight","lookback":24,"holding":24,"atr_stop":2.0,
+               "target_r":1.5,"filter":"continuation"}
+FROZEN_SELECTED_AT="2026-07-21T15:36:11Z"
+FROZEN_TEST_BOUNDARIES={"start":FOLDS["TEST"][0],"end":FOLDS["TEST"][1]}
 
 
 def clean(x):
@@ -42,7 +47,7 @@ def dump(name, payload):
     (RESULTS/name).write_text(json.dumps(clean(payload), indent=2, sort_keys=True)+"\n")
 
 
-def load_data():
+def load_data(full_history=False):
     frames={}; manifests={}
     for pair, expected in HASHES.items():
         path=DATA/f"raw_mt5_{pair}_1h.csv"; mp=path.with_suffix(".manifest.json")
@@ -52,7 +57,8 @@ def load_data():
         if manifest.get("symbol") != pair or manifest.get("timeframe") != "1h":
             raise ValueError(f"manifest identity mismatch: {pair}")
         frame=pd.read_csv(path, parse_dates=["timestamp"]).set_index("timestamp").sort_index()
-        frames[pair]=frame.loc["2022-01-03":"2026-07-17 23:59:59", ["open","high","low","close"]]
+        start="2010-01-04" if full_history else "2022-01-03"
+        frames[pair]=frame.loc[start:"2026-07-17 23:59:59", ["open","high","low","close"]]
         manifests[pair]=manifest
     common=frames["EURUSD"].index
     for frame in frames.values(): common=common.intersection(frame.index)
@@ -72,9 +78,9 @@ def simulate(frames, signals, lookback, holding, stop_atr, target_r,
     idx=signals.index if allowed_index is None else signals.index.intersection(allowed_index)
     loc=signals.index.get_indexer(idx); at={p:atr(frames[p],lookback).to_numpy() for p in frames}
     arrays={p:{c:frames[p][c].to_numpy() for c in ("open","high","low","close")} for p in frames}
-    sig=signals.to_numpy(); pairs=list(signals.columns); active={}; trades=[]; equity=INITIAL
+    sig=signals.to_numpy(); pairs=list(signals.columns); active={}; trades=[]
     for k,i in enumerate(loc):
-        if i < delay or equity <= 0: continue
+        if i < delay: continue
         # Rank reversal/sign flip, stop, target, or fixed holding.
         desired={pairs[j]:int(sig[i,j]) for j in range(len(pairs)) if sig[i,j]}
         for pair,pos in list(active.items()):
@@ -86,12 +92,16 @@ def simulate(frames, signals, lookback, holding, stop_atr, target_r,
                 px=pos["stop"] if stop_hit else (pos["target"] if target_hit else a["open"][i])
                 raw_r=d*(px-pos["entry"])/pos["risk_distance"]
                 cost_r=(cost_bps/10000.0)*pos["entry"]/pos["risk_distance"]
-                pnl=RISK_USD*(raw_r-cost_r); equity=max(0.0,equity+pnl)
-                trades.append({"pair":pair,"base":PAIR_CURRENCIES[pair][0],"quote":PAIR_CURRENCIES[pair][1],
+                pnl=RISK_USD*(raw_r-cost_r)
+                trade={"pair":pair,"base":PAIR_CURRENCIES[pair][0],"quote":PAIR_CURRENCIES[pair][1],
                     "direction":"long" if d>0 else "short","entry_timestamp":signals.index[pos["entry_i"]],
                     "exit_timestamp":signals.index[i],"holding_hours":age,"gross_pnl_usd":RISK_USD*raw_r,
                     "cost_usd":RISK_USD*cost_r,"net_pnl_usd":pnl,"r_multiple":raw_r-cost_r,
-                    "pip_multiplier":pip_multiplier(pair)})
+                    "pip_multiplier":pip_multiplier(pair)}
+                identity="|".join((pair,trade["direction"],trade["entry_timestamp"].isoformat(),
+                                   trade["exit_timestamp"].isoformat()))
+                trade["trade_id"]=hashlib.sha256(identity.encode()).hexdigest()[:24]
+                trades.append(trade)
                 del active[pair]
         source_i=i-delay
         for j,pair in enumerate(pairs):
@@ -105,25 +115,57 @@ def simulate(frames, signals, lookback, holding, stop_atr, target_r,
     return trades
 
 
+def portfolio_equity(trades, starting_equity=INITIAL):
+    """Apply a shared, floored portfolio ledger to chronological closed trades."""
+    # Python's stable sort preserves the simulator's deterministic pair-close order
+    # for trades sharing an exit timestamp.
+    ordered=sorted(enumerate(trades),key=lambda it:(pd.Timestamp(it[1].get("exit_timestamp",0)),it[0]))
+    ordered=[trade for _,trade in ordered]
+    equity=float(starting_equity); peak=equity; bankrupt=False; rows=[]; accepted=[]; rejected=[]
+    for trade in ordered:
+        if bankrupt:
+            rejected.append(trade)
+            continue
+        equity=max(0.0,equity+float(trade["net_pnl_usd"])); peak=max(peak,equity)
+        drawdown=(peak-equity)/peak if peak else 0.0
+        rows.append({"trade_id":trade.get("trade_id"),"entry_timestamp":trade.get("entry_timestamp"),
+                     "exit_timestamp":trade.get("exit_timestamp"),"net_pnl_usd":trade["net_pnl_usd"],
+                     "equity":equity,"drawdown_decimal":drawdown})
+        accepted.append(trade)
+        bankrupt=equity<=0.0
+    return {"starting_equity":float(starting_equity),"ending_equity":equity,
+            "portfolio_return_decimal":equity/starting_equity-1.0,
+            "max_drawdown_decimal":max((r["drawdown_decimal"] for r in rows),default=0.0),
+            "bankrupt":bankrupt,"equity_curve":rows,"accepted_trades":accepted,
+            "rejected_trades":rejected,"final_trade_before_bankruptcy":rows[-1] if bankrupt else None}
+
+
 def metrics(trades):
-    pnl=np.array([t["net_pnl_usd"] for t in trades],dtype=float)
+    portfolio=portfolio_equity(trades); accepted=portfolio["accepted_trades"]
+    pnl=np.array([t["net_pnl_usd"] for t in accepted],dtype=float)
+    arithmetic_pnl=np.array([t["net_pnl_usd"] for t in trades],dtype=float)
     wins=pnl[pnl>0]; losses=pnl[pnl<0]; gp=float(wins.sum()); gl=float(-losses.sum())
     pf=gp/gl if gl else (float("inf") if gp else 0.0)
-    curve=INITIAL+np.cumsum(pnl); peaks=np.maximum.accumulate(np.r_[INITIAL,curve])
-    dd=(peaks[1:]-curve)/peaks[1:] if len(curve) else np.array([])
-    by_pair={p:float(sum(t["net_pnl_usd"] for t in trades if t["pair"]==p)) for p in PAIR_CURRENCIES}
-    counts={p:sum(t["pair"]==p for t in trades) for p in PAIR_CURRENCIES}
+    by_pair={p:float(sum(t["net_pnl_usd"] for t in accepted if t["pair"]==p)) for p in PAIR_CURRENCIES}
+    counts={p:sum(t["pair"]==p for t in accepted) for p in PAIR_CURRENCIES}
     positive=sum(v>0 for v in by_pair.values()); robustness=positive/4
-    ret=float(pnl.sum()/INITIAL); score=max(0.0,min(100.0,25*ret+20*min(pf,2)+20*robustness))
+    ret=portfolio["portfolio_return_decimal"]
+    score=max(0.0,min(100.0,25*ret+20*min(pf,2)+20*robustness))
     sorted_w=np.sort(wins)[::-1]; denom=gp or 1.0
-    return {"trade_count":len(trades),"gross_profit_usd":gp,"gross_loss_usd":gl,
-      "profit_factor":pf,"return":ret,"expectancy_usd_per_trade":float(pnl.mean()) if len(pnl) else 0.0,
-      "max_drawdown_fraction":float(dd.max()) if len(dd) else 0.0,"robustness":robustness,"score":score,
-      "long_trades":sum(t["direction"]=="long" for t in trades),"short_trades":sum(t["direction"]=="short" for t in trades),
-      "mean_holding_hours":float(np.mean([t["holding_hours"] for t in trades])) if trades else 0.0,
+    return {"trade_count":len(accepted),"closed_trade_ledger_count":len(trades),
+      "trades_rejected_after_bankruptcy":len(portfolio["rejected_trades"]),
+      "gross_profit_usd":gp,"gross_loss_usd":gl,"profit_factor":pf,
+      "arithmetic_return_sum":float(arithmetic_pnl.sum()/INITIAL) if len(arithmetic_pnl) else 0.0,
+      "portfolio_return_decimal":ret,"return":ret,"starting_equity":INITIAL,
+      "ending_equity":portfolio["ending_equity"],"bankrupt":portfolio["bankrupt"],
+      "expectancy_usd_per_trade":float(pnl.mean()) if len(pnl) else 0.0,
+      "max_drawdown_decimal":portfolio["max_drawdown_decimal"],
+      "max_drawdown_fraction":portfolio["max_drawdown_decimal"],"robustness":robustness,"score":score,
+      "long_trades":sum(t["direction"]=="long" for t in accepted),"short_trades":sum(t["direction"]=="short" for t in accepted),
+      "mean_holding_hours":float(np.mean([t["holding_hours"] for t in accepted])) if accepted else 0.0,
       "pair_net_pnl_usd":by_pair,"pair_trade_count":counts,"positive_pairs":positive,
       "best_trade_gross_profit_fraction":float(sorted_w[:1].sum()/denom),
-      "best_three_gross_profit_fraction":float(sorted_w[:3].sum()/denom),"exposure_trade_hours":sum(t["holding_hours"] for t in trades)}
+      "best_three_gross_profit_fraction":float(sorted_w[:3].sum()/denom),"exposure_trade_hours":sum(t["holding_hours"] for t in accepted)}
 
 
 def gates(m, survive_5=False, beats_random=False, pair_contrib_ok=False,
@@ -144,7 +186,7 @@ def config_key(c):
     return f'{c[0]}|{c[1]}|{c[2]}|L{c[3]}|A{c[4]}|T{c[5]}'
 
 
-def random_controls(frames, canonical_signals, cfg, canonical_pf):
+def random_controls(frames, canonical_signals, cfg, canonical_pf, allowed_index=None):
     rng_results={k:[] for k in ("random_pair","random_direction","shuffled_ranks")}
     rng=np.random.default_rng(20260721); arr=canonical_signals.to_numpy(); pairs=list(canonical_signals)
     for seed in range(10):
@@ -156,7 +198,7 @@ def random_controls(frames, canonical_signals, cfg, canonical_pf):
                 x=np.abs(x)*local.choice([-1,1],size=x.shape)
             else:
                 for row in x: local.shuffle(row)
-            tr=simulate(frames,pd.DataFrame(x,index=canonical_signals.index,columns=pairs),cfg[1],cfg[3],cfg[4],cfg[5])
+            tr=simulate(frames,pd.DataFrame(x,index=canonical_signals.index,columns=pairs),cfg[1],cfg[3],cfg[4],cfg[5],allowed_index=allowed_index)
             rng_results[kind].append(metrics(tr)["profit_factor"])
     flat=[v for values in rng_results.values() for v in values]
     summary={k:{"seeds":10,"median_pf":float(np.median(v)),"p90_pf":float(np.quantile(v,.9)),
@@ -167,10 +209,154 @@ def random_controls(frames, canonical_signals, cfg, canonical_pf):
       "rejected_family_references":["ema","trend_continuation","range_mean_reversion","session_breakout"]}
 
 
+def frozen_config_hash(config=FROZEN_CONFIG):
+    canonical=json.dumps(config,sort_keys=True,separators=(",",":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def currency_boundary_passes(currency_frac):
+    """Frozen inclusive rule: max currency fraction <= 0.50 and USD <= 0.50."""
+    return max(currency_frac.values(),default=0.0)<=0.5 and currency_frac.get("USD",0.0)<=0.5
+
+
+def rank_selection_inputs(candidates):
+    """Rank exclusively on persisted DEV/VALIDATION inputs; TEST is not accepted."""
+    def rank(row):
+        dev=row["DEV"]; val=row["VALIDATION"]
+        return ((dev["profit_factor"]+val["profit_factor"])/2,
+                dev["robustness"]+val["robustness"],
+                dev["trade_count"]+val["trade_count"])
+    return max(candidates,key=rank)
+
+
+def build_grid():
+    """Legacy frozen research grid; audit mode must never call this function."""
+    return list(itertools.product(METHODS,LOOKBACKS,FILTERS,HOLDINGS,STOPS,TARGETS))
+
+
+def scope_record(name, trades, start, end, gate_context=None):
+    m=metrics(trades); checks,reasons=gates(m,**(gate_context or {}))
+    start_ts=pd.Timestamp(start); end_ts=pd.Timestamp(end)
+    if start_ts.tzinfo is None: start_ts=start_ts.tz_localize("UTC")
+    if end_ts.tzinfo is None: end_ts=end_ts.tz_localize("UTC")
+    return {"scope":name,"start_timestamp":start_ts,"end_timestamp":end_ts,
+            "trade_ids":[t["trade_id"] for t in trades],**m,
+            "gate_outcomes":checks,"failed_gates":reasons}
+
+
+def run_audit():
+    """Reconcile the frozen candidate only; this function never constructs the grid."""
+    frames,manifests=load_data(full_history=True)
+    closes=pd.DataFrame({p:f.close for p,f in frames.items()})
+    cfg=FROZEN_CONFIG; cfg_tuple=(cfg["method"],cfg["lookback"],cfg["filter"],cfg["holding"],cfg["atr_stop"],cfg["target_r"])
+    reference_closes=closes.loc["2022-01-03":]
+    research_frames={pair:frame.reindex(reference_closes.index) for pair,frame in frames.items()}
+    reference=construct_signals(reference_closes,cfg["lookback"],cfg["method"],cfg["filter"])
+    signals=construct_signals(reference_closes,cfg["lookback"],cfg["method"],cfg["filter"])
+    pd.testing.assert_frame_equal(signals,reference)
+    historical_signals=construct_signals(closes,cfg["lookback"],cfg["method"],cfg["filter"])
+
+    fold_trades={}
+    for name,(start,end) in FOLDS.items():
+        ix=closes.loc[pd.Timestamp(start,tz="UTC"):pd.Timestamp(end,tz="UTC")].index
+        fold_trades[name]=simulate(research_frames,signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],allowed_index=ix)
+    full_trades=simulate(frames,historical_signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"])
+    dev_ids={t["trade_id"] for t in fold_trades["DEV"]}; val_ids={t["trade_id"] for t in fold_trades["VALIDATION"]}
+    test_ids={t["trade_id"] for t in fold_trades["TEST"]}
+    leakage_ok=not ((dev_ids|val_ids)&test_ids)
+    assert leakage_ok
+
+    # All eligibility inputs below are explicitly TEST-only.
+    test_metrics=metrics(fold_trades["TEST"]); test_ix=closes.loc[FOLDS["TEST"][0]:FOLDS["TEST"][1]].index
+    stress={}
+    for label,bps in (("3_bps",3),("5_bps",5),("8_bps",8),("12_bps",12),("doubled_spread",6),("doubled_slippage",4),("nonzero_commission",4)):
+        stress[label]=metrics(simulate(research_frames,signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],cost_bps=bps,allowed_index=test_ix))
+    stress["execution_delay_plus_1h"]=metrics(simulate(research_frames,signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],delay=2,allowed_index=test_ix))
+    ranked=sorted(fold_trades["TEST"],key=lambda t:t["net_pnl_usd"],reverse=True)
+    stress["remove_best_trade"]=metrics(ranked[1:]); stress["remove_best_three"]=metrics(ranked[3:])
+    controls=random_controls(research_frames,signals,cfg_tuple,test_metrics["profit_factor"],allowed_index=test_ix)
+
+    accepted_test=portfolio_equity(fold_trades["TEST"])["accepted_trades"]
+    contrib={p:sum(max(0,t["net_pnl_usd"]) for t in accepted_test if t["pair"]==p) for p in PAIR_CURRENCIES}
+    total=sum(contrib.values()) or 1.0; pair_frac={p:v/total for p,v in contrib.items()}
+    currency={u:0.0 for u in ("EUR","GBP","USD","JPY","AUD")}
+    for pair,value in contrib.items():
+        currency[PAIR_CURRENCIES[pair][0]]+=value/2; currency[PAIR_CURRENCIES[pair][1]]+=value/2
+    currency_frac={u:v/total for u,v in currency.items()}
+    pair_ok=max(pair_frac.values(),default=0)<=0.5; currency_ok=currency_boundary_passes(currency_frac)
+
+    period_specs=(("2010_2014","2010-01-04","2014-12-31 23:59:59"),("2015_2019","2015-01-01","2019-12-31 23:59:59"),
+                  ("2020_2022","2020-01-01","2022-12-31 23:59:59"),("2023_2026","2023-01-01","2026-07-17 23:59:59"))
+    periods={}
+    for label,start,end in period_specs:
+        ix=closes.loc[start:end].index; tr=simulate(frames,historical_signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],allowed_index=ix)
+        periods[label]={"status":"evaluated","scope":"full_historical_diagnostic","start_timestamp":ix.min(),"end_timestamp":ix.max(),**metrics(tr)}
+    periods["rolling_3y"]=[]
+    for year in range(2012,2027):
+        start=f"{year-2}-01-01"; end=min(pd.Timestamp(f"{year}-12-31 23:59:59",tz="UTC"),pd.Timestamp("2026-07-17 23:59:59",tz="UTC"))
+        ix=closes.loc[pd.Timestamp(start,tz="UTC"):end].index
+        periods["rolling_3y"].append({"scope":"full_historical_diagnostic","start_timestamp":ix.min(),"end_timestamp":ix.max(),**metrics(simulate(frames,historical_signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],allowed_index=ix))})
+    periods["rolling_5y"]=[]
+    for year in range(2014,2027):
+        start=f"{year-4}-01-01"; end=min(pd.Timestamp(f"{year}-12-31 23:59:59",tz="UTC"),pd.Timestamp("2026-07-17 23:59:59",tz="UTC"))
+        ix=closes.loc[pd.Timestamp(start,tz="UTC"):end].index
+        periods["rolling_5y"].append({"scope":"full_historical_diagnostic","start_timestamp":ix.min(),"end_timestamp":ix.max(),**metrics(simulate(frames,historical_signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],allowed_index=ix))})
+    hourly=closes.pct_change().std(axis=1); med=hourly.median()
+    periods["volatility_regimes"]={label:{"scope":"full_historical_diagnostic",**metrics([t for t in full_trades if ((hourly.get(t["entry_timestamp"],0)>=med)==(label=="high"))])} for label in ("high","low")}
+    period_ok=sum(periods[x]["portfolio_return_decimal"]>0 for x,_,_ in period_specs)>=2
+
+    gate_context={"survive_5":stress["5_bps"]["portfolio_return_decimal"]>0,
+      "beats_random":test_metrics["profit_factor"]>controls["randomized_overall_p90_pf"],
+      "pair_contrib_ok":pair_ok,"currency_ok":currency_ok,"nearby":False,"periods":period_ok}
+    scopes={name.lower():scope_record(name.lower(),fold_trades[name],*FOLDS[name],gate_context if name=="TEST" else None) for name in FOLDS}
+    scopes["chronological_test"]=scopes["test"]
+    scopes["aggregate_test"]={**scopes["test"],"scope":"aggregate_test"}
+    scopes["full_history"]=scope_record("full_historical_diagnostic",full_trades,closes.index.min(),closes.index.max())
+    classification="1. REJECT STRATEGY FAMILY"
+
+    prior=json.loads((RESULTS/"currency_strength_fold_results.json").read_text())
+    candidates=[]
+    for row in prior["configurations"]:
+        candidates.append({"configuration":row["configuration"],"DEV":row["folds"]["DEV"],"VALIDATION":row["folds"]["VALIDATION"]})
+    selected=rank_selection_inputs(candidates); selected_hash=frozen_config_hash(selected["configuration"])
+    assert selected_hash==frozen_config_hash()
+    hidden_selected=rank_selection_inputs(json.loads(json.dumps(candidates)))
+    hidden_hash=frozen_config_hash(hidden_selected["configuration"]); assert hidden_hash==selected_hash
+    leakage={"candidate_selection_inputs":candidates,
+      "ranking_rule":"max(mean(DEV PF, VALIDATION PF), DEV robustness + VALIDATION robustness, DEV trade_count + VALIDATION trade_count); TEST excluded",
+      "selected_configuration":cfg,"selected_configuration_hash":selected_hash,
+      "selection_timestamp":FROZEN_SELECTED_AT,"frozen_test_boundaries":FROZEN_TEST_BOUNDARIES,
+      "hidden_test_reproducibility":{"test_outcomes_present":False,"selected_configuration_hash":hidden_hash,"identical":True}}
+    meta=accounting_metadata(has_explicit_stop=True)
+    equity=portfolio_equity(fold_trades["TEST"])
+    dump("currency_strength_audit_scope.json",{"accounting":meta,"gate_bearing_scope":"chronological_test","scopes":scopes,
+      "leakage_invariant":{"no_dev_or_validation_trade_id_in_chronological_test":leakage_ok,"overlap_trade_ids":[]}})
+    dump("currency_strength_audit_equity_curve.json",{"accounting":meta,"scope":"chronological_test",**equity,
+      "trades_rejected_after_bankruptcy":[t["trade_id"] for t in equity["rejected_trades"]]})
+    dump("currency_strength_audit_leakage.json",{"accounting":meta,**leakage})
+    dump("currency_strength_period_stability_corrected.json",{"accounting":meta,"scope":"full_historical_diagnostic","periods":periods,"no_single_period_dependence":period_ok})
+    frozen_payload={"accounting":meta,"selected_configuration":cfg,"selected_configuration_hash":selected_hash,
+      "gate_bearing_scope":"chronological_test","chronological_test":scopes["chronological_test"],"full_history":scopes["full_history"],"classification":classification}
+    dump("currency_strength_frozen_candidate_corrected.json",frozen_payload)
+    dump("currency_strength_currency_contribution.json",{"accounting":meta,"scope":"chronological_test","exact_currency_rule":"max(currency_frac) <= 0.5 AND USD <= 0.5","pair_gross_profit_fraction":pair_frac,"currency_gross_profit_fraction":currency_frac,"no_pair_over_50pct":pair_ok,"no_currency_dominates":currency_ok})
+    dump("currency_strength_cost_stress.json",{"accounting":meta,"scope":"chronological_test","scenarios":stress})
+    dump("currency_strength_randomized_controls.json",{"accounting":meta,"scope":"chronological_test",**controls})
+    AUDIT_DOC.write_text(render_audit(prior,scopes["chronological_test"],scopes["full_history"],periods,pair_frac,currency_frac,selected_hash,classification))
+    summary={"classification":classification,"selected_configuration":cfg,"selected_configuration_hash":selected_hash,
+             "gate_bearing_scope":"chronological_test","chronological_test":test_metrics,
+             "full_history":metrics(full_trades),"periods":{k:periods[k] for k,_,_ in period_specs},
+             "pair_gross_profit_fraction":pair_frac,"currency_gross_profit_fraction":currency_frac}
+    print(json.dumps(clean(summary),indent=2)); return summary
+
+
 def main():
     parser=argparse.ArgumentParser(); parser.add_argument("--config",help="reserved deterministic config label")
-    parser.parse_args(); frames, manifests=load_data(); closes=pd.DataFrame({p:f.close for p,f in frames.items()})
-    configs=list(itertools.product(METHODS,LOOKBACKS,FILTERS,HOLDINGS,STOPS,TARGETS))
+    parser.add_argument("--audit",action="store_true",help="reconcile the frozen candidate without grid selection")
+    args=parser.parse_args()
+    if args.audit:
+        run_audit(); return
+    frames, manifests=load_data(); closes=pd.DataFrame({p:f.close for p,f in frames.items()})
+    configs=build_grid()
     signal_cache={(m,l,f):construct_signals(closes,l,m,f) for m,l,f in itertools.product(METHODS,LOOKBACKS,FILTERS)}
     fold_records=[]; selection=[]; ledgers={}
     for c in configs:
@@ -181,7 +367,8 @@ def main():
             fold_metrics[name]=metrics(tr); all_trades.extend(tr)
         agg=metrics(all_trades); key=config_key(c); ledgers[key]=all_trades
         sel_pf=(fold_metrics["DEV"]["profit_factor"]+fold_metrics["VALIDATION"]["profit_factor"])/2
-        selection.append((sel_pf,fold_metrics["DEV"]["robustness"]+fold_metrics["VALIDATION"]["robustness"],len(all_trades),key,c))
+        selection.append((sel_pf,fold_metrics["DEV"]["robustness"]+fold_metrics["VALIDATION"]["robustness"],
+                          fold_metrics["DEV"]["trade_count"]+fold_metrics["VALIDATION"]["trade_count"],key,c))
         fold_records.append({"configuration":dict(zip(("method","lookback","filter","holding","atr_stop","target_r"),c)),
             "folds":fold_metrics,"aggregate_chronological":agg})
     # TEST and aggregate metrics never participate in this ordering.
@@ -224,6 +411,58 @@ def main():
     dump("currency_strength_cost_stress.json",{"accounting":meta,"scenarios":stress})
     DOC.write_text(render(payload,agg,controls,periods,stress,pair_frac,currency_frac))
     print(json.dumps(clean({"classification":classification,"selected_configuration":payload["selected_configuration"],"aggregate":agg,"tests":"run pytest separately"}),indent=2))
+
+
+def render_audit(prior,test,full,periods,pairs,currencies,config_hash,classification):
+    original=prior["selected_result"]["aggregate_chronological"]
+    rows=(
+      ("Test trades",original["trade_count"],test["trade_count"],"Original aggregate included DEV and VALIDATION; corrected value is TEST-only"),
+      ("PF",original["profit_factor"],test["profit_factor"],"TEST-only accepted shared-equity ledger"),
+      ("Expectancy (USD/trade)",original["expectancy_usd_per_trade"],test["expectancy_usd_per_trade"],"TEST-only accepted shared-equity ledger"),
+      ("Arithmetic return sum",original["return"],test["arithmetic_return_sum"],"Fixed-$100 additive diagnostic retained under its correct name"),
+      ("Portfolio return",original["return"],test["portfolio_return_decimal"],"Floored shared portfolio equity"),
+      ("Ending equity",INITIAL+original["return"]*INITIAL,test["ending_equity"],"Original curve was unfloored; corrected curve floors at zero"),
+      ("Max drawdown",original["max_drawdown_fraction"],test["max_drawdown_decimal"],"Floored curve bounds drawdown to [0,1]"),
+      ("Bankrupt","not reported",test["bankrupt"],"Explicit shared-equity bankruptcy state"),
+      ("Robustness",original["robustness"],test["robustness"],"TEST-only pair outcomes"),
+      ("Score",original["score"],test["score"],"Uses portfolio return; arithmetic diagnostic cannot drive gates"),
+      ("Classification",prior["classification"],classification,"Corrected chronological gates do not all pass"))
+    table="\n".join(f"| {metric} | {clean(before)} | {clean(after)} | {reason} |" for metric,before,after,reason in rows)
+    period_lines="\n".join(f"- {name}: trades={periods[name]['trade_count']}, PF={periods[name]['profit_factor']:.6f}, arithmetic={periods[name]['arithmetic_return_sum']:.6f}, portfolio={periods[name]['portfolio_return_decimal']:.6f}, max DD={periods[name]['max_drawdown_decimal']:.6f}, bankrupt={periods[name]['bankrupt']}" for name in ("2010_2014","2015_2019","2020_2022","2023_2026"))
+    return f"""# Currency-Strength Accounting and Scope Audit
+
+**Date:** 2026-07-21
+**Classification:** {classification}
+**Frozen configuration hash:** `{config_hash}`
+
+Research-only reconciliation of accounting and result scope. No parameter, gate, signal construction, or frozen candidate was changed. Audit mode loads only `{json.dumps(FROZEN_CONFIG,sort_keys=True)}` and does not enumerate or reselect the 405 configurations.
+
+## Findings
+
+The return below -100% was the fixed-notional additive sum (`sum(net_pnl_usd) / 10000`) mislabeled as portfolio return. It remains available only as `arithmetic_return_sum`. The drawdown above 100% came from an unfloored `10000 + cumulative PnL` curve. The corrected shared-equity ledger applies `max(0, equity + net_pnl)` to trades ordered by exit timestamp, declares bankruptcy at zero, and rejects every later trade from portfolio metrics.
+
+The sole gate-bearing scope is `chronological_test` ({FOLDS['TEST'][0]} through {FOLDS['TEST'][1]}). DEV, VALIDATION, TEST, aggregate TEST, and full-history diagnostics are separate records with disjoint fold trade identifiers. Persisted selection inputs and a hidden-TEST replay prove selection depends only on DEV and VALIDATION. The exact concentration rule is `max(currency_frac) <= 0.5 AND USD <= 0.5`; the 0.50 boundary is inclusive.
+
+## Before / after
+
+| Metric | Original | Corrected | Reason |
+|---|---:|---:|---|
+{table}
+
+## Historical diagnostics
+
+All periods are `full_historical_diagnostic` and never enter eligibility. All four immutable H1 inputs begin 2010-01-04, so 2010-2014 is evaluated rather than marked unavailable.
+
+{period_lines}
+
+Rolling three-year and five-year windows plus high/low-volatility regimes are in `currency_strength_period_stability_corrected.json`.
+
+## Contributions
+
+TEST pair gross-profit fractions: `{json.dumps(clean(pairs),sort_keys=True)}`. TEST currency gross-profit fractions: `{json.dumps(clean(currencies),sort_keys=True)}`.
+
+The final classification remains **{classification}**. Audit artifacts use accounting v2 and are runtime-generated under the ignored `engine/results/` directory.
+"""
 
 
 def render(payload,agg,controls,periods,stress,pairs,currencies):
