@@ -2,7 +2,7 @@
 import db, { log } from "./db.mjs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { execSync } from "child_process";
+import { readFileSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const cfg = (() => { try { return JSON.parse(readFileSync(join(__dirname, "..", "..", "engine", "config.yaml.telegram"), "utf8")); } catch { return null; } })();
@@ -11,14 +11,28 @@ const today = new Date().toISOString().slice(0, 10);
 const top = db.prepare(`SELECT s.*, r.score, r.robustness FROM BacktestRun s
   JOIN StrategyScore r ON r.run_id = s.id
   ORDER BY r.score DESC LIMIT 5`).all();
-const open = db.prepare(`SELECT COUNT(*) c FROM PaperTrade WHERE status='open'`).get();
+const open = db.prepare(`SELECT COUNT(*) c FROM PaperTrade
+  WHERE status='open' AND accounting_version=2`).get();
 const sigs = db.prepare(`SELECT COUNT(*) c FROM Signal WHERE status='paper'`).get();
+const paper = db.prepare(`SELECT * FROM PaperLedgerSnapshot WHERE accounting_version=2
+  ORDER BY ledger_updated_at DESC, id DESC LIMIT 1`).get();
 
 const lines = [
   `## Aether Forex Lab — Daily Report ${today}`,
   "",
   `Open paper trades: ${open.c}`,
   `Paper signals today: ${sigs.c}`,
+  "",
+  `### Paper portfolio (accounting-v2)`,
+  `- starting_equity: ${paper?.starting_equity ?? 10000}`,
+  `- current_equity: ${paper?.current_equity ?? 10000}`,
+  `- realized_pnl: ${paper?.realized_pnl ?? 0}`,
+  `- unrealized_pnl: ${paper?.unrealized_pnl ?? 0}`,
+  `- open_risk: ${paper?.open_risk ?? 0}`,
+  `- max_concurrent_risk: ${paper?.max_concurrent_risk ?? 0}`,
+  `- bankrupt: ${Boolean(paper?.bankrupt)}`,
+  `- accounting_version: ${paper?.accounting_version ?? 2}`,
+  `- ignored_legacy_records: ${paper?.ignored_legacy_records ?? 0}`,
   "",
   `### Top strategies (OOS, scored)`,
   `| strategy | pair | score | oos | sharpe | DD | robust |`,
@@ -94,4 +108,5 @@ const summary = lines.join("\n");
 db.prepare(`INSERT OR REPLACE INTO DailyReport (date,summary,generated_at) VALUES (?,?,?)`)
   .run(today, summary, new Date().toISOString());
 log(`[report:daily] wrote report for ${today} (${top.length} ranked)`);
+db.close();
 // Optionally deliver to Telegram #reports via Hermes cron (out of scope here).

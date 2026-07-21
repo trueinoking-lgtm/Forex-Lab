@@ -26,6 +26,20 @@ function addColumn(table, column, definition, backfill) {
 addColumn("ExternalImport", "imported_date", "TEXT",
   "UPDATE ExternalImport SET imported_date = substr(imported_at, 1, 10) WHERE imported_date IS NULL");
 
+// accounting-v2: old rows are explicitly legacy; schema defaults make future rows v2.
+addColumn("PaperTrade", "accounting_version", "INTEGER",
+  "UPDATE PaperTrade SET accounting_version = 1 WHERE accounting_version IS NULL");
+addColumn("PnlSnapshot", "accounting_version", "INTEGER",
+  "UPDATE PnlSnapshot SET accounting_version = 1 WHERE accounting_version IS NULL");
+// Migrated tables cannot gain a dynamic default without rebuilding. These triggers
+// preserve v2 as the default for future inserts while retaining the v1 backfill.
+db.exec(`CREATE TRIGGER IF NOT EXISTS PaperTrade_accounting_v2_default
+  AFTER INSERT ON PaperTrade WHEN NEW.accounting_version IS NULL
+  BEGIN UPDATE PaperTrade SET accounting_version=2 WHERE id=NEW.id; END;
+CREATE TRIGGER IF NOT EXISTS PnlSnapshot_accounting_v2_default
+  AFTER INSERT ON PnlSnapshot WHEN NEW.accounting_version IS NULL
+  BEGIN UPDATE PnlSnapshot SET accounting_version=2 WHERE id=NEW.id; END;`);
+
 // v1.3: TrendPrediction gained a UNIQUE(symbol,timeframe,prediction_time,horizon)
 // constraint so re-ingesting the same forecast can't stack duplicate rows.
 // Table-level UNIQUE can't be added via ALTER, so rebuild-in-place (preserving

@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const db = new Database(join(__dirname, "..", "forex_lab.db"));
+const db = new Database(process.env.FOREX_LAB_DB || join(__dirname, "..", "forex_lab.db"));
 
 const SECRET_RE = /(api[_-]?key|secret|token|password)=([\w\-]{8,})/i;
 export function redact(s) {

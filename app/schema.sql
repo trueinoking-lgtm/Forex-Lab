@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS PaperTrade (
   status TEXT DEFAULT 'open',
   exit_price REAL, exit_at TEXT,
   pnl REAL,
+  accounting_version INTEGER DEFAULT 2,
   FOREIGN KEY(signal_id) REFERENCES Signal(id)
 );
 
@@ -91,7 +92,25 @@ CREATE TABLE IF NOT EXISTS PnlSnapshot (
   account REAL,
   open_risk REAL,
   daily_pnl REAL,
-  equity REAL
+  equity REAL,
+  accounting_version INTEGER DEFAULT 2
+);
+
+CREATE TABLE IF NOT EXISTS PaperLedgerSnapshot (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts TEXT NOT NULL,
+  starting_equity REAL NOT NULL,
+  current_equity REAL NOT NULL,
+  realized_pnl REAL NOT NULL,
+  unrealized_pnl REAL NOT NULL,
+  open_risk REAL NOT NULL,
+  max_concurrent_risk INTEGER NOT NULL,
+  bankrupt INTEGER NOT NULL CHECK (bankrupt IN (0, 1)),
+  accounting_version INTEGER NOT NULL DEFAULT 2,
+  accounting_model TEXT NOT NULL DEFAULT 'normalized_equal_risk_v1',
+  ledger_updated_at TEXT NOT NULL,
+  ignored_legacy_records INTEGER NOT NULL DEFAULT 0,
+  ignored_legacy_note TEXT
 );
 
 CREATE TABLE IF NOT EXISTS OutcomeReview (

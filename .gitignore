@@ -19,6 +19,7 @@ engine/data/*.manifest.json
 engine/data/imports.json
 
 # Local data / runtime
+data/
 app/forex_lab.db
 app/forex_lab.db-shm
 app/forex_lab.db-wal
