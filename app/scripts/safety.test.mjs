@@ -668,7 +668,7 @@ test("v1.3.4 MT5 trade_mode DEMO=0 accepted, REAL=2 rejected (not the old 0=REAL
   assert.ok(/ACCOUNT_TRADE_MODE_DEMO = 0/.test(bv), "DEMO mapped to 0");
   assert.ok(/ACCOUNT_TRADE_MODE_REAL = 2/.test(bv), "REAL mapped to 2");
   assert.ok(/trade_mode == 0 is DEMO/.test(bv), "comment documents demo==0");
-  assert.ok(/only REAL \(2\) is refused/i.test(bv), "only REAL refused");
+  assert.ok(/only REAL \(2\) must be refused/i.test(bv), "only REAL refused");
   const srv = readFileSync(join(root, "remote-mt5-bridge", "server.py"), "utf8");
   assert.ok(/check_demo_trade_mode/.test(srv), "bridge uses shared trade_mode check");
   assert.ok(!/int\(info.trade_mode\) == 0/.test(srv), "old bug (0==LIVE) removed");
