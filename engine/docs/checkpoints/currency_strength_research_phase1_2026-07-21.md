@@ -2,6 +2,7 @@
 
 **Date:** 2026-07-21  
 **Classification:** 1. REJECT STRATEGY FAMILY
+**STATUS:** REJECTED — PERMANENTLY CLOSED (superseded by accounting audit; do not reselect or tune this family)
 
 Research-only paper lab. This checkpoint does not claim profitability or authorize forward validation, signals, a watcher, or execution.
 

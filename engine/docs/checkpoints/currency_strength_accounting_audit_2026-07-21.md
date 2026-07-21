@@ -2,6 +2,7 @@
 
 **Date:** 2026-07-21
 **Classification:** 1. REJECT STRATEGY FAMILY
+**STATUS:** REJECTED — PERMANENTLY CLOSED (no further research on this family; do not reselect or tune)
 **Frozen configuration hash:** `f9d222776a2c91049d2633d08d25a391ba00f774b065330d042d164382503e3f`
 
 Research-only reconciliation of accounting and result scope. No parameter, gate, signal construction, or frozen candidate was changed. Audit mode loads only `{"atr_stop": 2.0, "filter": "continuation", "holding": 24, "lookback": 24, "method": "equal_weight", "target_r": 1.5}` and does not enumerate or reselect the 405 configurations.
@@ -40,6 +41,11 @@ All periods are `full_historical_diagnostic` and never enter eligibility. All fo
 Rolling three-year and five-year windows plus high/low-volatility regimes are in `currency_strength_period_stability_corrected.json`.
 
 ## PART: ledger reconciliation
+
+**Ledger glossary (authoritative definitions):**
+- `signal_opportunity_ledger` = **3444 opportunities** — every valid strategy-generated hypothetical trade from `simulate()` over the TEST fold, including opportunities that occurred after the simulated portfolio went bankrupt. Diagnostic only; CANNOT determine watcher eligibility.
+- `executable_portfolio_ledger` = **1908 accepted trades** — the subset of signal opportunities that were actually accepted while equity > 0, before the bankruptcy timestamp. This is the SOLE gate-bearing ledger.
+- `bankruptcy_rejected` = **1536 opportunities** — signal opportunities arising after bankruptcy; `accepted_for_portfolio=false`, `rejection_reason=BANKRUPT`.
 
 The signal opportunity ledger contains every valid strategy-generated hypothetical trade and is diagnostic only. The executable portfolio ledger contains only accepted completed trades up to bankruptcy and is the sole source for gates, return, drawdown, robustness, score, contribution, cost stress, and classification. The TEST count proof is `3444 = 1908 + 1536 + 0 + 0 + 0`. Thus 3444 means generated signals/completed hypothetical trades, not accepted portfolio trades (1908).
 
