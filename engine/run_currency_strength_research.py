@@ -101,6 +101,7 @@ def simulate(frames, signals, lookback, holding, stop_atr, target_r,
                 identity="|".join((pair,trade["direction"],trade["entry_timestamp"].isoformat(),
                                    trade["exit_timestamp"].isoformat()))
                 trade["trade_id"]=hashlib.sha256(identity.encode()).hexdigest()[:24]
+                trade["signal_timestamp"]=trade["entry_timestamp"]
                 trades.append(trade)
                 del active[pair]
         source_i=i-delay
@@ -113,6 +114,53 @@ def simulate(frames, signals, lookback, holding, stop_atr, target_r,
             active[pair]={"direction":d,"entry":entry,"entry_i":i,"risk_distance":distance,
                 "stop":entry-d*distance,"target":None if target_r is None else entry+d*distance*target_r}
     return trades
+
+
+def split_ledgers(trades, starting_equity=INITIAL):
+    """Split generated opportunities from the executable, bankruptcy-bounded ledger."""
+    ordered=sorted(enumerate(trades),key=lambda it:(pd.Timestamp(it[1].get("exit_timestamp",0)),it[0]))
+    equity=float(starting_equity); bankrupt=False; bankruptcy_timestamp=None
+    signal_ledger=[]; executable=[]; rejected=[]
+    for _,source in ordered:
+        trade=dict(source)
+        trade.setdefault("signal_timestamp",trade.get("entry_timestamp"))
+        equity_before=equity
+        if bankrupt:
+            accepted=False; reason="BANKRUPT"; equity_after=None
+        else:
+            accepted=True; reason=None
+            equity=max(0.0,equity+float(trade["net_pnl_usd"]))
+            equity_after=equity
+            if equity<=0.0:
+                bankrupt=True
+                bankruptcy_timestamp=trade.get("exit_timestamp")
+        trade.update({"accepted_for_portfolio":accepted,"rejection_reason":reason,
+            "equity_before_entry":equity_before,"risk_at_entry":RISK_USD if accepted else 0.0,
+            "equity_after_exit":equity_after,"bankruptcy_state":bankrupt})
+        signal_ledger.append(trade)
+        if accepted: executable.append(trade)
+        else: rejected.append(trade)
+    counts={reason:sum(t["rejection_reason"]==reason for t in rejected)
+            for reason in ("BANKRUPT","CONCURRENCY","RISK_CAP","OTHER")}
+    reconciliation={"generated_opportunities":len(signal_ledger),
+      "accepted_entries":len(executable),"rejected_bankruptcy":counts["BANKRUPT"],
+      "rejected_concurrency":counts["CONCURRENCY"],"rejected_risk_cap":counts["RISK_CAP"],
+      "other_rejected":counts["OTHER"],"completed_accepted_trades":len(executable),
+      "accepted_open_at_cutoff":0,"bankruptcy_timestamp":bankruptcy_timestamp}
+    rhs=(reconciliation["accepted_entries"]+reconciliation["rejected_bankruptcy"]+
+         reconciliation["rejected_concurrency"]+reconciliation["rejected_risk_cap"]+
+         reconciliation["other_rejected"])
+    reconciliation["reconciliation_rhs"]=rhs
+    reconciliation["generated_equals_components"]=len(signal_ledger)==rhs
+    assert reconciliation["generated_equals_components"]
+    if bankruptcy_timestamp is not None:
+        assert not any(pd.Timestamp(t["entry_timestamp"])>pd.Timestamp(bankruptcy_timestamp)
+                       for t in executable)
+        assert all(not t["accepted_for_portfolio"] and t["rejection_reason"]=="BANKRUPT"
+                   for t in rejected)
+    return {"signal_opportunity_ledger":signal_ledger,
+            "executable_portfolio_ledger":executable,"signal_ledger":signal_ledger,
+            "executable_ledger":executable,"reconciliation":reconciliation}
 
 
 def portfolio_equity(trades, starting_equity=INITIAL):
@@ -168,6 +216,25 @@ def metrics(trades):
       "best_three_gross_profit_fraction":float(sorted_w[:3].sum()/denom),"exposure_trade_hours":sum(t["holding_hours"] for t in accepted)}
 
 
+def signal_diagnostic_metrics(trades):
+    """Hypothetical all-opportunity statistics; never eligible for portfolio gates."""
+    pnl=np.array([t["net_pnl_usd"] for t in trades],dtype=float)
+    wins=pnl[pnl>0]; losses=pnl[pnl<0]; gp=float(wins.sum()); gl=float(-losses.sum())
+    pf=gp/gl if gl else (float("inf") if gp else 0.0)
+    by_pair={p:float(sum(t["net_pnl_usd"] for t in trades if t["pair"]==p)) for p in PAIR_CURRENCIES}
+    robustness=sum(v>0 for v in by_pair.values())/4
+    ret=float(pnl.sum()/INITIAL) if len(pnl) else 0.0
+    running=INITIAL+np.cumsum(pnl); curve=np.r_[INITIAL,running]
+    peaks=np.maximum.accumulate(curve); dd=np.divide(peaks-curve,peaks,out=np.zeros_like(curve),where=peaks!=0)
+    return {"ledger_role":"non_executable_signal_diagnostic","generated_opportunities":len(trades),
+      "trade_count":len(trades),"profit_factor":pf,"expectancy_usd_per_trade":float(pnl.mean()) if len(pnl) else 0.0,
+      "arithmetic_return_sum":ret,"portfolio_return_decimal":ret,"return":ret,
+      "starting_equity":INITIAL,"ending_equity":INITIAL+float(pnl.sum()),
+      "max_drawdown_decimal":float(dd.max()) if len(dd) else 0.0,"robustness":robustness,
+      "score":max(0.0,min(100.0,25*ret+20*min(pf,2)+20*robustness)),
+      "classification":"diagnostic only","eligibility_allowed":False}
+
+
 def gates(m, survive_5=False, beats_random=False, pair_contrib_ok=False,
           currency_ok=False, nearby=False, periods=False):
     checks={"profit_factor_gte_1_3":m["profit_factor"]>=1.3,"return_positive":m["return"]>0,
@@ -199,7 +266,7 @@ def random_controls(frames, canonical_signals, cfg, canonical_pf, allowed_index=
             else:
                 for row in x: local.shuffle(row)
             tr=simulate(frames,pd.DataFrame(x,index=canonical_signals.index,columns=pairs),cfg[1],cfg[3],cfg[4],cfg[5],allowed_index=allowed_index)
-            rng_results[kind].append(metrics(tr)["profit_factor"])
+            rng_results[kind].append(metrics(split_ledgers(tr)["executable_ledger"])["profit_factor"])
     flat=[v for values in rng_results.values() for v in values]
     summary={k:{"seeds":10,"median_pf":float(np.median(v)),"p90_pf":float(np.quantile(v,.9)),
                 "percent_beaten":100*float(np.mean(canonical_pf>np.array(v)))} for k,v in rng_results.items()}
@@ -266,17 +333,23 @@ def run_audit():
     leakage_ok=not ((dev_ids|val_ids)&test_ids)
     assert leakage_ok
 
-    # All eligibility inputs below are explicitly TEST-only.
-    test_metrics=metrics(fold_trades["TEST"]); test_ix=closes.loc[FOLDS["TEST"][0]:FOLDS["TEST"][1]].index
+    # All eligibility inputs below are explicitly TEST-only and executable-ledger-only.
+    test_ledgers=split_ledgers(fold_trades["TEST"])
+    executable_test=test_ledgers["executable_ledger"]
+    test_metrics=metrics(executable_test)
+    signal_test_metrics=signal_diagnostic_metrics(test_ledgers["signal_ledger"])
+    test_ix=closes.loc[FOLDS["TEST"][0]:FOLDS["TEST"][1]].index
     stress={}
     for label,bps in (("3_bps",3),("5_bps",5),("8_bps",8),("12_bps",12),("doubled_spread",6),("doubled_slippage",4),("nonzero_commission",4)):
-        stress[label]=metrics(simulate(research_frames,signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],cost_bps=bps,allowed_index=test_ix))
-    stress["execution_delay_plus_1h"]=metrics(simulate(research_frames,signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],delay=2,allowed_index=test_ix))
-    ranked=sorted(fold_trades["TEST"],key=lambda t:t["net_pnl_usd"],reverse=True)
+        generated=simulate(research_frames,signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],cost_bps=bps,allowed_index=test_ix)
+        stress[label]=metrics(split_ledgers(generated)["executable_ledger"])
+    generated=simulate(research_frames,signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],delay=2,allowed_index=test_ix)
+    stress["execution_delay_plus_1h"]=metrics(split_ledgers(generated)["executable_ledger"])
+    ranked=sorted(executable_test,key=lambda t:t["net_pnl_usd"],reverse=True)
     stress["remove_best_trade"]=metrics(ranked[1:]); stress["remove_best_three"]=metrics(ranked[3:])
     controls=random_controls(research_frames,signals,cfg_tuple,test_metrics["profit_factor"],allowed_index=test_ix)
 
-    accepted_test=portfolio_equity(fold_trades["TEST"])["accepted_trades"]
+    accepted_test=executable_test
     contrib={p:sum(max(0,t["net_pnl_usd"]) for t in accepted_test if t["pair"]==p) for p in PAIR_CURRENCIES}
     total=sum(contrib.values()) or 1.0; pair_frac={p:v/total for p,v in contrib.items()}
     currency={u:0.0 for u in ("EUR","GBP","USD","JPY","AUD")}
@@ -290,29 +363,46 @@ def run_audit():
     periods={}
     for label,start,end in period_specs:
         ix=closes.loc[start:end].index; tr=simulate(frames,historical_signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],allowed_index=ix)
-        periods[label]={"status":"evaluated","scope":"full_historical_diagnostic","start_timestamp":ix.min(),"end_timestamp":ix.max(),**metrics(tr)}
+        ledgers=split_ledgers(tr)
+        periods[label]={"status":"evaluated","scope":"full_historical_diagnostic","start_timestamp":ix.min(),"end_timestamp":ix.max(),
+          "generated_opportunity_count":len(ledgers["signal_ledger"]),"accepted_portfolio_trade_count":len(ledgers["executable_ledger"]),
+          **metrics(ledgers["executable_ledger"])}
     periods["rolling_3y"]=[]
     for year in range(2012,2027):
         start=f"{year-2}-01-01"; end=min(pd.Timestamp(f"{year}-12-31 23:59:59",tz="UTC"),pd.Timestamp("2026-07-17 23:59:59",tz="UTC"))
         ix=closes.loc[pd.Timestamp(start,tz="UTC"):end].index
-        periods["rolling_3y"].append({"scope":"full_historical_diagnostic","start_timestamp":ix.min(),"end_timestamp":ix.max(),**metrics(simulate(frames,historical_signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],allowed_index=ix))})
+        tr=simulate(frames,historical_signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],allowed_index=ix); ledgers=split_ledgers(tr)
+        periods["rolling_3y"].append({"scope":"full_historical_diagnostic","start_timestamp":ix.min(),"end_timestamp":ix.max(),
+          "generated_opportunity_count":len(ledgers["signal_ledger"]),"accepted_portfolio_trade_count":len(ledgers["executable_ledger"]),**metrics(ledgers["executable_ledger"])})
     periods["rolling_5y"]=[]
     for year in range(2014,2027):
         start=f"{year-4}-01-01"; end=min(pd.Timestamp(f"{year}-12-31 23:59:59",tz="UTC"),pd.Timestamp("2026-07-17 23:59:59",tz="UTC"))
         ix=closes.loc[pd.Timestamp(start,tz="UTC"):end].index
-        periods["rolling_5y"].append({"scope":"full_historical_diagnostic","start_timestamp":ix.min(),"end_timestamp":ix.max(),**metrics(simulate(frames,historical_signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],allowed_index=ix))})
+        tr=simulate(frames,historical_signals,cfg["lookback"],cfg["holding"],cfg["atr_stop"],cfg["target_r"],allowed_index=ix); ledgers=split_ledgers(tr)
+        periods["rolling_5y"].append({"scope":"full_historical_diagnostic","start_timestamp":ix.min(),"end_timestamp":ix.max(),
+          "generated_opportunity_count":len(ledgers["signal_ledger"]),"accepted_portfolio_trade_count":len(ledgers["executable_ledger"]),**metrics(ledgers["executable_ledger"])})
     hourly=closes.pct_change().std(axis=1); med=hourly.median()
-    periods["volatility_regimes"]={label:{"scope":"full_historical_diagnostic",**metrics([t for t in full_trades if ((hourly.get(t["entry_timestamp"],0)>=med)==(label=="high"))])} for label in ("high","low")}
+    periods["volatility_regimes"]={}
+    for label in ("high","low"):
+        tr=[t for t in full_trades if ((hourly.get(t["entry_timestamp"],0)>=med)==(label=="high"))]
+        ledgers=split_ledgers(tr)
+        periods["volatility_regimes"][label]={"scope":"full_historical_diagnostic",
+          "generated_opportunity_count":len(ledgers["signal_ledger"]),"accepted_portfolio_trade_count":len(ledgers["executable_ledger"]),**metrics(ledgers["executable_ledger"])}
     period_ok=sum(periods[x]["portfolio_return_decimal"]>0 for x,_,_ in period_specs)>=2
 
     gate_context={"survive_5":stress["5_bps"]["portfolio_return_decimal"]>0,
       "beats_random":test_metrics["profit_factor"]>controls["randomized_overall_p90_pf"],
       "pair_contrib_ok":pair_ok,"currency_ok":currency_ok,"nearby":False,"periods":period_ok}
-    scopes={name.lower():scope_record(name.lower(),fold_trades[name],*FOLDS[name],gate_context if name=="TEST" else None) for name in FOLDS}
+    fold_ledgers={name:split_ledgers(fold_trades[name]) for name in FOLDS}
+    scopes={name.lower():scope_record(name.lower(),fold_ledgers[name]["executable_ledger"],*FOLDS[name],gate_context if name=="TEST" else None) for name in FOLDS}
     scopes["chronological_test"]=scopes["test"]
     scopes["aggregate_test"]={**scopes["test"],"scope":"aggregate_test"}
-    scopes["full_history"]=scope_record("full_historical_diagnostic",full_trades,closes.index.min(),closes.index.max())
-    classification="1. REJECT STRATEGY FAMILY"
+    full_ledgers=split_ledgers(full_trades)
+    scopes["full_history"]=scope_record("full_historical_diagnostic",full_ledgers["executable_ledger"],closes.index.min(),closes.index.max())
+    canonical_checks=scopes["chronological_test"]["gate_outcomes"]
+    classification=("3. FORWARD-VALIDATION CANDIDATE" if all(canonical_checks.values()) else
+                    ("2. CONTINUE RESEARCH" if sum(canonical_checks.values())>=11 else
+                     "1. REJECT STRATEGY FAMILY"))
 
     prior=json.loads((RESULTS/"currency_strength_fold_results.json").read_text())
     candidates=[]
@@ -328,23 +418,54 @@ def run_audit():
       "selection_timestamp":FROZEN_SELECTED_AT,"frozen_test_boundaries":FROZEN_TEST_BOUNDARIES,
       "hidden_test_reproducibility":{"test_outcomes_present":False,"selected_configuration_hash":hidden_hash,"identical":True}}
     meta=accounting_metadata(has_explicit_stop=True)
-    equity=portfolio_equity(fold_trades["TEST"])
+    equity=portfolio_equity(executable_test)
+    accepted_ids=[t["trade_id"] for t in executable_test]
+    rejected=[t for t in test_ledgers["signal_ledger"] if not t["accepted_for_portfolio"]]
+    rejected_ids=[t["trade_id"] for t in rejected]
+    bankruptcy_ts=test_ledgers["reconciliation"]["bankruptcy_timestamp"]
+    metric_id_sets={name:accepted_ids for name in ("profit_factor","expectancy","return","drawdown","robustness","score")}
+    ledger_invariants={"no_accepted_entry_after_bankruptcy_timestamp":bankruptcy_ts is None or not any(
+        pd.Timestamp(t["entry_timestamp"])>pd.Timestamp(bankruptcy_ts) for t in executable_test),
+      "all_post_bankruptcy_opportunities_rejected_bankrupt":all(
+        not t["accepted_for_portfolio"] and t["rejection_reason"]=="BANKRUPT" for t in rejected),
+      "portfolio_metrics_include_only_accepted_completed_trades":test_metrics["trade_count"]==len(accepted_ids),
+      "portfolio_trade_count_excludes_rejected_opportunities":not (set(accepted_ids)&set(rejected_ids)),
+      "signal_ledger_metrics_never_drive_eligibility":not signal_test_metrics["eligibility_allowed"],
+      "minimum_trade_gate_uses_accepted_completed_trades":scopes["chronological_test"]["gate_outcomes"]["trades_gte_300"]==(len(accepted_ids)>=300),
+      "all_canonical_metrics_use_identical_accepted_trade_ids":len({tuple(v) for v in metric_id_sets.values()})==1}
+    assert all(ledger_invariants.values())
     dump("currency_strength_audit_scope.json",{"accounting":meta,"gate_bearing_scope":"chronological_test","scopes":scopes,
+      "chronological_test_reconciliation":test_ledgers["reconciliation"],
+      "non_executable_signal_diagnostic":signal_test_metrics,
+      "canonical_metric_trade_ids":metric_id_sets,"ledger_invariants":ledger_invariants,
       "leakage_invariant":{"no_dev_or_validation_trade_id_in_chronological_test":leakage_ok,"overlap_trade_ids":[]}})
     dump("currency_strength_audit_equity_curve.json",{"accounting":meta,"scope":"chronological_test",**equity,
-      "trades_rejected_after_bankruptcy":[t["trade_id"] for t in equity["rejected_trades"]]})
+      "canonical_ledger":"executable_portfolio_ledger","accepted_trade_ids":accepted_ids,
+      "trades_rejected_after_bankruptcy":rejected_ids})
+    dump("currency_strength_audit_ledger_reconciliation.json",{"accounting":meta,"scope":"chronological_test",
+      "ledger_roles":{"signal_opportunity_ledger":"diagnostic only; cannot determine watcher eligibility",
+        "executable_portfolio_ledger":"canonical gate-bearing ledger"},
+      "reconciliation":test_ledgers["reconciliation"],"signal_diagnostic_metrics":signal_test_metrics,
+      "executable_portfolio_metrics":test_metrics,"signal_opportunity_ledger":test_ledgers["signal_ledger"],
+      "executable_portfolio_ledger":executable_test,"invariants":ledger_invariants})
+    dump("currency_strength_audit_accepted_vs_rejected.json",{"accounting":meta,"scope":"chronological_test",
+      "accepted_trade_ids":accepted_ids,"rejected_trade_ids":rejected_ids,
+      "rejected_trades":[{"trade_id":t["trade_id"],"rejection_reason":t["rejection_reason"]} for t in rejected]})
     dump("currency_strength_audit_leakage.json",{"accounting":meta,**leakage})
     dump("currency_strength_period_stability_corrected.json",{"accounting":meta,"scope":"full_historical_diagnostic","periods":periods,"no_single_period_dependence":period_ok})
     frozen_payload={"accounting":meta,"selected_configuration":cfg,"selected_configuration_hash":selected_hash,
-      "gate_bearing_scope":"chronological_test","chronological_test":scopes["chronological_test"],"full_history":scopes["full_history"],"classification":classification}
+      "gate_bearing_scope":"chronological_test","canonical_ledger":"executable_portfolio_ledger",
+      "chronological_test":scopes["chronological_test"],"non_executable_signal_diagnostic":signal_test_metrics,
+      "reconciliation":test_ledgers["reconciliation"],"full_history":scopes["full_history"],"classification":classification}
     dump("currency_strength_frozen_candidate_corrected.json",frozen_payload)
     dump("currency_strength_currency_contribution.json",{"accounting":meta,"scope":"chronological_test","exact_currency_rule":"max(currency_frac) <= 0.5 AND USD <= 0.5","pair_gross_profit_fraction":pair_frac,"currency_gross_profit_fraction":currency_frac,"no_pair_over_50pct":pair_ok,"no_currency_dominates":currency_ok})
     dump("currency_strength_cost_stress.json",{"accounting":meta,"scope":"chronological_test","scenarios":stress})
     dump("currency_strength_randomized_controls.json",{"accounting":meta,"scope":"chronological_test",**controls})
-    AUDIT_DOC.write_text(render_audit(prior,scopes["chronological_test"],scopes["full_history"],periods,pair_frac,currency_frac,selected_hash,classification))
+    AUDIT_DOC.write_text(render_audit(prior,scopes["chronological_test"],scopes["full_history"],periods,pair_frac,currency_frac,selected_hash,classification,signal_test_metrics,test_ledgers["reconciliation"]))
     summary={"classification":classification,"selected_configuration":cfg,"selected_configuration_hash":selected_hash,
              "gate_bearing_scope":"chronological_test","chronological_test":test_metrics,
-             "full_history":metrics(full_trades),"periods":{k:periods[k] for k,_,_ in period_specs},
+             "non_executable_signal_diagnostic":signal_test_metrics,"reconciliation":test_ledgers["reconciliation"],
+             "full_history":metrics(full_ledgers["executable_ledger"]),"periods":{k:periods[k] for k,_,_ in period_specs},
              "pair_gross_profit_fraction":pair_frac,"currency_gross_profit_fraction":currency_frac}
     print(json.dumps(clean(summary),indent=2)); return summary
 
@@ -413,7 +534,7 @@ def main():
     print(json.dumps(clean({"classification":classification,"selected_configuration":payload["selected_configuration"],"aggregate":agg,"tests":"run pytest separately"}),indent=2))
 
 
-def render_audit(prior,test,full,periods,pairs,currencies,config_hash,classification):
+def render_audit(prior,test,full,periods,pairs,currencies,config_hash,classification,signal,reconciliation):
     original=prior["selected_result"]["aggregate_chronological"]
     rows=(
       ("Test trades",original["trade_count"],test["trade_count"],"Original aggregate included DEV and VALIDATION; corrected value is TEST-only"),
@@ -428,6 +549,14 @@ def render_audit(prior,test,full,periods,pairs,currencies,config_hash,classifica
       ("Score",original["score"],test["score"],"Uses portfolio return; arithmetic diagnostic cannot drive gates"),
       ("Classification",prior["classification"],classification,"Corrected chronological gates do not all pass"))
     table="\n".join(f"| {metric} | {clean(before)} | {clean(after)} | {reason} |" for metric,before,after,reason in rows)
+    ledger_rows=(("Generated opportunities",signal["generated_opportunities"],reconciliation["generated_opportunities"]),
+      ("Accepted completed trades","diagnostic only",reconciliation["completed_accepted_trades"]),
+      ("Bankruptcy rejections","diagnostic only",reconciliation["rejected_bankruptcy"]),
+      ("PF",signal["profit_factor"],test["profit_factor"]),("Expectancy (USD/trade)",signal["expectancy_usd_per_trade"],test["expectancy_usd_per_trade"]),
+      ("Return",signal["return"],test["portfolio_return_decimal"]),("Drawdown",signal["max_drawdown_decimal"],test["max_drawdown_decimal"]),
+      ("Ending equity",signal["ending_equity"],test["ending_equity"]),("Robustness",signal["robustness"],test["robustness"]),
+      ("Score",signal["score"],test["score"]),("Classification","diagnostic only",classification))
+    ledger_table="\n".join(f"| {name} | {clean(sig)} | {clean(exe)} |" for name,sig,exe in ledger_rows)
     period_lines="\n".join(f"- {name}: trades={periods[name]['trade_count']}, PF={periods[name]['profit_factor']:.6f}, arithmetic={periods[name]['arithmetic_return_sum']:.6f}, portfolio={periods[name]['portfolio_return_decimal']:.6f}, max DD={periods[name]['max_drawdown_decimal']:.6f}, bankrupt={periods[name]['bankrupt']}" for name in ("2010_2014","2015_2019","2020_2022","2023_2026"))
     return f"""# Currency-Strength Accounting and Scope Audit
 
@@ -456,6 +585,14 @@ All periods are `full_historical_diagnostic` and never enter eligibility. All fo
 {period_lines}
 
 Rolling three-year and five-year windows plus high/low-volatility regimes are in `currency_strength_period_stability_corrected.json`.
+
+## PART: ledger reconciliation
+
+The signal opportunity ledger contains every valid strategy-generated hypothetical trade and is diagnostic only. The executable portfolio ledger contains only accepted completed trades up to bankruptcy and is the sole source for gates, return, drawdown, robustness, score, contribution, cost stress, and classification. The TEST count proof is `{reconciliation['generated_opportunities']} = {reconciliation['accepted_entries']} + {reconciliation['rejected_bankruptcy']} + {reconciliation['rejected_concurrency']} + {reconciliation['rejected_risk_cap']} + {reconciliation['other_rejected']}`. Thus {reconciliation['generated_opportunities']} means generated signals/completed hypothetical trades, not accepted portfolio trades ({reconciliation['completed_accepted_trades']}).
+
+| Metric | Signal diagnostic | Executable portfolio |
+|---|---:|---:|
+{ledger_table}
 
 ## Contributions
 
