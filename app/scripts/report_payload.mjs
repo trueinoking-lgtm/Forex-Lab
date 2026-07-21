@@ -4,6 +4,7 @@ import db, { log } from "./db.mjs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "fs";
+import { sourcesDiffer as compareSources } from "./reporting_source_policy.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ENGINE_ROOT = join(__dirname, "..", "..", "engine");
@@ -63,15 +64,31 @@ const advisory = {
 };
 
 const config = readFileSync(join(ENGINE_ROOT, "config.yaml"), "utf8");
-const watcherSource = config.match(/^\s*source:\s*["']?([^\s"']+)/m)?.[1] || "unknown";
-const watcherTimeframe = config.match(/^\s*timeframe:\s*["']?([^\s"']+)/m)?.[1] || "unknown";
-const researchTimeframes = [...new Set(artifacts.map((a) => a.timeframe).filter(Boolean))];
-const researchSources = [...new Set(artifacts.map((a) => a.source).filter(Boolean))];
-const researchTimeframe = researchTimeframes.join(",") || ranked[0]?.timeframe || "unknown";
-const researchSource = researchSources.join(",") || "yfinance";
-const comparison = watcherSource === researchSource && watcherTimeframe === researchTimeframe
-  ? `source/timeframe differs: no; watcher=${watcherTimeframe} ${watcherSource} vs research=${researchTimeframe} ${researchSource}`
-  : `source/timeframe differs: watcher=${watcherTimeframe} ${watcherSource} vs research=${researchTimeframe} ${researchSource}`;
+const configValue = (key) => config.match(new RegExp(`^\\s*${key}:\\s*["']?([^\\s"']+)`, "m"))?.[1];
+const advisoryManifest = JSON.parse(readFileSync(
+  join(ENGINE_ROOT, "data", "raw_yfinance_EURUSD=X_1d.manifest.json"), "utf8"));
+const canonicalPath = process.env.AETHER_CANONICAL_RESEARCH_PATH ||
+  join(ENGINE_ROOT, "results", "range_mr_period_regime.json");
+const canonicalInput = JSON.parse(readFileSync(canonicalPath, "utf8")).input || {};
+const CANONICAL_FINGERPRINT = "4c306902c87854a92c279c83a1c50f00ac6a3f3b69994ff02193ba15c49568b2";
+if (!canonicalInput.sha256 || canonicalInput.sha256 !== CANONICAL_FINGERPRINT) {
+  throw new Error("canonical fingerprint missing or mismatch");
+}
+const dateOnly = (value) => typeof value === "string" ? value.slice(0, 10) : null;
+const advisorySource = {
+  provider: configValue("source") || "unknown",
+  symbol: configValue("symbol") || "unknown",
+  timeframe: configValue("timeframe") || "unknown",
+  window: `rolling ${configValue("lookback_days") || "unknown"}d`,
+  label: "short_window_yfinance_advisory",
+  fingerprint: advisoryManifest.file_sha256 || advisoryManifest.sha256 || null,
+};
+const canonicalSource = {
+  provider: "MT5", symbol: "EURUSD", timeframe: "D1",
+  start: dateOnly(canonicalInput.start), end: dateOnly(canonicalInput.end),
+  fingerprint: canonicalInput.sha256, label: "canonical_long_history_research",
+};
+const sourcesDiffer = compareSources(advisorySource, canonicalSource);
 
 const lines = [
   `📊 *Aether Forex Lab — Daily (${today})*`, "",
@@ -101,13 +118,21 @@ if (!evidence.length) lines.push(`no scored research families available; none cl
 for (const row of evidence) {
   lines.push(`${row.family} (${row.pair}): REJECTED · beats_bh=${row.beats_bh} · score=${fmt(row.score)} · ${row.rejection_reasons.join(", ")}`);
 }
-lines.push("", `watcher evaluation: source=${watcherSource}, timeframe=${watcherTimeframe}`);
-lines.push(`long-history research: source=${researchSource}, timeframe=${researchTimeframe}`);
-lines.push(comparison);
+lines.push("",
+  `Report class: short_window_yfinance_advisory`,
+  `Watcher eligible strategies: ${watcherEligible}`,
+  `Canonical research source: MT5 D1`,
+  `Advisory source: yfinance D1`,
+  `Sources differ: ${sourcesDiffer}`,
+  `All researched families: REJECTED`,
+  `No signal created`,
+  `No order placed`);
 const message = lines.join("\n");
 
 const payload = {
   date: today, paper_only: true, watcher_eligible: watcherEligible,
+  report_class: "short_window_yfinance_advisory",
+  canonical_research_fingerprint: CANONICAL_FINGERPRINT,
   paper: {
     starting_equity: ledger.starting_equity, current_equity: ledger.current_equity,
     realized_pnl: ledger.realized_pnl, unrealized_pnl: ledger.unrealized_pnl,
@@ -120,8 +145,7 @@ const payload = {
     pnl_unit: "account_currency_USD", paper_starting_equity: 10000,
     research_notional: 100000, cross_version_comparison: "warn" },
   advisory, strategy_evidence: evidence,
-  source_policy: { watcher: { source: watcherSource, timeframe: watcherTimeframe },
-    research: { source: researchSource, timeframe: researchTimeframe }, comparison },
+  source_policy: { advisory: advisorySource, canonical: canonicalSource, sources_differ: sourcesDiffer },
   message,
 };
 writeFileSync(join(RESULTS, "daily_report_payload.json"), JSON.stringify(payload, null, 2));
