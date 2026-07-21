@@ -9,9 +9,37 @@
 
 ## Source policy
 
-Watcher evaluation uses `source=yfinance`, `timeframe=1d`, and the configured 1095-day lookback. Long-history research artifacts state their own timeframe (currently `1d`) and are reported alongside the watcher policy. Every message prints a comparison line. A mismatch is printed explicitly as `source/timeframe differs: watcher=... vs research=...`; a match is printed as `source/timeframe differs: no; ...`.
+The report distinguishes TWO sources that must never be conflated:
 
-Market regime, ADX, and close are advisory context only. They appear under “Advisory (market regime, not a signal)” and are separated from the rejected-family evidence table. Watcher eligibility is zero unless `watcher_last_result.json` explicitly has `tradeable=true`.
+- **Advisory / watcher source** = `short_window_yfinance_advisory`: `yfinance`,
+  `EURUSD=X`, `1d`, rolling 1095-day window (from `engine/config.yaml`). This is a
+  short-window advisory signal context only. It is NEVER labelled canonical research
+  and NEVER determines long-history research conclusions.
+- **Canonical long-history research source** = `MT5 EURUSD D1`, coverage
+  `2010-01-04` → `2026-07-17`, dataset fingerprint
+  `4c306902c87854a92c279c83a1c50f00ac6a3f3b69994ff02193ba15c49568b2` (from
+  `engine/results/range_mr_period_regime.json`). Read from the MT5 demo-history
+  manifest. Intraday research uses the four verified MT5 H1 datasets
+  (`raw_mt5_{EURUSD,AUDUSD,GBPUSD,USDJPY}_1h.csv`).
+
+Because the providers, timeframes, coverage windows, and fingerprints differ, the
+report prints **`Sources differ: YES`**. The canonical fingerprint is asserted at
+report time; a missing or mismatched fingerprint fails the run loudly.
+
+Market regime, ADX, and close are advisory context only. They appear under
+“Advisory (market regime, not a signal)” and are separated from the rejected-family
+evidence table. Watcher eligibility is zero unless `watcher_last_result.json`
+explicitly has `tradeable=true`, and is a separate axis from canonical-research
+classification.
+
+## Operational script versioning
+
+The Hermes cron scripts (`/root/.hermes/scripts/trading_deliver_reports.sh`,
+`trading_run.sh`) are GENERATED operational files. The **authoritative** copies live
+in the repository under `ops/hermes/`. `scripts/install_hermes_forex_reporting_jobs.sh`
+backs up any existing external script, copies the repo version with executable
+permissions, verifies SHA-256 after install, refuses stale `/root/trading-agent`
+references, supports `--verify` mode, and never prints secrets.
 
 ## Accounting policy
 
