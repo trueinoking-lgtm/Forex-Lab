@@ -19,7 +19,7 @@ The sole gate-bearing scope is `chronological_test` (2025-01-01 through 2026-07-
 | Test trades | 6369 | 1908 | Original aggregate included DEV and VALIDATION; corrected value is TEST-only |
 | PF | 0.8432374770861003 | 0.8134266618588784 | TEST-only accepted shared-equity ledger |
 | Expectancy (USD/trade) | -4.426488481605748 | -5.242088505578104 | TEST-only accepted shared-equity ledger |
-| Arithmetic return sum | -2.8192305139347007 | -2.7887141825018618 | Fixed-$100 additive diagnostic retained under its correct name |
+| Arithmetic return sum | -2.8192305139347007 | -1.0001904868643021 | Fixed-$100 additive diagnostic retained under its correct name |
 | Portfolio return | -2.8192305139347007 | -1.0 | Floored shared portfolio equity |
 | Ending equity | -18192.30513934701 | 0.0 | Original curve was unfloored; corrected curve floors at zero |
 | Max drawdown | 2.580106433575472 | 1.0 | Floored curve bounds drawdown to [0,1] |
@@ -32,12 +32,30 @@ The sole gate-bearing scope is `chronological_test` (2025-01-01 through 2026-07-
 
 All periods are `full_historical_diagnostic` and never enter eligibility. All four immutable H1 inputs begin 2010-01-04, so 2010-2014 is evaluated rather than marked unavailable.
 
-- 2010_2014: trades=2554, PF=0.851981, arithmetic=-6.644193, portfolio=-1.000000, max DD=1.000000, bankrupt=True
-- 2015_2019: trades=2408, PF=0.848361, arithmetic=-7.800239, portfolio=-1.000000, max DD=1.000000, bankrupt=True
-- 2020_2022: trades=2317, PF=0.842184, arithmetic=-3.475821, portfolio=-1.000000, max DD=1.000000, bankrupt=True
-- 2023_2026: trades=1557, PF=0.778351, arithmetic=-6.002818, portfolio=-1.000000, max DD=1.000000, bankrupt=True
+- 2010_2014: trades=2554, PF=0.851981, arithmetic=-1.002905, portfolio=-1.000000, max DD=1.000000, bankrupt=True
+- 2015_2019: trades=2408, PF=0.848361, arithmetic=-1.004207, portfolio=-1.000000, max DD=1.000000, bankrupt=True
+- 2020_2022: trades=2317, PF=0.842184, arithmetic=-1.005282, portfolio=-1.000000, max DD=1.000000, bankrupt=True
+- 2023_2026: trades=1557, PF=0.778351, arithmetic=-1.000034, portfolio=-1.000000, max DD=1.000000, bankrupt=True
 
 Rolling three-year and five-year windows plus high/low-volatility regimes are in `currency_strength_period_stability_corrected.json`.
+
+## PART: ledger reconciliation
+
+The signal opportunity ledger contains every valid strategy-generated hypothetical trade and is diagnostic only. The executable portfolio ledger contains only accepted completed trades up to bankruptcy and is the sole source for gates, return, drawdown, robustness, score, contribution, cost stress, and classification. The TEST count proof is `3444 = 1908 + 1536 + 0 + 0 + 0`. Thus 3444 means generated signals/completed hypothetical trades, not accepted portfolio trades (1908).
+
+| Metric | Signal diagnostic | Executable portfolio |
+|---|---:|---:|
+| Generated opportunities | 3444 | 3444 |
+| Accepted completed trades | diagnostic only | 1908 |
+| Bankruptcy rejections | diagnostic only | 1536 |
+| PF | 0.721998184965001 | 0.8134266618588784 |
+| Expectancy (USD/trade) | -8.097311795882293 | -5.242088505578104 |
+| Return | -2.7887141825018618 | -1.0 |
+| Drawdown | 2.6645588169001884 | 1.0 |
+| Ending equity | -17887.141825018618 | 0.0 |
+| Robustness | 0.0 | 0.0 |
+| Score | 0.0 | 0.0 |
+| Classification | diagnostic only | 1. REJECT STRATEGY FAMILY |
 
 ## Contributions
 
