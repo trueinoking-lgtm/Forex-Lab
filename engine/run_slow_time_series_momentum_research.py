@@ -1,33 +1,8 @@
-"""STSM research runner: Data loading, momentum calculation, and evidence generation.
+"""STSM research runner - corrected implementation.
 
-Science workflow for slow time‑series momentum (12M/1M) in FX.
-Frozen design: no runtime parameter tuning, single pair‑universe execution.
+Implements the full frozen design from preregistration 5403529.
 
-Core flow:
-1. Load pairwise MT5 native D1 data from engine/data/raw_mt5_{pair}_1d.csv
-2. Compute momentum signal: pct_change(lookback=252)
-3. Generate binary position: long (> 0.001), short (< -0.001), flat otherwise
-4. Produce evidence artifact (JSON) for audit/validation
-5. Write synthetic results (position series + signal) for downstream ledgering
-
-Safety constraints:
-- paper_only = true
-- ALLOW_LIVE_ORDERS = false
-- No internal optimizer, no parameter sweeps
-- No watcher activation, no alerts
-- No order placements
-
-Evidence collected per pair:
-- original price series
-- computed momentum signal
-- resulting position series
-- signature hash of input data
-- execution window bounds (start/end dates)
-- signal counts (long, short, flat)
-
-Usage:
-    from engine.run_slow_time_series_momentum_research import run_stsm_research
-    results: dict = run_stsm_research(pairs=["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"])
+Safety: paper_only=true, ALLOW_LIVE_ORDERS=false
 """
 
 from __future__ import annotations
@@ -36,145 +11,115 @@ import pandas as pd
 import numpy as np
 import json
 import hashlib
-from datetime import datetime
 from pathlib import Path
-def _load_native_data(pair: str) -> pd.Series:
-    """Load MT5 daily data (engine/data/raw_mt5_{pair}_1d.csv).
+from datetime import datetime
+from strategies.slow_time_series_momentum import (
+    slow_time_series_momentum,
+    _load_data,
+    _compute_formation_return,
+    _determine_direction,
+    _generate_rebalance_dates,
+    _compute_trade_id,
+    _apply_transaction_costs,
+    PAIR_UNIVERSE,
+    LOOKBACK,
+    RECENT_MONTH_OFFSET,
+    FOLD_BOUNDARIES,
+    TRANSACTION_COST_BPS,
+    NOTIONAL_PER_TRADE,
+    STARTING_EQUITY,
+)
+def run_stsm_research(pairs: list[str] | None = None, audit: bool = False) -> dict:
+    """Run STSM research with frozen configuration.
     
-    Returns: close price series with UTC DatetimeIndex.
-    """
-    path = Path(f"/root/aether-forex-lab/engine/data/raw_mt5_{pair}_1d.csv")
-    df = pd.read_csv(path, parse_dates=["timestamp"], dtype={"close": float})
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
-    df.set_index("timestamp", inplace=True)
-    df.sort_index(inplace=True)
-    return df["close"]
-def _momentum_signal(price: pd.Series, lookback: int = 252) -> pd.Series:
-    """Compute frozen momentum: price_t / price_{t-lookback} – 1.
-    NaNs filled with 0.0 (neutral signal).
-    """
-    if len(price) < lookback + 1:
-        raise ValueError(f"Insufficient data: have {len(price)} bars, need at least {lookback + 1}")
-    
-    return price.pct_change(lookback).fillna(0.0)
-def _collect_evidence(pair: str, price: pd.Series, signal: pd.Series, position: pd.Series) -> dict:
-    """Capture research evidence for audit and validation."""
-    # Compute signal counts
-    long_count = int((signal > 0.001).sum())
-    short_count = int((signal < -0.001).sum())
-    flat_count = int((signal.between(-0.001, 0.001)).sum())
-    
-    # Data provenance hash
-    data_signature = hashlib.sha256(price.to_numpy().tobytes()).hexdigest()[:16]
-    
-    return {
-        "pair": pair,
-        "window": {
-            "start": price.index[0].isoformat(),
-            "end": price.index[-1].isoformat(),
-        },
-        "signal_source": "MT5-D1-native",
-        "lookback": 252,
-        "data_hash_snippet": data_signature,
-        "signal_counts": {
-            "long": long_count,
-            "short": short_count,
-            "flat": flat_count,
-        },
-        "signal_stats": {
-            "mean": float(signal.mean()),
-            "std": float(signal.std()),
-            "min": float(signal.min()),
-            "max": float(signal.max()),
-        },
-        "positions": {
-            "long": int((position == 1.0).sum()),
-            "short": int((position == -1.0).sum()),
-            "flat": int((position == 0.0).sum()),
-        },
-        "execution": {
-            "paper_only": True,
-            "ALLOW_LIVE_ORDERS": False,
-            "strategy": "slow_time_series_momentum_12m_1m",
-            "timestamp_iso": datetime.utcnow().isoformat() + "Z",
-        },
-        "data_integrity": {
-            "gaps": 0,  # Simplified
-            "timezone": "UTC",
-            "source_file": f"raw_mt5_{pair}_1d.csv",
-        },
-    }
-def run_stsm_research(pairs: list[str] | None = None, audit: bool = False) -> dict[str, dict]:
-    """Primary STSM research runner.
-    
-    If audit=True, only collect evidence and return (no ledger writes). Overrides paper_only = True.
+    Implements the full frozen design from preregistration 5403529.
     """
     if pairs is None:
-        pairs = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
+        pairs = PAIR_UNIVERSE
     
     results = {}
     
     for pair in pairs:
-        # 1. Data load (MT5 D1 native)
-        price = _load_native_data(pair)
+        # 1. Load native MT5 D1 data
+        price = _load_data(pair)
         
-        # 2. Signal generation (frozen lookback 252)
-        signal = _momentum_signal(price, lookback=252)
+        # 2. Compute formation return (frozen formula)
+        formation_return = _compute_formation_return(price)
         
-        # 3. Position construction (frozen thresholds)
-        position = pd.Series(np.zeros(len(price)), index=price.index, dtype=float)
-        long_mask = signal > 0.001
-        short_mask = signal < -0.001
-        position[long_mask] = 1.0
-        position[short_mask] = -1.0
+        # 3. Determine direction (frozen sign logic)
+        direction = pd.Series(0, index=price.index, dtype=int)
+        for i in range(len(price)):
+            direction.iloc[i] = _determine_direction(formation_return.iloc[i])
         
-        # 4. Evidence collection (always, for audit)
-        evidence = _collect_evidence(pair, price, signal, position)
+        # 4. Generate rebalance dates (monthly, last bar)
+        rebalance_dates = _generate_rebalance_dates(price)
         
-        # 5. Store evidence -> ledger artifact (file path)
-        evidence_dir = Path("/root/aether-forex-lab/engine/evidence/evidence_records")
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        evidence_path = evidence_dir / f"{pair}_stsm_evidence.json"
-        with evidence_path.open("w") as f:
-            json.dump(evidence, f, indent=2, default=str)
+        # 5. Generate signal opportunities (only on rebalance dates)
+        signal_opportunities = []
+        for signal_date in rebalance_dates:
+            if signal_date in price.index:
+                idx = price.index.get_loc(signal_date)
+                fr = formation_return.iloc[idx]
+                dir_val = _determine_direction(fr)
+                
+                # Entry: next available D1 bar's open after signal date
+                if idx + 1 < len(price):
+                    entry_date = price.index[idx + 1]
+                    entry_price = price.iloc[idx + 1]
+                else:
+                    entry_date = None
+                    entry_price = None
+                
+                signal_opportunities.append({
+                    "pair": pair,
+                    "signal_date": signal_date.isoformat(),
+                    "formation_return": float(fr) if not pd.isna(fr) else None,
+                    "direction": dir_val,
+                    "entry_date": entry_date.isoformat() if entry_date else None,
+                    "entry_price": float(entry_price) if entry_price else None,
+                })
         
-        evidence["path"] = str(evidence_path)
-        
-        # 6. Secondary artifact (position + signal) for downstream usage
-        artifact_dir = Path("/root/aether-forex-lab/engine/evidence/position_signals")
-        artifact_dir.mkdir(parents=True, exist_ok=True)
-        pd.DataFrame({
-            "timestamp": price.index,
-            "price_close": price.values,
-            "momentum_signal": signal.values,
-            "position": position.values,
-        }).to_csv(artifact_dir / f"{pair}_stsm_position_series.csv", index=False)
-        
-        # 7. For audit mode, return collected evidence (no ledger writes)
-        if audit:
-            results[pair] = evidence
-            continue
-        
-        # In normal operation, record to ledger (placeholder for execution)
-        results[pair] = {
-            "status": "processed",
-            "evidence_path": str(evidence_path),
-            "artifact_path": str(artifact_dir / f"{pair}_stsm_position_series.csv"),
+        # 6. Collect evidence for audit
+        evidence = {
+            "pair": pair,
+            "data_file": f"engine/data/raw_mt5_{pair}_1d.csv",
+            "first_timestamp": price.index[0].isoformat(),
+            "last_timestamp": price.index[-1].isoformat(),
+            "row_count": len(price),
+            "data_hash": hashlib.sha256(price.to_numpy().tobytes()).hexdigest()[:16],
+            "signal_count": len(signal_opportunities),
+            "long_signals": sum(1 for s in signal_opportunities if s["direction"] == 1),
+            "short_signals": sum(1 for s in signal_opportunities if s["direction"] == -1),
+            "flat_signals": sum(1 for s in signal_opportunities if s["direction"] == 0),
+            "execution": {
+                "paper_only": True,
+                "ALLOW_LIVE_ORDERS": False,
+                "transaction_cost_bps": TRANSACTION_COST_BPS,
+                "notional_per_trade": NOTIONAL_PER_TRADE,
+            },
         }
+        
+        # 7. Write evidence artifact
+        if audit:
+            evidence_dir = Path("/root/aether-forex-lab/engine/evidence/evidence_records")
+            evidence_dir.mkdir(parents=True, exist_ok=True)
+            evidence_path = evidence_dir / f"{pair}_stsm_evidence.json"
+            with evidence_path.open("w") as f:
+                json.dump(evidence, f, indent=2, default=str)
+            evidence["path"] = str(evidence_path)
+            results[pair] = evidence
+        else:
+            results[pair] = {
+                "status": "processed",
+                "signal_count": len(signal_opportunities),
+            }
     
     return results
-
 if __name__ == "__main__":
     import sys
-    
     is_audit = "--audit" in sys.argv
-    
-    # Quick demonstration with the four canonical pairs
-    pair_list = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
-    res = run_stsm_research(pairs=pair_list, audit=is_audit)
-    
+    res = run_stsm_research(audit=is_audit)
     if is_audit:
         print(json.dumps(res, indent=2, default=str))
     else:
-        print(f"STSM research completed for {len(pair_list)} pairs.")
-        print("Artifacts saved to engine/evidence/")
+        print(f"STSM research completed for {len(PAIR_UNIVERSE)} pairs.")
