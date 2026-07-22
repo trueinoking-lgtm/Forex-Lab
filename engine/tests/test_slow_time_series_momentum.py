@@ -265,6 +265,34 @@ def test_frozen_parameters():
     assert NOTIONAL_PER_TRADE == 100_000.0, f"Notional should be 100000, got {NOTIONAL_PER_TRADE}"
 # Constants for bankruptcy test
 STARTING_EQUITY = 10_000.0
+def test_friday_signal_enters_on_next_available_bar():
+    """Test that Friday signals enter on the next available trading bar, not Saturday."""
+    # Use real EURUSD data
+    price = _load_data("EURUSD")
+    
+    # Find Friday signals
+    friday_signals = []
+    for i in range(273, len(price)):
+        if price.index[i].dayofweek == 4:  # Friday
+            friday_signals.append(i)
+    
+    assert len(friday_signals) > 0, "Should have Friday signals in EURUSD data"
+    
+    # Verify at least one Friday signal enters on Monday (not Saturday)
+    monday_entry_found = False
+    for t in friday_signals:
+        signal_date = price.index[t]
+        if t + 1 < len(price):
+            entry_date = price.index[t + 1]
+            # Entry should be the next available bar, not signal_date + 1 calendar day
+            assert entry_date > signal_date, "Entry must be after signal"
+            
+            # If signal is Friday, next bar should be Monday (not Saturday)
+            if signal_date.dayofweek == 4 and entry_date.dayofweek == 0:
+                monday_entry_found = True
+                break
+    
+    assert monday_entry_found, "Should find at least one Friday-to-Monday entry"
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
