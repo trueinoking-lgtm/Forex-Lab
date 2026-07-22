@@ -69,7 +69,7 @@ def _get_fold_for_timestamp(ts: pd.Timestamp) -> str | None:
         if start <= ts <= end:
             return fold_name
     return None
-def _generate_signal_opportunities(pair: str) -> list[dict]:
+def _generate_signal_opportunities(pair: str, fold: str = "ALL") -> list[dict]:
     """Generate all signal opportunities for a pair.
     
     Returns list of signal opportunity dicts with:
@@ -83,15 +83,32 @@ def _generate_signal_opportunities(pair: str) -> list[dict]:
     - exit_timestamp
     - exit_price
     - formation_return
+    - unresolved (True if lifecycle incomplete within fold)
+    
+    Args:
+        pair: Currency pair (e.g., "EURUSD")
+        fold: Fold to filter by ("DEV", "VALIDATION", "TEST", "DIAGNOSTIC", "ALL")
     """
     price = _load_data(pair)
     ohlc = _load_ohlc_data(pair)
     formation_return = _compute_formation_return(price)
     rebalance_dates = _generate_rebalance_dates(price)
     
+    # Determine fold boundaries
+    if fold == "ALL":
+        fold_start = price.index[0]
+        fold_end = price.index[-1]
+    else:
+        fold_start_str, fold_end_str = FOLD_BOUNDARIES[fold]
+        fold_start = pd.Timestamp(fold_start_str)
+        fold_end = pd.Timestamp(fold_end_str)
+    
+    # Filter rebalance dates to fold
+    fold_rebalance_dates = [rd for rd in rebalance_dates if fold_start <= rd <= fold_end]
+    
     opportunities = []
     
-    for signal_date in rebalance_dates:
+    for signal_date in fold_rebalance_dates:
         if signal_date not in price.index:
             continue
         
@@ -112,20 +129,40 @@ def _generate_signal_opportunities(pair: str) -> list[dict]:
         entry_timestamp = price.index[entry_idx]
         entry_price = ohlc.iloc[entry_idx]["open"]
         
-        # Exit: next rebalance date after entry
-        # Find the next rebalance date strictly after the signal date
+        # Exit: next rebalance date after signal date, within the same fold
+        # The exit must remain within the fold boundary
         next_rebalance = None
-        for rd in rebalance_dates:
+        for rd in fold_rebalance_dates:
             if rd > signal_date:
                 next_rebalance = rd
                 break
         
-        if next_rebalance is None or next_rebalance not in price.index:
-            # No next rebalance - use final data cutoff
-            exit_idx = len(price) - 1
-        else:
-            exit_idx = price.index.get_loc(next_rebalance)
+        if next_rebalance is None:
+            # No next rebalance within fold - mark as unresolved
+            # Do NOT fall back to global dataset end
+            opportunities.append({
+                "trade_id": _compute_trade_id(
+                    "stsm", CONFIGURATION_ID, pair,
+                    signal_date.isoformat(), entry_timestamp.isoformat(), HOLDING_PERIOD
+                ),
+                "pair": pair,
+                "configuration_id": CONFIGURATION_ID,
+                "direction": direction,
+                "signal_timestamp": signal_date.isoformat(),
+                "entry_timestamp": entry_timestamp.isoformat(),
+                "entry_price": float(entry_price),
+                "exit_timestamp": None,
+                "exit_price": None,
+                "formation_return": float(fr) if not pd.isna(fr) else None,
+                "entry_idx": entry_idx,
+                "exit_idx": None,
+                "signal_idx": idx,
+                "unresolved": True,
+                "rejection_reason": "end_of_fold",
+            })
+            continue
         
+        exit_idx = price.index.get_loc(next_rebalance)
         exit_timestamp = price.index[exit_idx]
         exit_price = ohlc.iloc[exit_idx]["open"]
         
@@ -145,13 +182,15 @@ def _generate_signal_opportunities(pair: str) -> list[dict]:
             "direction": direction,
             "signal_timestamp": signal_date.isoformat(),
             "entry_timestamp": entry_timestamp.isoformat(),
-            "exit_timestamp": exit_timestamp.isoformat(),
             "entry_price": float(entry_price),
+            "exit_timestamp": exit_timestamp.isoformat(),
             "exit_price": float(exit_price),
             "formation_return": float(fr) if not pd.isna(fr) else None,
             "entry_idx": entry_idx,
             "exit_idx": exit_idx,
             "signal_idx": idx,
+            "unresolved": False,
+            "rejection_reason": None,
         })
     
     return opportunities
@@ -239,6 +278,7 @@ def _run_portfolio_accounting(
         "invalid_data": 0,
         "final_cutoff": 0,
         "duplicate": 0,
+        "end_of_fold": 0,
         "other": 0,
     }
     
@@ -265,6 +305,23 @@ def _run_portfolio_accounting(
             continue
         
         seen_trade_ids.add(trade_id)
+        
+        # Handle unresolved opportunities (end-of-fold, no exit available)
+        if op.get("unresolved", False):
+            rejection_counts["end_of_fold"] = rejection_counts.get("end_of_fold", 0) + 1
+            signal_ledger.append({
+                **op,
+                "accepted_for_portfolio": False,
+                "rejection_reason": "end_of_fold",
+                "equity_before_entry": equity,
+                "notional": NOTIONAL_PER_TRADE,
+                "gross_pnl": 0.0,
+                "total_cost": 0.0,
+                "net_pnl": 0.0,
+                "equity_after_exit": equity,
+                "bankruptcy_state": bankrupt,
+            })
+            continue
         
         # Check bankruptcy
         if bankrupt:
@@ -491,8 +548,15 @@ def _compute_canonical_metrics(
         "bankrupt": bankrupt,
         "bankruptcy_timestamp": bankruptcy_timestamp,
     }
-def _compute_max_drawdown(executable_ledger: list[dict], starting_equity: float) -> float:
-    """Compute maximum drawdown from chronological equity curve."""
+def _compute_max_drawdown(executable_ledger: list[dict], starting_equity: float, bankrupt: bool = False) -> float:
+    """Compute maximum drawdown from chronological equity curve.
+    
+    Canonical drawdown is capped at 100% (0.0 to 1.0).
+    For unfloored diagnostic, use _compute_max_drawdown_unfloored.
+    """
+    if bankrupt:
+        return 1.0  # Bankrupt = 100% drawdown
+    
     equity = starting_equity
     peak = starting_equity
     max_dd = 0.0
@@ -501,7 +565,32 @@ def _compute_max_drawdown(executable_ledger: list[dict], starting_equity: float)
         equity += trade["net_pnl"]
         if equity > peak:
             peak = equity
-        dd = (peak - equity) / peak if peak > 0 else 0.0
+        if peak > 0:
+            dd = (peak - equity) / peak
+        else:
+            dd = 1.0  # Equity at or below zero = 100% drawdown
+        if dd > max_dd:
+            max_dd = dd
+    
+    # Cap at 100%
+    return min(max_dd, 1.0)
+def _compute_max_drawdown_unfloored(executable_ledger: list[dict], starting_equity: float) -> float:
+    """Compute unfloored maximum drawdown (for diagnostic only).
+    
+    This can exceed 100% when fixed notional causes losses beyond equity.
+    """
+    equity = starting_equity
+    peak = starting_equity
+    max_dd = 0.0
+    
+    for trade in executable_ledger:
+        equity += trade["net_pnl"]
+        if equity > peak:
+            peak = equity
+        if peak > 0:
+            dd = (peak - equity) / peak
+        else:
+            dd = 1.0
         if dd > max_dd:
             max_dd = dd
     
@@ -694,17 +783,20 @@ def run_stsm_portfolio_accounting(audit: bool = False) -> dict:
     
     Safety: paper_only=true, ALLOW_LIVE_ORDERS=false
     """
-    # 1. Generate all signal opportunities
+    # 1. Generate all signal opportunities with fold-specific lifecycle
     all_opportunities = []
     for pair in PAIR_UNIVERSE:
-        opps = _generate_signal_opportunities(pair)
+        opps = _generate_signal_opportunities(pair, fold="ALL")
         all_opportunities.extend(opps)
     
-    # 2. Run portfolio accounting
+    # 2. Run portfolio accounting (full history)
     portfolio = _run_portfolio_accounting(all_opportunities)
     
-    # 3. Filter by fold for canonical metrics
-    test_opportunities = _filter_opportunities_by_fold(all_opportunities, "TEST")
+    # 3. Generate TEST fold opportunities with TEST fold boundaries
+    test_opportunities = []
+    for pair in PAIR_UNIVERSE:
+        opps = _generate_signal_opportunities(pair, fold="TEST")
+        test_opportunities.extend(opps)
     test_portfolio = _run_portfolio_accounting(test_opportunities)
     
     # 4. Cost stress

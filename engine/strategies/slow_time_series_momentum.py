@@ -98,12 +98,21 @@ def _generate_rebalance_dates(price: pd.Series) -> pd.DatetimeIndex:
     """Generate deterministic monthly rebalance dates.
     
     Signal date: last available native D1 bar for that pair in each calendar month.
+    Uses the last actual trading day in each month, not the calendar month-end.
     """
-    # Group by month and take last date
+    # Group by month and take the last available trading day
     monthly_groups = price.resample("ME").last()
     # Filter out months with no data
     rebalance_dates = monthly_groups.dropna().index
-    return rebalance_dates
+    # Map each month-end to the last available trading day in that month
+    corrected_dates = []
+    for month_end in rebalance_dates:
+        # Find the last available trading day at or before month_end
+        month_prices = price[price.index <= month_end]
+        if len(month_prices) > 0:
+            last_trading_day = month_prices.index[-1]
+            corrected_dates.append(last_trading_day)
+    return pd.DatetimeIndex(corrected_dates)
 def _compute_trade_id(strategy: str, config: str, pair: str, signal_ts: str, entry_ts: str, holding: str) -> str:
     """Generate deterministic trade ID.
     
