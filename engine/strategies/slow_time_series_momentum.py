@@ -46,12 +46,14 @@ def _load_data(pair: str) -> pd.Series:
     """Load native MT5 D1 data for pair.
     
     Path: engine/data/raw_mt5_{pair}_1d.csv
+    MT5 format: tab-separated with <DATE>, <OPEN>, <HIGH>, <LOW>, <CLOSE> columns
     Returns: close price series with DatetimeIndex
     """
     path = Path(f"/root/aether-forex-lab/engine/data/raw_mt5_{pair}_1d.csv")
-    df = pd.read_csv(path, parse_dates=["timestamp"], dtype={"close": float})
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df.set_index("timestamp", inplace=True)
+    df = pd.read_csv(path, sep="\t", skiprows=1, 
+                     names=["date", "open", "high", "low", "close", "tickvol", "vol", "spread"])
+    df["date"] = pd.to_datetime(df["date"], format="%Y.%m.%d")
+    df.set_index("date", inplace=True)
     df.sort_index(inplace=True)
     return df["close"]
 def _compute_formation_return(price: pd.Series) -> pd.Series:
@@ -63,10 +65,13 @@ def _compute_formation_return(price: pd.Series) -> pd.Series:
     The 252-session formation window ends 21 sessions before the signal,
     so "12 months excluding the most recent month" is not conflated with
     the standard 252-session return that includes the recent month.
+    
+    Note: The denominator uses shift(273), NOT shift(252). The 252-session
+    window is the span from t-273 to t-21 (inclusive), which is 252 sessions.
     """
     # Use explicit shifted observations
     numerator = price.shift(RECENT_MONTH_OFFSET)  # close[t-21]
-    denominator = price.shift(LOOKBACK)  # close[t-273]
+    denominator = price.shift(LOOKBACK + RECENT_MONTH_OFFSET)  # close[t-273] = close[t-(252+21)]
     
     # Formation return
     formation_return = numerator / denominator - 1.0

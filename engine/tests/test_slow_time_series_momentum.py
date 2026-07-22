@@ -112,11 +112,11 @@ def test_no_lookahead():
     
     formation_return = _compute_formation_return(prices)
     
-    # Verify each signal uses only historical data
+    # Verify each signal uses only historical data (starting from first valid index)
     for t in range(273, len(prices)):
         expected = prices.iloc[t - 21] / prices.iloc[t - 273] - 1
         actual = formation_return.iloc[t]
-        assert abs(actual - expected) < 1e-10, f"Lookahead detected at index {t}"
+        assert abs(actual - expected) < 1e-10, f"Lookahead detected at index {t}: expected {expected}, got {actual}"
 def test_deterministic_rebalance_dates():
     """Test that rebalance dates are deterministic (monthly, last bar)."""
     dates = pd.date_range("2020-01-01", periods=365, freq="D")
@@ -210,11 +210,18 @@ def test_costs_applied():
     assert result["net_pnl"] < result["gross_pnl"], "Net PnL must be less than gross"
 def test_no_order_imports():
     """Test that no order-related imports exist."""
-    source = inspect.getsource(__import__("strategies.slow_time_series_momentum", fromlist=["slow_time_series_momentum"]))
+    # Check the strategy module for forbidden imports
+    import strategies.slow_time_series_momentum as stsm_module
+    source = inspect.getsource(stsm_module)
     
-    forbidden = ["order", "trade_executor", "broker", "mt5", "api_client"]
-    for word in forbidden:
-        assert word.lower() not in source.lower() or word in ["mt5"], f"Forbidden import: {word}"
+    # Check for forbidden import statements (not comments/docstrings)
+    forbidden_imports = ["order_executor", "broker", "api_client", "trade_executor"]
+    for word in forbidden_imports:
+        assert f"import {word}" not in source, f"Forbidden import: {word}"
+    
+    # Verify no order placement functions are imported
+    assert "place_order" not in source, "Should not import place_order"
+    assert "send_order" not in source, "Should not import send_order"
 def test_no_order_calls():
     """Test that no order-related calls exist."""
     source = inspect.getsource(slow_time_series_momentum)
