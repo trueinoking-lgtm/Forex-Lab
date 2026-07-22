@@ -31,3 +31,4 @@ app/forex_lab.db-wal
 .env.local
 *.env
 tsconfig.tsbuildinfo
+engine/evidence/
