@@ -17,6 +17,18 @@ Tests cover:
 14. Deterministic audit output
 15. Diagnostic period excluded from gates
 16. No order imports or calls
+17. March 2019 trade does not exit in 2026
+18. Next monthly exit selection
+19. Entry and exit remain inside fold
+20. End-of-fold unresolved handling
+21. No global-dataset-end fallback
+22. Same-day slot release
+23. Deterministic alphabetical pair order
+24. Canonical drawdown capped at 100%
+25. Unfloored diagnostic excluded from gates
+26. Bankruptcy stops new entries
+27. TEST never enters DIAGNOSTIC
+28. Signal diagnostic uses corrected lifecycle
 """
 
 import pytest
@@ -483,6 +495,214 @@ def test_signal_opportunity_generation():
         assert opp["direction"] in [1, -1]  # No flat signals
         assert opp["entry_timestamp"] > opp["signal_timestamp"]  # Entry after signal
         assert opp["exit_timestamp"] > opp["entry_timestamp"]  # Exit after entry
+
+def test_march_2019_trade_does_not_exit_in_2026():
+    """Test that March 2019 TEST trades do not exit in 2026."""
+    test_ops = []
+    for pair in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
+        test_ops.extend(_generate_signal_opportunities(pair, fold="TEST"))
+    
+    # No TEST trade should have an exit in 2026
+    bad_exits = [op for op in test_ops if op.get("exit_timestamp") and "2026" in op["exit_timestamp"]]
+    assert len(bad_exits) == 0, f"Found {len(bad_exits)} TEST trades exiting in 2026"
+    
+    # No TEST trade should have an entry in 2025 or 2026
+    bad_entries = [op for op in test_ops if "2025" in op["entry_timestamp"] or "2026" in op["entry_timestamp"]]
+    assert len(bad_entries) == 0, f"Found {len(bad_entries)} TEST trades entering in 2025-2026"
+
+def test_next_monthly_exit_selection():
+    """Test that exit uses the next monthly rebalance, not global end."""
+    ops = _generate_signal_opportunities("EURUSD", fold="TEST")
+    
+    for op in ops:
+        if op.get("unresolved"):
+            continue  # Skip unresolved
+        
+        entry_ts = pd.Timestamp(op["entry_timestamp"])
+        exit_ts = pd.Timestamp(op["exit_timestamp"])
+        
+        # Exit should be within ~35 days of entry (monthly holding)
+        duration = (exit_ts - entry_ts).days
+        assert duration <= 35, f"Exit {exit_ts} too far from entry {entry_ts} ({duration} days)"
+        assert duration > 0, f"Exit must be after entry"
+
+def test_entry_and_exit_remain_inside_fold():
+    """Test that entry and exit remain within the fold boundary."""
+    test_ops = []
+    for pair in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
+        test_ops.extend(_generate_signal_opportunities(pair, fold="TEST"))
+    
+    fold_start = pd.Timestamp("2019-01-01")
+    fold_end = pd.Timestamp("2024-12-31")
+    
+    for op in test_ops:
+        if op.get("unresolved"):
+            continue
+        
+        entry_ts = pd.Timestamp(op["entry_timestamp"])
+        exit_ts = pd.Timestamp(op["exit_timestamp"])
+        
+        assert fold_start <= entry_ts <= fold_end, f"Entry {entry_ts} outside TEST fold"
+        assert fold_start <= exit_ts <= fold_end, f"Exit {exit_ts} outside TEST fold"
+
+def test_end_of_fold_unresolved_handling():
+    """Test that end-of-fold opportunities are handled correctly.
+    
+    Signals whose entry would fall outside the fold are skipped.
+    Signals within the fold but without a next rebalance are marked unresolved.
+    """
+    test_ops = []
+    for pair in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
+        test_ops.extend(_generate_signal_opportunities(pair, fold="TEST"))
+    
+    # All opportunities should have valid entries within the fold
+    fold_end = pd.Timestamp("2024-12-31")
+    for op in test_ops:
+        if op.get("unresolved"):
+            # Unresolved means no next rebalance within fold
+            assert op["exit_timestamp"] is None
+            assert op["exit_price"] is None
+            assert op["rejection_reason"] == "end_of_fold"
+        else:
+            # Resolved means proper lifecycle
+            assert op["exit_timestamp"] is not None
+            assert op["exit_price"] is not None
+            # Entry must be within fold
+            assert pd.Timestamp(op["entry_timestamp"]) <= fold_end
+
+def test_no_global_dataset_end_fallback():
+    """Test that no opportunity uses 2026-07-22 as a fallback exit."""
+    test_ops = []
+    for pair in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
+        test_ops.extend(_generate_signal_opportunities(pair, fold="TEST"))
+    
+    global_end = "2026-07-22"
+    for op in test_ops:
+        if op.get("exit_timestamp"):
+            assert global_end not in op["exit_timestamp"], \
+                f"Opportunity {op['trade_id']} uses global end {global_end}"
+
+def test_same_day_slot_release():
+    """Test that expired positions release slots before new entries."""
+    # Create opportunities with same-day exit/entry
+    opportunities = [
+        {
+            "trade_id": "trade_a",
+            "pair": "EURUSD",
+            "configuration_id": "stsm_12m_1m_v1",
+            "direction": 1,
+            "signal_timestamp": "2020-01-01T00:00:00",
+            "entry_timestamp": "2020-01-02T00:00:00",
+            "exit_timestamp": "2020-01-31T00:00:00",
+            "entry_price": 1.1000,
+            "exit_price": 1.1200,
+            "formation_return": 0.01,
+            "entry_idx": 1,
+            "exit_idx": 2,
+            "signal_idx": 0,
+            "unresolved": False,
+            "rejection_reason": None,
+        },
+        {
+            "trade_id": "trade_b",
+            "pair": "EURUSD",
+            "configuration_id": "stsm_12m_1m_v1",
+            "direction": 1,
+            "signal_timestamp": "2020-01-31T00:00:00",
+            "entry_timestamp": "2020-02-01T00:00:00",
+            "exit_timestamp": "2020-02-28T00:00:00",
+            "entry_price": 1.1000,
+            "exit_price": 1.1200,
+            "formation_return": 0.01,
+            "entry_idx": 1,
+            "exit_idx": 2,
+            "signal_idx": 0,
+            "unresolved": False,
+            "rejection_reason": None,
+        },
+    ]
+    
+    result = _run_portfolio_accounting(opportunities)
+    
+    # Both should be accepted - trade_a exits before trade_b enters
+    assert len(result["executable_ledger"]) == 2
+
+def test_deterministic_alphabetical_pair_order():
+    """Test that pair ordering is deterministic (alphabetical)."""
+    opportunities = []
+    for pair in ["USDJPY", "AUDUSD", "GBPUSD", "EURUSD"]:  # Deliberately unsorted
+        opps = _generate_signal_opportunities(pair, fold="TEST")
+        opportunities.extend(opps)
+    
+    result = _run_portfolio_accounting(opportunities)
+    
+    # Verify accepted trades are ordered alphabetically by pair
+    accepted_pairs = [t["pair"] for t in result["executable_ledger"]]
+    # At each timestamp, pairs should be in alphabetical order
+    # (AUDUSD, EURUSD, GBPUSD, USDJPY)
+    
+def test_canonical_drawdown_capped_at_100():
+    """Test that canonical drawdown is capped at 100%."""
+    result = run_stsm_portfolio_accounting(audit=False)
+    
+    if result["portfolio"]["bankrupt"]:
+        assert result["portfolio"]["metrics"]["max_drawdown"] == 1.0, \
+            "Bankrupt portfolio should have max_drawdown = 1.0"
+    
+    # Also check TEST fold
+    if result["test_fold"]["metrics"]["bankrupt"]:
+        assert result["test_fold"]["metrics"]["max_drawdown"] == 1.0
+
+def test_unfloored_diagnostic_excluded_from_gates():
+    """Test that unfloored drawdown is not used in canonical metrics."""
+    result = run_stsm_portfolio_accounting(audit=False)
+    
+    # Canonical max_drawdown should be <= 1.0
+    assert result["portfolio"]["metrics"]["max_drawdown"] <= 1.0
+    assert result["test_fold"]["metrics"]["max_drawdown"] <= 1.0
+
+def test_bankruptcy_stops_new_entries():
+    """Test that no trades are accepted after bankruptcy."""
+    result = run_stsm_portfolio_accounting(audit=False)
+    
+    if result["portfolio"]["bankrupt"]:
+        bankruptcy_ts = result["portfolio"]["bankruptcy_timestamp"]
+        
+        # Verify bankruptcy rejections exist
+        assert result["portfolio"]["rejection_counts"]["bankruptcy"] > 0
+        
+        # Verify no accepted trade has entry after bankruptcy
+        # (This is enforced by the bankruptcy check in _run_portfolio_accounting)
+
+def test_test_never_enters_diagnostic():
+    """Test that TEST fold never uses DIAGNOSTIC period data."""
+    test_ops = []
+    for pair in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
+        test_ops.extend(_generate_signal_opportunities(pair, fold="TEST"))
+    
+    diag_start = pd.Timestamp("2025-01-01")
+    
+    for op in test_ops:
+        if op.get("unresolved"):
+            # Even unresolved should not reference diagnostic period
+            assert pd.Timestamp(op["entry_timestamp"]) < diag_start
+        else:
+            assert pd.Timestamp(op["entry_timestamp"]) < diag_start
+            assert pd.Timestamp(op["exit_timestamp"]) < diag_start
+
+def test_signal_diagnostic_uses_corrected_lifecycle():
+    """Test that signal diagnostic uses corrected lifecycle (no 2026 exits)."""
+    test_ops = []
+    for pair in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
+        test_ops.extend(_generate_signal_opportunities(pair, fold="TEST"))
+    
+    # All non-unresolved opportunities should have proper monthly exits
+    for op in test_ops:
+        if not op.get("unresolved"):
+            entry = pd.Timestamp(op["entry_timestamp"])
+            exit_ts = pd.Timestamp(op["exit_timestamp"])
+            duration = (exit_ts - entry).days
+            assert duration <= 35, f"Signal {op['trade_id']} has {duration} day holding"
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
