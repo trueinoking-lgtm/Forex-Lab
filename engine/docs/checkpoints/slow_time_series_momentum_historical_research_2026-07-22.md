@@ -51,31 +51,23 @@ Entry uses next available trading bar, not Saturday. ✅
 | USDJPY | `engine/data/raw_mt5_USDJPY_1d.csv` | 4,301 | 2010-01-04 | 2026-07-22 | `abd384c03bc7257e44f7074601cfcab6acaa1d40240d86b0bd0b1c37bf777ae5` |
 | AUDUSD | `engine/data/raw_mt5_AUDUSD_1d.csv` | 4,301 | 2010-01-04 | 2026-07-22 | `32ac5ec0164a6df0cd8ddf3ee594d002861903a8f5f670404dff8ade8a8cd815` |
 
-## Portfolio Accounting Results
+## ⚠️ INVALIDATED — EXIT-SCHEDULING DEFECT
 
-### Full History (All Folds)
+**Previous results (PF 4.34, USD 48,010 equity) were artifacts of the exit-scheduling
+defect where March 2019 signals exited in 2026.**
 
-- **Generated opportunities:** 528
-- **Accepted trades:** 9
-- **Rejected opportunities:** 519 (all bankruptcy)
-- **Bankrupt:** True (2011-04-01)
-- **Ending equity:** USD 0.00
-- **Portfolio return:** -1.0
-- **Max drawdown:** 1.0
-- **Profit factor:** 0.098
-- **Sharpe:** -1.246
+**Corrected results:**
+- TEST fold: 284 opportunities, 69 accepted, 215 rejected
+- Bankrupt: True (2020-07-01)
+- PF: 0.88 (below 1.0 threshold)
+- Ending equity: USD 0.00
+- No 2026 exits in TEST fold
 
-### TEST Fold (2019-2024)
+**Root cause:** `_generate_signal_opportunities()` fell back to global dataset end
+(2026-07-22) when no next rebalance existed within the fold.
 
-- **Generated opportunities:** 204
-- **Accepted trades:** 12
-- **Rejected opportunities:** 192 (all concurrency)
-- **Bankrupt:** False
-- **Ending equity:** USD 48,010.33
-- **Portfolio return:** 3.80
-- **Max drawdown:** 0.845
-- **Profit factor:** 4.34
-- **Sharpe:** 0.80
+**Fix:** Added fold-aware opportunity generation with `unresolved` flagging,
+fold boundary filtering on entry/exit, and `end_of_fold` rejection reason.
 
 ### Cost Stress
 
