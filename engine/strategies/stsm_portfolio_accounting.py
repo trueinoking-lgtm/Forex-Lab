@@ -127,6 +127,11 @@ def _generate_signal_opportunities(pair: str, fold: str = "ALL") -> list[dict]:
         
         entry_idx = idx + 1
         entry_timestamp = price.index[entry_idx]
+        
+        # Entry must be within the fold
+        if entry_timestamp > fold_end:
+            continue  # Entry would fall in next fold - skip
+        
         entry_price = ohlc.iloc[entry_idx]["open"]
         
         # Exit: next rebalance date after signal date, within the same fold
