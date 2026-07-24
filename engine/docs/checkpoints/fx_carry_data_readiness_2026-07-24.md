@@ -39,12 +39,14 @@ But policy rates must never silently substitute for a transaction benchmark in a
 ## 3. Official Source Assessment by Currency
 
 ### USD
-- **EFFR (Federal Funds Effective Rate)** — New York Fed — FEDFUNDS series. Public domain. No API key required. Published roughly 09:00 ET. FRED API (dailyhistorical). Available since 1954. No historical revisions. **PASS** all data-quality gates.
-- **SOFR (Secured Overnight Financing Rate)** — New York Fed — SOFR series. Public domain. Available since 2013-04-03. Published ~08:00 ET next business day. FRED API. No material methodology changes. **PASS** all data-quality gates. Note: secured; not interchangeable with unsecured EFFR.
+- **EFFR (Federal Funds Effective Rate)** — canonical provider: Federal Reserve Bank of New York; official Markets Data API identifier: `EFFR`; endpoint: `https://markets.newyorkfed.org/api/rates/unsecured/effr/search.json?startDate={YYYY-MM-DD}&endDate={YYYY-MM-DD}&type=rate`. The JSON record array is `refRates`; required fields are `effectiveDate`, `type`, `percentRate`, and `revisionIndicator`. No API key is required. **PASS** all data-quality gates. `FEDFUNDS`, if used, is a Federal Reserve Bank of St. Louis / FRED secondary validation mirror identifier, not an official New York Fed API identifier or canonical acquisition source.
+- **SOFR (Secured Overnight Financing Rate)** — canonical provider: Federal Reserve Bank of New York; official Markets Data API identifier: `SOFR`; endpoint: `https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate={YYYY-MM-DD}&endDate={YYYY-MM-DD}&type=rate`. The JSON record array is `refRates`; required fields are `effectiveDate`, `type`, `percentRate`, and `revisionIndicator`. No API key is required. **PASS** all data-quality gates. Note: secured; not interchangeable with unsecured EFFR.
 
 ### EUR
-- **€STR** — ECB — ESTR series. Available from official start 2019-10-03. Published 09:00 CET. ECB statistical data warehouse. Public (non-commercial use with attribution). **PASS** for post-2019 period. Pre-2019 EUR carry must use EONIA.
-- **EONIA** — ECB/EMMI — EONIA series. Available 1999-01-04 to 2019-09-30 (archived through 2022-01-03 under €STR-plus-spread methodology). Published 09:00 CET. ECB statistical data warehouse. Public (non-commercial with attribution). **PASS** for pre-2019 period. Methodology break at 2019-10-03 when €STR replaced it.
+- **Original EONIA methodology** — ECB/EMMI — explicitly labelled `EONIA_original_through_2019-09-30`. Available 1999-01-04 through 2019-09-30. **PASS** for its historical regime only.
+- **€STR** — ECB — explicitly labelled `ESTR_from_first_publication_2019-10-02`; first published in October 2019. **PASS** as the primary EUR overnight input from its first publication onward.
+- **Recalibrated EONIA** — ECB/EMMI — explicitly labelled `EONIA_recalibrated_ESTR_plus_8.5bp_2019-10_to_2022-01`; calculated as €STR + 8.5 basis points from October 2019 until discontinuation in January 2022. **PASS** as a documented transition/legacy-contract diagnostic only, not as the primary input once €STR exists.
+- These three regimes are separate records. They must not be silently spliced.
 - **ECB Policy Rates** — Fallback diagnostic only. Weekly. Not suitable for daily carry input. **FLAGGED** as diagnostic fallback.
 
 ### GBP
@@ -56,7 +58,8 @@ But policy rates must never silently substitute for a transaction benchmark in a
 - **BOJ Policy Rate** — Fallback diagnostic only. Set at discrete meetings. **FLAGGED** as diagnostic fallback.
 
 ### AUD
-- **AONIA / BBSW** — Reserve Bank of Australia. AONIA as RBA-calculated series from circa 2020 (RBA took over from AFMA). BBSW history from ~1990s. Transaction-based. RBA Statistical Table F1 provides cash rate (weekly); AONIA daily values from RBA website. **PASS** with noted limitations: BBSW historical data has narrower panel than AONIA; republication rules apply (RBA copyright notice required).
+- **RBA cash rate / AONIA** — administrator: Reserve Bank of Australia; unsecured overnight benchmark; historical source: RBA Statistical Table F1. This is the **primary AUD daily financing-rate proxy**. **PASS** with RBA attribution and publication metadata preserved.
+- **BBSW** — administrator: ASX Benchmarks; term bank-bill benchmark. It is a **diagnostic or forward/term comparison only**, not the primary overnight AUD carry input. Access is through separate ASX benchmark-data arrangements, and ASX licensing, usage, and redistribution conditions must be confirmed independently. **EXCLUDED** from the primary carry panel.
 - **RBA Cash Rate** — Fallback diagnostic only. Weekly. Not a daily observable. **FLAGGED** as diagnostic fallback.
 
 ### Cross-Check
@@ -70,11 +73,13 @@ But policy rates must never silently substitute for a transaction benchmark in a
 |----------|-------------------|-------------|-------|
 | USD | EFFR | ✅ Yes | Available since 1954; no gaps |
 | USD | SOFR | ⚠️ Partial | Available from 2013-04-03 only; no secured proxy pre-2013 |
-| EUR | EONIA (pre-2019) | ✅ Yes | Available 2010-2019; methodologically distinct from €STR |
-| EUR | €STR (post-2019) | ✅ Yes | Available from 2019-10-03 onward |
+| EUR | Original EONIA | ✅ Yes | Through 2019-09-30; explicit original-methodology regime |
+| EUR | €STR | ⚠️ Partial | From first publication in October 2019 onward; primary thereafter |
+| EUR | Recalibrated EONIA | ⚠️ Partial | €STR + 8.5 bp, October 2019 to January 2022; diagnostic overlap only |
 | GBP | SONIA (reformed) | ✅ Yes | Reformed April 2018; pre-reform SONIA available but methodologically different |
 | JPY | TONA | ✅ Yes | Available since 1979 with regime breaks |
-| AUD | AONIA / BBSW | ✅ Yes | BBSW historical from ~1990s; AONIA full series from ~2020 |
+| AUD | RBA cash rate / AONIA | ✅ Yes | RBA Table F1; primary daily financing-rate proxy |
+| AUD | BBSW | N/A | Term diagnostic only; excluded from primary overnight panel |
 
 ---
 
@@ -82,11 +87,13 @@ But policy rates must never silently substitute for a transaction benchmark in a
 
 | Currency | Benchmark | Break Date | Description | Impact on Carry Calculations |
 |----------|-----------|-----------|-------------|------------------------------|
-| EUR | EONIA → €STR | 2019-10-03 | Quote-based bank panel → transaction-based panel | Carry calculations across this boundary are not directly comparable; regime must be labelled explicitly |
+| EUR | Original EONIA ends | 2019-09-30 | Original EONIA methodology ends | Do not silently splice to either overlapping successor regime |
+| EUR | €STR first publication | October 2019 | Transaction-based €STR begins | Primary EUR overnight input from first publication onward |
+| EUR | Recalibrated EONIA | October 2019–January 2022 | EONIA = €STR + 8.5 bp | Separate overlapping transition regime; diagnostic only |
 | GBP | SONIA reformed | 2018-04-02 | Quote-driven average → transaction-based | Pre-April 2018 and post-April 2018 SONIA are not directly comparable at the boundary |
 | JPY | NIRP/YCC regime | 2016-01-29 (NIRP) / 2016-02-16 (YCC) | Overnight rate pushed negative; YCC capped the yield curve | Carry calculations 2016-2024 are structurally different from pre-2016 and post-2024 |
 | JPY | YCC exit | 2024 | BOJ began normalising, raising the short end | Post-2024 TONA dynamics differ from NIRP/YCC period |
-| AUD | AONIA takeover | ~2020 | RBA took over AONIA calculation from AFMA; broader panel | Continuity consideration; both BBSW and AONIA are transaction-based |
+| AUD | AONIA versus BBSW | N/A | RBA overnight benchmark versus ASX term bank-bill benchmark | Different instruments, administrators, access, and licenses; never splice or substitute |
 | USD | EFFR publication | ~2017 | NY Fed shifted publication from ~18:00 ET to ~09:00 ET | Affects usability windows but not the underlying rate |
 
 ---
@@ -101,7 +108,8 @@ But policy rates must never silently substitute for a transaction benchmark in a
 | EONIA | Overnight (09:00 CET next business day) | Archived as static historical series | None |
 | SONIA | Overnight (09:00 GMT next business day) | No revisions to historical values | None |
 | TONA | Overnight (next business day BOJ time) | No historical revisions | None |
-| AONIA / BBSW | Overnight (next business day AEST) | No revisions to reported values | None |
+| RBA cash rate / AONIA | Per RBA Table F1 publication schedule | RBA statistical revision policy | Preserve source metadata |
+| BBSW | Per ASX Benchmarks schedule | ASX correction policy | Term diagnostic only |
 
 ---
 
@@ -129,7 +137,7 @@ Regime breaks are handled by the `methodology_regime` field in the canonical dai
 - Exclude observations from one regime when comparing across a transition boundary
 - Document which regime was active at the time of any research conclusion
 
-For EUR, the EONIA→€STR transition on 2019-10-03 is handled by using EONIA for dates 2010-01-01 to 2019-10-02 and €STR for dates 2019-10-03 onward. The EONIA series is preserved as the correct pre-transition benchmark.
+For EUR, three records are mandatory: original EONIA through 2019-09-30, €STR from its first publication in October 2019, and recalibrated EONIA (€STR + 8.5 basis points) from October 2019 until its January 2022 discontinuation. The primary panel uses original EONIA before the transition and €STR after its first publication; recalibrated EONIA is retained only as an explicitly labelled overlapping diagnostic. No silent splice is permitted.
 
 For SONIA, pre-April 2018 observations use `methodology_regime_base = "SONIA_pre_reform"` and post-April 2018 use `"SONIA_reformed"`. Both series are labeled SONIA but are not directly comparable at the boundary.
 
@@ -159,11 +167,12 @@ For JPY, TONA observations are tagged with the applicable regime: `"pre_NIRP"`, 
 
 | Source | License / Terms | Restrictions |
 |--------|----------------|--------------|
-| NY Fed (EFFR, SOFR) | Public domain | None |
+| NY Fed (EFFR, SOFR) | New York Fed website Terms of Use and reference-rate disclaimers | Canonical acquisition is through the official Markets Data API |
 | ECB (€STR, EONIA, policy rates) | ECB statistical terms — non-commercial use with attribution | No commercial redistribution without separate agreement |
 | Bank of England (SONIA, Bank Rate) | Public sector information — free with attribution | Attribution required |
 | Bank of Japan (TONA, policy rate) | Public — BOJ statistical data | None |
-| RBA (AONIA, BBSW, cash rate) | Public sector information — free with attribution and copyright notice | Republication requires RBA copyright notice; commercial use may require separate agreement |
+| RBA (cash rate / AONIA) | RBA statistical terms | Attribution and publication metadata required |
+| ASX Benchmarks (BBSW) | Separate ASX benchmark-data terms | Access/subscription and redistribution entitlements must be confirmed; diagnostic only |
 | BIS (policy rates cross-check) | BIS data terms — generally permitted for research with attribution | None for non-commercial research |
 | CME FX Futures | Exchange data — subscription required for historical access | Licensed; not part of free public data sources |
 
@@ -184,7 +193,7 @@ value_date                date     — the value date (T-1 for most benchmarks)
 publication_timestamp_utc timestamp — when the rate was published in UTC
 source_revision_status    string   — current, archived, methodology_changed
 methodology_regime        string   — e.g., "EFFR", "SONIA_reformed", "pre_NIRP", "post_YCC_exit"
-source_series_id          string   — exact series identifier (e.g., FEDFUNDS, ESTR, SONIA, TONA)
+source_series_id          string   — publisher's exact series identifier (e.g., EFFR, SOFR, ESTR, SONIA, TONA)
 source_file_sha256        string   — SHA-256 of the source file used to acquire this rate
 acquisition_timestamp_utc timestamp — when we acquired and stored this rate
 ```
@@ -217,7 +226,7 @@ A source passes the data-quality gates only if ALL of the following are true:
 7. **No unexplained timestamp ambiguity** — the publication timestamp and value-date semantics are unambiguous and documented.
 8. **Licensing permits storage and use** — the license allows academic research storage and use with attribution.
 
-All five currency benchmarks identified in this report pass these gates. The BIS cross-check dataset also passes for cross-reference use, with the caveat that it is not an overnight transaction benchmark.
+All five canonical currency inputs identified in this report pass these gates. BBSW, policy-rate diagnostics, and the BIS cross-check are explicitly excluded from the primary carry panel.
 
 ---
 
@@ -239,25 +248,29 @@ Therefore: the rate-differential proxy is ready, but executable carry data (the 
 
 ## Source Registry Summary
 
-Total sources catalogued: **11 primary benchmarks + 1 cross-check reference + 5 policy-rate diagnostic fallbacks = 12 records in source registry**.
+Total source records catalogued: **14**.
 
 Primary overnight transaction benchmarks (suitable for daily carry panel):
-1. USD — EFFR (FEDFUNDS)
+1. USD — EFFR (`EFFR` in the official New York Fed Markets Data API)
 2. USD — SOFR
 3. EUR — €STR (ESTR)
-4. EUR — EONIA (historical, 2010-2019)
+4. EUR — original EONIA (historical, through 2019-09-30)
 5. GBP — SONIA (reformed April 2018)
 6. JPY — TONA
-7. AUD — AONIA
+7. AUD — RBA cash rate / AONIA
+
+Transition/term diagnostics (NOT primary carry-panel inputs):
+8. EUR — recalibrated EONIA (€STR + 8.5 bp, October 2019–January 2022)
+9. AUD — BBSW (ASX Benchmarks term bank-bill benchmark)
 
 Policy-rate fallback/diagnostic (NOT suitable as daily carry input):
-8. EUR — ECB Deposit Facility Rate / MRO / LFR
-9. GBP — Bank Rate
-10. JPY — BOJ Policy Rate (overnight call facility rate)
-11. AUD — RBA Cash Rate
+10. EUR — ECB Deposit Facility Rate / MRO / LFR
+11. GBP — Bank Rate
+12. JPY — BOJ Policy Rate (overnight call facility rate)
+13. AUD — RBA Cash Rate
 
 Cross-check reference:
-12. BIS Central Bank Policy Rate Dataset
+14. BIS Central Bank Policy Rate Dataset
 
 ---
 
