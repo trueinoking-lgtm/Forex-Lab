@@ -1,7 +1,7 @@
 """Normalization and validation for FX carry observations."""
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List
 
 from .models import Observation
@@ -39,7 +39,7 @@ def validate_observations(observations: List[Observation]) -> List[Observation]:
 
         # Check publication timestamp is timezone-aware
         if obs.publication_timestamp_utc.tzinfo is None:
-            obs.publication_timestamp_utc = obs.publication_timestamp_utc.replace(tzinfo=datetime.timezone.utc)
+            obs.publication_timestamp_utc = obs.publication_timestamp_utc.replace(tzinfo=timezone.utc)
 
         cleaned.append(obs)
 
