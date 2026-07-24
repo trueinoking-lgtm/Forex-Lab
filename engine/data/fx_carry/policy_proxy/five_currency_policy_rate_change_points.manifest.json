@@ -1,0 +1,112 @@
+{
+  "manifest_version": "2.0.0",
+  "panel_type": "POLICY_RATE_CHANGE_POINTS",
+  "panel_name": "five_currency_policy_rate_change_points",
+  "description": "Sparse policy-rate change-point observations from BIS WS_CBPOL, not daily observations.",
+  "created_utc": "2026-07-24T17:00:49.865183+00:00",
+  "observation_date_range": {
+    "first": "2010-01-01",
+    "last": "2025-12-11"
+  },
+  "bis_dataset_identifier": "BIS,WS_CBPOL,1.0",
+  "bis_bulk_download_url": "https://data.bis.org/static/bulk/WS_CBPOL_csv_flat.zip",
+  "parser_version": "bis-ws-cbpol-policy-proxy/2.0.0",
+  "parser_notes": "Sparse change-point extraction from BIS daily policy rates. Only rows where rate changed are preserved; no forward-fill.",
+  "methodology_notes": "BIS central bank policy rates (WS_CBPOL). Sparse output: only policy-change observations retained, plus the latest release endpoint. No dates or values forward-filled. Rows beyond latest verifiable BIS date (2026-07-21) quarantined.",
+  "frequency": "sparse-change-point",
+  "source_unit": "Per cent per year",
+  "currencies": [
+    "AUD",
+    "EUR",
+    "GBP",
+    "JPY",
+    "USD"
+  ],
+  "coverage": {
+    "AUD": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2025-08-13",
+      "row_count": 39
+    },
+    "EUR": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2025-06-11",
+      "row_count": 29
+    },
+    "GBP": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2025-08-07",
+      "row_count": 25
+    },
+    "JPY": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2025-01-24",
+      "row_count": 6
+    },
+    "USD": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2025-12-11",
+      "row_count": 32
+    }
+  },
+  "row_count": 131,
+  "columns": [
+    "observation_date",
+    "currency",
+    "policy_rate_percent",
+    "policy_rate_name",
+    "policy_rate_type",
+    "source_country",
+    "source_institution",
+    "source_series_id",
+    "source_frequency",
+    "publication_timestamp_utc",
+    "publication_timestamp_method",
+    "data_available_timestamp_utc",
+    "methodology_regime",
+    "observation_status",
+    "acquisition_id",
+    "acquisition_timestamp_utc",
+    "source_file_sha256",
+    "parser_version",
+    "quality_status",
+    "panel_type",
+    "source_row_identifier"
+  ],
+  "columns_count": 21,
+  "raw_response": {
+    "url": "https://data.bis.org/static/bulk/WS_CBPOL_csv_flat.zip",
+    "method": "GET",
+    "request_timestamp_utc": "2026-07-24T16:00:00+00:00",
+    "http_status": 200,
+    "content_type": "application/zip",
+    "response_size_bytes": 4092186
+  },
+  "raw_artifact": {
+    "path": "engine/data/fx_carry/policy_proxy/quarantine/unverified_20260724T165924Z/WS_CBPOL_csv_flat.zip",
+    "sha256": "254264f651457147ae7f546f6763fa2f3ae149f68327f94ef8da04a49c928527",
+    "stored": true
+  },
+  "panel_sha256": "7e4a868314994ead9296f31e945d4cc8af01b83651b6cbc223d3b49efd0a0e34",
+  "raw_sha256": "254264f651457147ae7f546f6763fa2f3ae149f68327f94ef8da04a49c928527",
+  "source_file_sha256": "254264f651457147ae7f546f6763fa2f3ae149f68327f94ef8da04a49c928527",
+  "acquisition_id": "bis-cbpol-20260724-repaired",
+  "acquisition_timestamp_utc": "2026-07-24T17:00:49.865249+00:00",
+  "publication_timestamp_method": "CONSERVATIVE_RELEASE_RULE_DERIVED",
+  "quarantined_rows": {
+    "count": 5,
+    "dates": [
+      "2026-07-23"
+    ],
+    "reason": "observation_date exceeds latest verifiable BIS daily release (2026-07-21); values are forward-filled duplicates of prior day",
+    "quarantine_path": "engine/data/fx_carry/policy_proxy/quarantine/unverified_20260724T165924Z/"
+  },
+  "duplicate_count": 0,
+  "lookahead_violations": 0,
+  "malformed_date_count": 0,
+  "invalid_numeric_count": 0,
+  "lookahead_rows_removed": 5,
+  "mirror_substitution": false,
+  "observation_status": "A (normal value)",
+  "manifest_sha256": "a12fce7998e571904ddf3678318214803dc4483d2448b8cc0cc7b4e663fdb704"
+}
