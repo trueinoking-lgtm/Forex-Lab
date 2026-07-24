@@ -1,5 +1,5 @@
 {
-  "acquisition_index_version": "1.3.0",
+  "acquisition_index_version": "1.4.0",
   "generated_utc": "2026-07-24T00:00:00+00:00",
   "target_period": "2010-01-01 through 2026-07-23",
   "entries": [
@@ -134,7 +134,7 @@
       "acquisition_timestamp_utc": null,
       "parser_version": null,
       "registry_hash": null,
-      "failure_reason": "DNS resolution failure: stat-search.boj.or.jp unreachable from VPS"
+      "failure_reason": "DNS resolution failure: stat-search.boj.or.jp unreachable; TONA CSV at boj.or.jp returns HTTP 404; actual download URL requires navigating from HTML page via JavaScript"
     },
     {
       "acquisition_id": "pending-rba-aonia",
@@ -153,7 +153,7 @@
       "acquisition_timestamp_utc": null,
       "parser_version": null,
       "registry_hash": null,
-      "failure_reason": "HTTP 404 on CSV download URLs (f1.csv, f1-1.csv); RBA interest rates page returns HTML only (200 OK); actual data download requires navigating from HTML page which needs JavaScript rendering; republication/licensing conditions may apply"
+      "failure_reason": "HTTP 404 on CSV download URLs (f1.csv, f1-1.csv); RBA interest rates page returns HTML only; actual data download requires navigating from HTML page which needs JavaScript rendering; republication/licensing conditions may apply"
     }
   ]
 }
