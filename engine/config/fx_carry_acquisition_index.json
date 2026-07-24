@@ -1,5 +1,5 @@
 {
-  "acquisition_index_version": "1.0.0",
+  "acquisition_index_version": "1.1.0",
   "generated_utc": "2026-07-24T00:00:00+00:00",
   "target_period": "2010-01-01 through 2026-07-23",
   "entries": [
@@ -40,6 +40,25 @@
       "parser_version": "1.0.0",
       "registry_hash": null,
       "failure_reason": null
+    },
+    {
+      "acquisition_id": "pending-boe-sonia",
+      "currency": "GBP",
+      "benchmark": "Sterling Overnight Index Average (SONIA)",
+      "status": "blocked",
+      "source_institution": "Bank of England",
+      "source_identifier": "SONIA",
+      "requested_range": ["2010-01-01", "2026-07-23"],
+      "raw_artifact_path": null,
+      "raw_sha256": null,
+      "normalized_sha256": null,
+      "row_count": 0,
+      "first_observation": null,
+      "last_observation": null,
+      "acquisition_timestamp_utc": null,
+      "parser_version": null,
+      "registry_hash": null,
+      "failure_reason": "HTTP 404 on direct download URLs; data.bankofengland.co.uk DNS unreachable; BoE statistical data requires browser-based download with cookie/session acceptance that urllib cannot handle"
     },
     {
       "acquisition_id": "pending-ecb-eonia",
@@ -96,26 +115,7 @@
       "acquisition_timestamp_utc": null,
       "parser_version": null,
       "registry_hash": null,
-      "failure_reason": "HTTP 200 but content type text/html; BoE returns dashboard page not machine-readable data"
-    },
-    {
-      "acquisition_id": "pending-boe-sonia-reformed",
-      "currency": "GBP",
-      "benchmark": "SONIA (reformed, April 2018 onward)",
-      "status": "blocked",
-      "source_institution": "Bank of England",
-      "source_identifier": "SONIA_reformed",
-      "requested_range": ["2018-04-02", "2026-07-23"],
-      "raw_artifact_path": null,
-      "raw_sha256": null,
-      "normalized_sha256": null,
-      "row_count": 0,
-      "first_observation": null,
-      "last_observation": null,
-      "acquisition_timestamp_utc": null,
-      "parser_version": null,
-      "registry_hash": null,
-      "failure_reason": "HTTP 200 but content type text/html; BoE returns dashboard page not machine-readable data"
+      "failure_reason": "HTTP 404 / DNS unreachable; BoE data.bankofengland.co.uk not resolvable; direct download URLs return 404"
     },
     {
       "acquisition_id": "pending-boj-tona",
