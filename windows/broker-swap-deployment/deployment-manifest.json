@@ -1,0 +1,58 @@
+{
+  "package_version": "1.0.0",
+  "generated_utc": "2026-07-24T17:00:00Z",
+  "target_machine": "C:\\aether-remote-mt5-bridge",
+  "port": 8787,
+  "commit_hash": "a7e2ac3cbd522c77f3283499500bc009a04bea4c",
+  "files": {
+    "remote-mt5-bridge/server.py": {
+      "sha256": "cb420a383d6cd2a6c42af214561ff3b7ddf365c17058929e18871627fa18bd5e",
+      "lines_added": 99,
+      "description": "Added /symbols/swaps read-only endpoint"
+    },
+    "engine/tradingbridge_collector/swap_collector.py": {
+      "sha256": "22f2eb4c0417c06768a9689ea57c23ffad12238c80d848256f039a2abb0c26b9",
+      "lines_added": 140,
+      "description": "New swap collector"
+    },
+    "engine/tests/test_fx_carry_broker_swaps.py": {
+      "sha256": "a679aa3107a59ccb32884b302b5731f0ce36121c3ab466eec97db1c6d10b277",
+      "lines_added": 180,
+      "description": "New test suite for swap collector"
+    }
+  },
+  "endpoint_diff": {
+    "added_endpoint": "/symbols/swaps",
+    "method": "GET",
+    "auth": "Bearer token (existing _require_auth)",
+    "port": 8787,
+    "symbol_whitelist": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"],
+    "calls_only": [
+      "mt5.initialize()",
+      "mt5.symbol_select()",
+      "mt5.symbol_info()",
+      "mt5.symbol_info_tick()",
+      "mt5.version()",
+      "mt5.terminal_info()",
+      "mt5.account_info()"
+    ],
+    "never_calls": [
+      "mt5.order_send()",
+      "mt5.order_check()",
+      "any trade modification function"
+    ],
+    "orders_called": "always False"
+  },
+  "install_command": "powershell -ExecutionPolicy Bypass -File deploy-broker-swap-collector.ps1",
+  "dry_run_command": "powershell -ExecutionPolicy Bypass -File deploy-broker-swap-collector.ps1 -DryRun",
+  "rollback_procedure": [
+    "Copy backup server.py.bak to server.py",
+    "Restart MT5 bridge service",
+    "Verify health endpoint returns 200",
+    "Confirm /symbols/swaps endpoint is removed"
+  ],
+  "health_check_commands": [
+    "curl http://127.0.0.1:8787/version",
+    "curl http://127.0.0.1:8787/symbols/swaps?symbols=EURUSD -H 'Authorization: Bearer <token>'"
+  ]
+}

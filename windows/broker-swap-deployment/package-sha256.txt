@@ -1,0 +1,5 @@
+e900a7220a23eb91379bcb27d65189fcd9b4a1c83b782f9671f34308e6ef26dc  windows/broker-swap-deployment/deploy-broker-swap-collector.ps1
+7dbb53c4162e5bc2c9dcb8a14e2fc933fc6752343cb9c9febcb5e1eddc8e9dc7  windows/broker-swap-deployment/deployment-manifest.json
+6220930c789e27f9f84f5abd302d1557470f576206464419598b68f6c4e1aaed  windows/broker-swap-deployment/package-sha256.txt
+1c98a5afb1699f1033136337dfd09644be2580b2dae34fb8f89ec5080b1cfc84  windows/broker-swap-deployment/README.md
+72dd77625068e6bb9a40db83b9ce53a6c3ae6731e5584b67daa4cc62194d4ef5  windows/broker-swap-deployment/server.py.patch

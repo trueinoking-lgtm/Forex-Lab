@@ -1,0 +1,110 @@
+diff --git a/remote-mt5-bridge/server.py b/remote-mt5-bridge/server.py
+index 9b1f73e..4a11615 100644
+--- a/remote-mt5-bridge/server.py
++++ b/remote-mt5-bridge/server.py
+@@ -460,6 +460,105 @@ def symbol_info(symbol: str, _=Depends(_require_auth)):
+     }
+ 
+ 
++@app.get("/symbols/swaps")
++def symbols_swaps(symbols: str, _=Depends(_require_auth)):
++    """Read-only prospective swap data for whitelisted symbols.
++
++    Uses only: mt5.initialize(), mt5.symbol_select(), mt5.symbol_info(),
++    mt5.symbol_info_tick(), mt5.version(), mt5.terminal_info(), mt5.account_info().
++    Does NOT call mt5.order_send() or any trade modification function.
++    """
++    from starlette.responses import JSONResponse
++
++    mt5_lib = _mt5()
++    _ensure_demo_account(mt5_lib)
++
++    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
++    allowed = set(_symbol_map().keys())
++
++    invalid = [s for s in symbol_list if s not in allowed]
++    if invalid:
++        return JSONResponse(status_code=400, content={
++            "error": "unsupported symbols",
++            "invalid": invalid,
++            "allowed": sorted(allowed),
++        })
++
++    results = []
++    failures = []
++
++    for sym in symbol_list:
++        mapped = _symbol_map().get(sym, sym)
++
++        if not mt5_lib.symbol_select(mapped, True):
++            failures.append({"symbol": sym, "error": "symbol_select failed"})
++            continue
++
++        sinfo = mt5_lib.symbol_info(mapped)
++        if not sinfo:
++            failures.append({"symbol": sym, "error": "no symbol_info"})
++            continue
++
++        tick = mt5_lib.symbol_info_tick(mapped)
++
++        def _to_int(val):
++            if val is None:
++                return None
++            try:
++                return int(val)
++            except (TypeError, ValueError):
++                return val
++
++        ver = mt5_lib.version()
++        acct = mt5_lib.account_info()
++
++        login_str = str(getattr(acct, "login", "unknown")) if acct else "unknown"
++        login_hash = hashlib.sha256(login_str.encode()).hexdigest()[:16]
++
++        row = {
++            "captured_at_utc": datetime.now(timezone.utc).isoformat(),
++            "broker": getattr(acct, "name", None),
++            "broker_server": getattr(acct, "server", None) if acct else None,
++            "account_type": "demo",
++            "account_login_hash": login_hash,
++            "terminal_version": f"{ver[0]}.{ver[1]}" if ver else None,
++            "metatrader5_package_version": getattr(mt5_lib, "__version__", "unknown"),
++            "symbol": sym,
++            "swap_mode": _to_int(getattr(sinfo, "swap_mode", None)),
++            "swap_long": float(getattr(sinfo, "swap_long", 0) or 0),
++            "swap_short": float(getattr(sinfo, "swap_short", 0) or 0),
++            "swap_rollover3days": _to_int(getattr(sinfo, "swap_rollover3days", None)),
++            "currency_base": getattr(sinfo, "currency_base", None),
++            "currency_profit": getattr(sinfo, "currency_profit", None),
++            "currency_margin": getattr(sinfo, "currency_margin", None),
++            "trade_contract_size": float(sinfo.trade_contract_size) if sinfo else None,
++            "point": float(sinfo.point) if sinfo else None,
++            "digits": int(sinfo.digits) if sinfo else None,
++            "volume_min": float(sinfo.volume_min) if sinfo else None,
++            "volume_step": float(sinfo.volume_step) if sinfo else None,
++            "trade_tick_value": float(sinfo.trade_tick_value) if sinfo else None,
++            "bid": float(tick.bid) if tick else None,
++            "ask": float(tick.ask) if tick else None,
++            "quote_timestamp_raw": getattr(tick, "time_msc", None) if tick else None,
++            "quote_timestamp_interpretation": "UTC milliseconds from epoch" if tick else None,
++            "collection_status": "success",
++        }
++        results.append(row)
++
++    body_sha = hashlib.sha256(json.dumps(results, sort_keys=True).encode()).hexdigest()
++
++    return {
++        "endpoint": "/symbols/swaps",
++        "collection_status": "success" if not failures else "partial_failure",
++        "symbols_requested": symbol_list,
++        "symbols_returned": [r["symbol"] for r in results],
++        "failures": failures,
++        "response_sha256": body_sha,
++        "row_count": len(results),
++        "orders_called": False,
++    }
++
++
+ if __name__ == "__main__":
+     import uvicorn
+     port = int(os.environ.get("BRIDGE_PORT", "8787"))
