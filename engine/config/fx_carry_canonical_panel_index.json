@@ -1,17 +1,29 @@
 {
   "panel_index_version": "1.2.0",
-  "generated_utc": "2026-07-24T00:00:00+00:00",
+  "generated_utc": "2026-07-24T15:08:02.982054+00:00",
   "panel_path": "engine/data/fx_carry/canonical/currency_financing_rates_daily.csv",
-  "panel_sha256": "5f65320cd2e296c11268ae4f55c9114077e98b327abe37bc94d6787734ea3",
+  "panel_sha256": "4c90b20633f455a8fd2c5089d7dcacdeae5c2c8acec922fe5be65513ea3039b4",
   "manifest_path": "engine/data/fx_carry/canonical/currency_financing_rates_daily.manifest.json",
   "manifest_sha256": null,
-  "row_count": 6234,
-  "currencies_represented": ["USD"],
-  "benchmarks_represented": ["Federal Funds Effective Rate (EFFR)", "Secured Overnight Financing Rate (SOFR)"],
-  "missing_currencies": ["EUR", "GBP", "JPY", "AUD"],
+  "row_count": 7978,
+  "currencies_represented": [
+    "USD",
+    "EUR"
+  ],
+  "benchmarks_represented": [
+    "Federal Funds Effective Rate (EFFR)",
+    "Secured Overnight Financing Rate (SOFR)",
+    "euro_short-term_rate (\u20acSTR)"
+  ],
+  "missing_currencies": [
+    "GBP",
+    "JPY",
+    "AUD"
+  ],
   "acquisition_ids": {
     "USD_EFFR": "06a4d9aa65e449ba",
-    "USD_SOFR": "8db4d0bf0bea4b82"
+    "USD_SOFR": "8db4d0bf0bea4b82",
+    "EUR_ESTR": "pending-ecb-estr"
   },
   "blocked_acquisition_ids": {
     "EUR_ESTR": "pending-ecb-estr",
@@ -21,9 +33,9 @@
     "JPY_TONA": "pending-boj-tona",
     "AUD_AONIA": "pending-rba-aonia"
   },
-  "creation_commit": "a02796b",
+  "creation_commit": "81f0dbe",
   "publication_lookahead_violation_count": 0,
   "duplicate_canonical_keys": 0,
   "rebuild_deterministic": true,
-  "notes": "Panel is partial (USD only). All non-USD acquisitions blocked by infrastructure (DNS, 403, HTML-only, 404). Canonical schema has 20 columns per Phase 0 spec. Zero lookahead violations confirmed. Zero duplicate canonical keys confirmed."
+  "notes": "Panel expanded from USD-only to USD+EUR. GBP, JPY, AUD still blocked. Zero lookahead violations. Zero duplicate canonical keys."
 }

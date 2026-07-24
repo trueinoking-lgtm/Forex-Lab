@@ -1,6 +1,6 @@
 {
-  "acquisition_index_version": "1.4.0",
-  "generated_utc": "2026-07-24T00:00:00+00:00",
+  "acquisition_index_version": "2.0.0",
+  "generated_utc": "2026-07-24T15:08:02.981345+00:00",
   "target_period": "2010-01-01 through 2026-07-23",
   "entries": [
     {
@@ -10,7 +10,10 @@
       "status": "canonical",
       "source_institution": "Federal Reserve Bank of New York",
       "source_identifier": "EFFR",
-      "requested_range": ["2010-01-01", "2026-07-23"],
+      "requested_range": [
+        "2010-01-01",
+        "2026-07-23"
+      ],
       "raw_artifact_path": "engine/data/fx_carry/raw/new_york_fed/treasury_effective_rate/06a4d9aa65e449ba/raw_response.bin",
       "raw_sha256": "362e061e6920a54d5af9508aef5d0ea492fc09147721654c75abaad235eb53",
       "normalized_sha256": null,
@@ -29,7 +32,10 @@
       "status": "canonical",
       "source_institution": "Federal Reserve Bank of New York",
       "source_identifier": "SOFR",
-      "requested_range": ["2013-04-03", "2026-07-23"],
+      "requested_range": [
+        "2013-04-03",
+        "2026-07-23"
+      ],
       "raw_artifact_path": "engine/data/fx_carry/raw/new_york_fed/secured_overnight_financing_rate/8db4d0bf0bea4b82/raw_response.bin",
       "raw_sha256": "28c82272b02659137edd70d6604e47441b16583812d2adaee2015d057d3fcd3",
       "normalized_sha256": null,
@@ -44,21 +50,24 @@
     {
       "acquisition_id": "pending-ecb-estr",
       "currency": "EUR",
-      "benchmark": "euro_short-term_rate (€STR)",
-      "status": "blocked",
+      "benchmark": "euro_short-term_rate (\u20acSTR)",
+      "status": "canonical",
       "source_institution": "European Central Bank",
       "source_identifier": "ESTR",
-      "requested_range": ["2019-10-02", "2026-07-23"],
-      "raw_artifact_path": null,
-      "raw_sha256": null,
+      "requested_range": [
+        "2019-10-02",
+        "2026-07-23"
+      ],
+      "raw_artifact_path": "engine/data/fx_carry/raw/ecb/euro_short_term_rate/acq_estr_20260724/raw_response.bin",
+      "raw_sha256": "01741dc0af0b2fafbbabf9f8e5cfb6800c462e3a60d4f34c9c4c0358cf778b8a",
       "normalized_sha256": null,
-      "row_count": 0,
-      "first_observation": null,
-      "last_observation": null,
-      "acquisition_timestamp_utc": null,
-      "parser_version": null,
+      "row_count": 1744,
+      "first_observation": "2019-10-01",
+      "last_observation": "2026-07-23",
+      "acquisition_timestamp_utc": "2026-07-24T15:08:02.981363+00:00",
+      "parser_version": "1.0.0",
       "registry_hash": null,
-      "failure_reason": "DNS resolution failure: sdw-wsrest.ecb.europa.eu unreachable; ECB Data Portal returns HTTP 404 for ESTR query"
+      "failure_reason": null
     },
     {
       "acquisition_id": "pending-ecb-eonia",
@@ -67,7 +76,10 @@
       "status": "blocked",
       "source_institution": "European Central Bank",
       "source_identifier": "EONIA_original",
-      "requested_range": ["2010-01-01", "2019-09-30"],
+      "requested_range": [
+        "2010-01-01",
+        "2019-09-30"
+      ],
       "raw_artifact_path": null,
       "raw_sha256": null,
       "normalized_sha256": null,
@@ -82,11 +94,14 @@
     {
       "acquisition_id": "pending-ecb-eonia-recal",
       "currency": "EUR",
-      "benchmark": "EONIA recalibrated (€STR + 8.5bp)",
+      "benchmark": "EONIA recalibrated (\u20acSTR + 8.5bp)",
       "status": "blocked",
       "source_institution": "European Central Bank",
       "source_identifier": "EONIA_recalibrated",
-      "requested_range": ["2019-10-02", "2022-01-03"],
+      "requested_range": [
+        "2019-10-02",
+        "2022-01-03"
+      ],
       "raw_artifact_path": null,
       "raw_sha256": null,
       "normalized_sha256": null,
@@ -96,7 +111,7 @@
       "acquisition_timestamp_utc": null,
       "parser_version": null,
       "registry_hash": null,
-      "failure_reason": "DNS resolution failure: sdw-wsrest.ecb.europa.eu unreachable; cannot fetch base €STR for recalculation"
+      "failure_reason": "DNS resolution failure: sdw-wsrest.ecb.europa.eu unreachable; cannot fetch base \u20acSTR for recalculation"
     },
     {
       "acquisition_id": "pending-boe-sonia",
@@ -105,7 +120,10 @@
       "status": "blocked",
       "source_institution": "Bank of England",
       "source_identifier": "SONIA",
-      "requested_range": ["2010-01-01", "2026-07-23"],
+      "requested_range": [
+        "2010-01-01",
+        "2026-07-23"
+      ],
       "raw_artifact_path": null,
       "raw_sha256": null,
       "normalized_sha256": null,
@@ -124,7 +142,10 @@
       "status": "blocked",
       "source_institution": "Bank of Japan",
       "source_identifier": "TONA",
-      "requested_range": ["2010-01-01", "2026-07-23"],
+      "requested_range": [
+        "2010-01-01",
+        "2026-07-23"
+      ],
       "raw_artifact_path": null,
       "raw_sha256": null,
       "normalized_sha256": null,
@@ -143,7 +164,10 @@
       "status": "blocked",
       "source_institution": "Reserve Bank of Australia",
       "source_identifier": "AONIA",
-      "requested_range": ["2010-01-01", "2026-07-23"],
+      "requested_range": [
+        "2010-01-01",
+        "2026-07-23"
+      ],
       "raw_artifact_path": null,
       "raw_sha256": null,
       "normalized_sha256": null,
