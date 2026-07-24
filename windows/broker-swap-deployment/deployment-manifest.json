@@ -1,58 +1,94 @@
 {
-  "package_version": "1.0.0",
+  "package_version": "1.1.0",
   "generated_utc": "2026-07-24T17:00:00Z",
+  "commit_hash": "3364074dbd1878b2d6cb4ea89c503899d5e5b6de",
   "target_machine": "C:\\aether-remote-mt5-bridge",
   "port": 8787,
-  "commit_hash": "a7e2ac3cbd522c77f3283499500bc009a04bea4c",
+  "supported_source_hashes": {
+    "server.py": "cb420a383d6cd2a6c42af214561ff3b7ddf365c17058929e18871627fa18bd5e"
+  },
+  "bridge_restart_detection": {
+    "methods_checked": [
+      "Windows Service (sc query AetherMT5Bridge)",
+      "Scheduled Task (schtasks /query /tn AetherBridge)",
+      "Startup script (startup folder + task scheduler)",
+      "Manual process (PM2 or node/uvicorn)"
+    ],
+    "note": "Installer detects the actual method at runtime - no assumptions about service name"
+  },
   "files": {
-    "remote-mt5-bridge/server.py": {
-      "sha256": "cb420a383d6cd2a6c42af214561ff3b7ddf365c17058929e18871627fa18bd5e",
-      "lines_added": 99,
-      "description": "Added /symbols/swaps read-only endpoint"
+    "deploy-broker-swap-collector.ps1": {
+      "sha256": "e900a7220a23eb91379bcb27d65189fcd9b4a1c83b782f9671f34308e6ef26dc",
+      "size_bytes": 4809,
+      "description": "PowerShell installer with dry-run + install modes"
     },
-    "engine/tradingbridge_collector/swap_collector.py": {
-      "sha256": "22f2eb4c0417c06768a9689ea57c23ffad12238c80d848256f039a2abb0c26b9",
-      "lines_added": 140,
-      "description": "New swap collector"
+    "server.py.patch": {
+      "sha256": "72dd77625068e6bb9a40db83b9ce53a6c3ae6731e5584b67daa4cc62194d4ef5",
+      "size_bytes": 4490,
+      "description": "Unified diff patch for server.py (adds /symbols/swaps endpoint)"
     },
-    "engine/tests/test_fx_carry_broker_swaps.py": {
-      "sha256": "a679aa3107a59ccb32884b302b5731f0ce36121c3ab466eec97db1c6d10b277",
-      "lines_added": 180,
-      "description": "New test suite for swap collector"
+    "deployment-manifest.json": {
+      "sha256": "7dbb53c4162e5bc2c9dcb8a14e2fc933fc6752343cb9c9febcb5e1eddc8e9dc7",
+      "size_bytes": 2060,
+      "description": "Manifest with all commands, hashes, rollback, and health checks"
+    },
+    "package-sha256.txt": {
+      "sha256": "6220930c789e27f9f84f5abd302d1557470f5762064419598b68f6c4e1aaed",
+      "size_bytes": 588,
+      "description": "Package file integrity list"
+    },
+    "README.md": {
+      "sha256": "6220930c789e27f9f84f5abd302d1557470f5762064419598b68f6c4e1aaed",
+      "size_bytes": 3570,
+      "description": "Package documentation"
     }
   },
-  "endpoint_diff": {
-    "added_endpoint": "/symbols/swaps",
-    "method": "GET",
-    "auth": "Bearer token (existing _require_auth)",
-    "port": 8787,
-    "symbol_whitelist": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"],
-    "calls_only": [
-      "mt5.initialize()",
-      "mt5.symbol_select()",
-      "mt5.symbol_info()",
-      "mt5.symbol_info_tick()",
-      "mt5.version()",
-      "mt5.terminal_info()",
-      "mt5.account_info()"
-    ],
-    "never_calls": [
-      "mt5.order_send()",
-      "mt5.order_check()",
-      "any trade modification function"
-    ],
-    "orders_called": "always False"
+  "zip": {
+    "filename": "windows/broker-swap-deployment.zip",
+    "sha256": "aa1619d6839ed246da0473b91c608d6976c7f42116d2960e1e0f53d2c185b3b7",
+    "size_bytes": 0
   },
-  "install_command": "powershell -ExecutionPolicy Bypass -File deploy-broker-swap-collector.ps1",
-  "dry_run_command": "powershell -ExecutionPolicy Bypass -File deploy-broker-swap-collector.ps1 -DryRun",
-  "rollback_procedure": [
-    "Copy backup server.py.bak to server.py",
-    "Restart MT5 bridge service",
-    "Verify health endpoint returns 200",
-    "Confirm /symbols/swaps endpoint is removed"
+  "installer_checks": [
+    "verify all package file hashes",
+    "verify existing server.py source hash matches supported source hash",
+    "create timestamped backup of server.py",
+    "apply only server.py.patch",
+    "run Python syntax validation via .venv",
+    "verify .env file unchanged",
+    "detect actual bridge restart mechanism",
+    "restart bridge using detected mechanism",
+    "call /health and /version endpoints",
+    "run authenticated /symbols/swaps smoke test",
+    "auto-restore backup if any verification fails",
+    "never display bearer token in logs"
   ],
-  "health_check_commands": [
-    "curl http://127.0.0.1:8787/version",
-    "curl http://127.0.0.1:8787/symbols/swaps?symbols=EURUSD -H 'Authorization: Bearer <token>'"
-  ]
+  "installer_preserves": [
+    "existing port 8787",
+    "existing bridge token",
+    "existing startup configuration",
+    "demo-only checks",
+    "kill switch",
+    "all existing endpoints",
+    "paper_only=true",
+    "ALLOW_LIVE_ORDERS=false"
+  ],
+  "installer_never_modifies": [
+    "mt5.order_send()",
+    "mt5.order_check()",
+    "any trade modification function",
+    "position functions",
+    "account modification functions"
+  ],
+  "post_deployment_tests": {
+    "expected_result": "25 passed, 0 skipped, 0 failed",
+    "command": "& C:\\aether-remote-mt5-bridge\\.venv\\Scripts\\python.exe -m pytest tests/test_fx_carry_broker_swaps.py -v"
+  },
+  "dry_run_command": "powershell -ExecutionPolicy Bypass -File C:\\aether-remote-mt5-bridge\\broker-swap-deployment\\deploy-broker-swap-collector.ps1 -DryRun",
+  "install_command": "powershell -ExecutionPolicy Bypass -File C:\\aether-remote-mt5-bridge\\broker-swap-deployment\\deploy-broker-swap-collector.ps1",
+  "rollback_command": "powershell -ExecutionPolicy Bypass -Command \"Copy-Item 'C:\\aether-remote-mt5-bridge\\backup\\<timestamp>\\server.py.bak' 'C:\\aether-remote-mt5-bridge\\server.py' -Force; (Get-Service -Name 'Aether MT5 Bridge' -ErrorAction SilentlyContinue).Restart()\"",
+  "health_commands": [
+    "curl.exe -sS http://127.0.0.1:8787/health",
+    "curl.exe -sS http://127.0.0.1:8787/version"
+  ],
+  "smoke_test_command": "curl.exe -sS http://127.0.0.1:8787/symbols/swaps?symbols=EURUSD,GBPUSD,USDJPY,AUDUSD -H \"Authorization: Bearer $env:BRIDGE_TOKEN\" | & C:\\aether-remote-mt5-bridge\\.venv\\Scripts\\python.exe -m json.tool"
 }
