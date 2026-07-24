@@ -93,11 +93,12 @@ def test_raw_response_immutable_on_reacquire():
     """Saving the same acquisition_id after a successful first save raises ImmutableAcquisitionError."""
     import shutil
     from pathlib import Path
-    test_dir = Path("engine/data/fx_carry/raw/test_immutable_reacquire")
-    # Clean up any prior test state
-    if test_dir.exists():
-        shutil.rmtree(test_dir)
-    assert not test_dir.exists()
+    # save_raw normalizes source_identifier TEST_IMMUTABLE to test_immutable
+    test_base = RAW_BASE / "test_immutable"
+    # Clean up any prior test state from this source_identifier path
+    if test_base.exists():
+        shutil.rmtree(test_base)
+    assert not test_base.exists()
 
     manifest = AcquisitionManifest(
         acquisition_id="test-immutable-reacquire",
@@ -124,7 +125,7 @@ def test_raw_response_immutable_on_reacquire():
         save_raw(manifest.acquisition_id, b"newer content", manifest)
 
     # Cleanup
-    shutil.rmtree(test_dir, ignore_errors=True)
+    shutil.rmtree(RAW_BASE / "test_immutable", ignore_errors=True)
 
 
 def test_fred_is_excluded_from_canonical_adapters():
