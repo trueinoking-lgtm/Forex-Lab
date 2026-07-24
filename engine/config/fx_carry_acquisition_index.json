@@ -1,5 +1,5 @@
 {
-  "acquisition_index_version": "1.1.0",
+  "acquisition_index_version": "1.2.0",
   "generated_utc": "2026-07-24T00:00:00+00:00",
   "target_period": "2010-01-01 through 2026-07-23",
   "entries": [
@@ -42,13 +42,13 @@
       "failure_reason": null
     },
     {
-      "acquisition_id": "pending-boe-sonia",
-      "currency": "GBP",
-      "benchmark": "Sterling Overnight Index Average (SONIA)",
+      "acquisition_id": "pending-ecb-estr",
+      "currency": "EUR",
+      "benchmark": "euro_short-term_rate (€STR)",
       "status": "blocked",
-      "source_institution": "Bank of England",
-      "source_identifier": "SONIA",
-      "requested_range": ["2010-01-01", "2026-07-23"],
+      "source_institution": "European Central Bank",
+      "source_identifier": "ESTR",
+      "requested_range": ["2019-10-02", "2026-07-23"],
       "raw_artifact_path": null,
       "raw_sha256": null,
       "normalized_sha256": null,
@@ -58,7 +58,7 @@
       "acquisition_timestamp_utc": null,
       "parser_version": null,
       "registry_hash": null,
-      "failure_reason": "HTTP 404 on direct download URLs; data.bankofengland.co.uk DNS unreachable; BoE statistical data requires browser-based download with cookie/session acceptance that urllib cannot handle"
+      "failure_reason": "DNS resolution failure: sdw-wsrest.ecb.europa.eu unreachable; ECB Data Portal returns HTTP 404 for ESTR query"
     },
     {
       "acquisition_id": "pending-ecb-eonia",
@@ -77,16 +77,16 @@
       "acquisition_timestamp_utc": null,
       "parser_version": null,
       "registry_hash": null,
-      "failure_reason": "DNS resolution failure: sdw-wsrest.ecb.europa.eu unreachable from VPS"
+      "failure_reason": "DNS resolution failure: sdw-wsrest.ecb.europa.eu unreachable"
     },
     {
-      "acquisition_id": "pending-ecb-estr",
+      "acquisition_id": "pending-ecb-eonia-recal",
       "currency": "EUR",
-      "benchmark": "euro_short-term_rate (€STR)",
+      "benchmark": "EONIA recalibrated (€STR + 8.5bp)",
       "status": "blocked",
       "source_institution": "European Central Bank",
-      "source_identifier": "ESTR",
-      "requested_range": ["2019-10-02", "2026-07-23"],
+      "source_identifier": "EONIA_recalibrated",
+      "requested_range": ["2019-10-02", "2022-01-03"],
       "raw_artifact_path": null,
       "raw_sha256": null,
       "normalized_sha256": null,
@@ -96,16 +96,16 @@
       "acquisition_timestamp_utc": null,
       "parser_version": null,
       "registry_hash": null,
-      "failure_reason": "DNS resolution failure: sdw-wsrest.ecb.europa.eu unreachable from VPS"
+      "failure_reason": "DNS resolution failure: sdw-wsrest.ecb.europa.eu unreachable; cannot fetch base €STR for recalculation"
     },
     {
-      "acquisition_id": "pending-boe-sonia-pre",
+      "acquisition_id": "pending-boe-sonia",
       "currency": "GBP",
-      "benchmark": "SONIA (pre-reform, before April 2018)",
+      "benchmark": "Sterling Overnight Index Average (SONIA)",
       "status": "blocked",
       "source_institution": "Bank of England",
-      "source_identifier": "SONIA_pre_reform",
-      "requested_range": ["2010-01-01", "2018-03-31"],
+      "source_identifier": "SONIA",
+      "requested_range": ["2010-01-01", "2026-07-23"],
       "raw_artifact_path": null,
       "raw_sha256": null,
       "normalized_sha256": null,
@@ -115,7 +115,7 @@
       "acquisition_timestamp_utc": null,
       "parser_version": null,
       "registry_hash": null,
-      "failure_reason": "HTTP 404 / DNS unreachable; BoE data.bankofengland.co.uk not resolvable; direct download URLs return 404"
+      "failure_reason": "HTTP 404 on direct download URLs; data.bankofengland.co.uk DNS unreachable; BoE statistical data requires browser-based download with cookie/session acceptance"
     },
     {
       "acquisition_id": "pending-boj-tona",
