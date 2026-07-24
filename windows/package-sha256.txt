@@ -1,0 +1,2 @@
+e900a7220a23eb91379bcb27d65189fcd9b4a1c83b782f9671f34308e6ef26dc  windows/deploy-broker-swap-collector.ps1
+7dbb53c4162e5bc2c9dcb8a14e2fc933fc6752343cb9c9febcb5e1eddc8e9dc7  windows/deployment-manifest.json
