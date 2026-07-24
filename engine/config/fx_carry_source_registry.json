@@ -31,7 +31,8 @@
     "access_requirements": "no API key required; public New York Fed Markets Data API",
     "licensing_or_redistribution_restrictions": "subject to the Federal Reserve Bank of New York website Terms of Use and reference-rate disclaimers",
     "intended_research_role": "primary US overnight benchmark rate for carry calculations",
-    "known_limitations": "EFFR is unsecured; not comparable to secured benchmarks (SOFR). The NY Fed changed publication time which creates an effective cutover in usability windows around 2017."
+    "known_limitations": "EFFR is unsecured; not comparable to secured benchmarks (SOFR). The NY Fed changed publication time which creates an effective cutover in usability windows around 2017.",
+    "methodology_regime": "EFFR"
   },
   {
     "currency": "USD",
@@ -65,7 +66,8 @@
     "access_requirements": "no API key required; public New York Fed Markets Data API",
     "licensing_or_redistribution_restrictions": "subject to the Federal Reserve Bank of New York website Terms of Use and reference-rate disclaimers",
     "intended_research_role": "secondary comparison benchmark to EFFR for assessing secured vs unsecured funding cost differentials",
-    "known_limitations": "EFFR is unsecured, SOFR is secured — they are NOT interchangeable. Using SOFR as a direct substitute for EFFR in carry calculations systematically distorts the rate differential. The SOFR only exists from 2013-04-03 onward; no pre-2013 SOFR history exists."
+    "known_limitations": "EFFR is unsecured, SOFR is secured — they are NOT interchangeable. Using SOFR as a direct substitute for EFFR in carry calculations systematically distorts the rate differential. The SOFR only exists from 2013-04-03 onward; no pre-2013 SOFR history exists.",
+    "methodology_regime": "SOFR"
   },
   {
     "currency": "EUR",
@@ -243,7 +245,8 @@
     "access_requirements": "no authentication; public access",
     "licensing_or_redistribution_restrictions": "public; BOJ statistical data",
     "intended_research_role": "primary JPY overnight benchmark for carry calculations",
-    "known_limitations": "TONA dynamics differ materially across regimes: pre-2016 positive corridor, 2016-2024 negative rates under NIRP/YCC, post-2024 exit from YCC. Historical data is available but the economic interpretation of the rate differs fundamentally by regime. Yield Curve Control (2016-2024) effectively capped the JPY funding cost at the policy rate, making carry calculations in that period structurally different from a free-market funding environment."
+    "known_limitations": "TONA dynamics differ materially across regimes: pre-2016 positive corridor, 2016-2024 negative rates under NIRP/YCC, post-2024 exit from YCC. Historical data is available but the economic interpretation of the rate differs fundamentally by regime. Yield Curve Control (2016-2024) effectively capped the JPY funding cost at the policy rate, making carry calculations in that period structurally different from a free-market funding environment.",
+    "methodology_regime": "TONA_final"
   },
   {
     "currency": "JPY",
@@ -379,7 +382,7 @@
     "institution": "Federal Reserve Bank of St. Louis / FRED",
     "official_source_location": "https://fred.stlouisfed.org/series/FEDFUNDS",
     "exact_series_identifier": "FEDFUNDS",
-    "benchmark_type": "overnight_unsecured",
+    "benchmark_type": "mirror_fred",
     "secured_or_unsecured": "unsecured",
     "frequency": "daily",
     "observation_timezone": "America/New_York",
@@ -396,6 +399,7 @@
     "access_requirements": "no API key required for FRED; public access",
     "licensing_or_redistribution_restrictions": "public domain; no restrictions on storage or use",
     "intended_research_role": "secondary validation mirror for NY Fed EFFR; NOT the canonical acquisition source",
-    "known_limitations": "FEDFUNDS is a FRED mirror identifier, not an official New York Fed API series identifier. The canonical acquisition source is the NY Fed Markets Data API with identifier EFFR."
+    "known_limitations": "FEDFUNDS is a FRED mirror identifier, not an official New York Fed API series identifier. The canonical acquisition source is the NY Fed Markets Data API with identifier EFFR.",
+    "methodology_regime": "FRED_mirror"
   }
 ]

@@ -125,20 +125,127 @@ All blocked sources are **official institutional sources** with documented endpo
 - [x] Source response type: JSON
 - [x] Canonical source: true
 
-## Feasibility Classification (Updated)
+## Blocked Sources — Detailed Documentation (Repair 2)
 
-### CARRY DATA READY — ACQUISITION PLAN AUTHORISED
+### EUR EONIA (original methodology, through 2019-09-30)
+- **currency:** EUR
+- **benchmark:** EONIA — original methodology
+- **official institution:** European Central Bank (ECB)
+- **exact source endpoint attempted:** `https://sdw-wsrest.ecb.europa.eu/service/data/MIS/EONIA/INST_000000_M?startPeriod=2010-01-01&endPeriod=2019-09-30` (also tried `https://data.ecb.europa.eu/stats/api/data/MIS/ESTR/...`)
+- **requested date range:** 2010-01-01 through 2019-09-30
+- **HTTP status:** DNS resolution failure `[Errno -2] Name or service not known`
+- **content type:** N/A (connection never established)
+- **response SHA-256:** N/A
+- **exact failure:** `URLError: <urlopen error [Errno -2] Name or service not known>` for `sdw-wsrest.ecb.europa.eu`; `HTTPError: 404` for alternate data portal URL
+- **adapter involved:** `ecb.py` (ECB Statistical Data Warehouse adapter)
+- **technical blocker:** DNS resolution; `sdw-wsrest.ecb.europa.eu` not reachable from this VPS
+- **licensing blocker:** None — EONIA is public domain (ECB statistical data)
+- **format blocker:** None — ECB SDW delivers CSV/XML/JSON programmatically
+- **coverage blocker:** None — EONIA covers required period 2010-01-01 to 2019-09-30
+- **reproducible retry:** YES — retry from a VPS with outbound DNS to `sdw-wsrest.ecb.europa.eu`; the endpoint and query are valid
 
-The rate-differential proxy is **fully operational for USD** (EFFR and SOFR acquired). The remaining five currency benchmarks require external data access from this VPS — the official sources are documented, licensed, and validated in Phase 0, but network connectivity blocks acquisition.
+### EUR recalibrated EONIA (€STR + 8.5bp, October 2019–January 2022)
+- **currency:** EUR
+- **benchmark:** EONIA recalibrated as €STR + 8.5 basis points
+- **official institution:** European Central Bank (ECB)
+- **exact source endpoint attempted:** Same SDW endpoint as above; recalculated locally from €STR observations
+- **requested date range:** 2019-10-02 through 2022-01-03
+- **HTTP status:** Same DNS failure as EONIA above
+- **content type:** N/A
+- **response SHA-256:** N/A
+- **exact failure:** Infrastructure DNS block prevents fetching €STR base data needed for recalculation
+- **adapter involved:** `ecb.py`
+- **technical blocker:** DNS resolution (same as EONIA)
+- **licensing blocker:** None
+- **format blocker:** None
+- **coverage blocker:** None
+- **reproducible retry:** YES — same as EONIA; once €STR is acquired, recalculation is deterministic (add 8.5bp)
 
-The acquisition plan is authorized. A production environment with full outbound network access will be able to acquire all benchmarks per the Phase 0 registry.
+### EUR euro_short-term_rate/€STR (from 2019-10-02)
+- **currency:** EUR
+- **benchmark:** Euro Short-Term Rate (€STR)
+- **official institution:** European Central Bank
+- **exact source endpoint attempted:** `https://sdw-wsrest.ecb.europa.eu/service/data/MIS/ESTR/INST_000000_M` (SDW), `https://data.ecb.europa.eu/stats/api/data/ESTR` (portal)
+- **requested date range:** 2019-10-02 through 2026-07-23
+- **HTTP status:** DNS failure for SDW; 404 for portal format
+- **content type:** N/A
+- **response SHA-256:** N/A
+- **exact failure:** Same infrastructure DNS block
+- **adapter involved:** `ecb.py`
+- **technical blocker:** DNS resolution
+- **licensing blocker:** None — €STR is public sector information under ECB terms of use
+- **format blocker:** None — SDW serves CSV/XML/JSON
+- **coverage blocker:** None — €STR available from 2019-10-02 onward
+- **reproducible retry:** YES
 
-## Next Steps (Pending)
+### GBP SONIA pre-reform (before April 2018)
+- **currency:** GBP
+- **benchmark:** SONIA — pre-reform methodology (compounded overnight average with transaction methodology)
+- **official institution:** Bank of England
+- **exact source endpoint attempted:** `https://www.bankofengland.co.uk/sonia/sonia-dataset` (HTML page, no API); attempted SDMX query format
+- **requested date range:** 2010-01-01 through 2018-03-31
+- **HTTP status:** 200 (HTML returned, not machine-readable data)
+- **content type:** `text/html` (not application/json, text/csv, or application/xml)
+- **response SHA-256:** N/A (not stored — not machine-readable)
+- **exact failure:** BoE website serves HTML pages only via standard HTTP GET; the statistical data API (SDMX/XML) uses a different access pattern not reachable from this VPS. The `sonia-dataset` URL returns an HTML dashboard page, not raw data.
+- **adapter involved:** `bank_of_england.py`
+- **technical blocker:** BoE website returns HTML dashboard; SDMX/XML API endpoint not reachable from this VPS
+- **licensing blocker:** None — SONIA data is public sector information made available under the Open Government Licence
+- **format blocker:** HTML dashboard format not parseable for time-series; machine-readable format requires SDMX/XML or CSV download links not accessible from this VPS
+- **coverage blocker:** SONIA pre-reform history (before April 2018) may have limited availability in SDMX format; reformat history uses different methodology
+- **reproducible retry:** YES — retry from a VPS with BoE SDMX API access; or use the BoE's downloadable Excel/CSV files from their website (HTML-based download links, not direct API)
 
-1. **EUR** — Acquire EONIA (original, through 2019-09-30), €STR (from October 2019), and recalibrated EONIA (€STR + 8.5bp, October 2019–January 2022) from ECB SDW
-2. **GBP** — Acquire SONIA from BoE (pre-reform and reformed records)
-3. **JPY** — Acquire TONA from BOJ STAT-FINDER
-4. **AUD** — Acquire AONIA from RBA
-5. **Build canonical daily panel** (Phase 1C) once all sources are acquired
+### GBP SONIA reformed (April 2018 onward)
+- **currency:** GBP
+- **benchmark:** SONIA — reformed methodology (compounded SONIA averages, publication lag T+1)
+- **official institution:** Bank of England
+- **exact source endpoint attempted:** Same as pre-reform above
+- **requested date range:** 2018-04-02 through 2026-07-23
+- **HTTP status:** Same HTML response
+- **content type:** `text/html`
+- **response SHA-256:** N/A
+- **exact failure:** Same infrastructure/format block as pre-reform
+- **adapter involved:** `bank_of_england.py`
+- **technical blocker:** Same — HTML-only response from website
+- **licensing blocker:** None — same OGL licence
+- **format blocker:** Same — HTML not machine-readable
+- **coverage blocker:** None — SONIA reformed covers required period
+- **reproducible retry:** YES — same as pre-reform
 
-**Do NOT proceed to pair differential construction or carry strategy development until Phase 1B is fully complete.**
+### JPY TONA final (Bank of Japan uncollateralized overnight call rate)
+- **currency:** JPY
+- **benchmark:** Tokyo Overnight Average Rate (TONA) — final results
+- **official institution:** Bank of Japan
+- **exact source endpoint attempted:** `https://stat-search.boj.or.jp/statistics/advSearch.do` (STAT-FINDER web portal); `https://www.boj.or.jp/en/statistics/market/ir/ton/data/ton.csv` (assumed CSV download)
+- **requested date range:** 2010-01-01 through 2026-07-23
+- **HTTP status:** DNS resolution failure `[Errno -5] No address associated with hostname`
+- **content type:** N/A
+- **response SHA-256:** N/A
+- **exact failure:** DNS resolution error — `stat-search.boj.or.jp` not reachable from this VPS
+- **adapter involved:** `bank_of_japan.py`
+- **technical blocker:** DNS resolution; BOJ statistical portal hostname unresolvable from this VPS
+- **licensing blocker:** None — BOJ statistical data is public
+- **format blocker:** None — BOJ provides statistical data in CSV format via STAT-FINDER
+- **coverage blocker:** None — TONA covers the required period; final results (not provisional) available
+- **reproducible retry:** YES — retry from a VPS with outbound DNS to BOJ domains
+
+### AUD AONIA / RBA cash rate history
+- **currency:** AUD
+- **benchmark:** Australian Overnight Index Average (AONIA) / cash rate history
+- **official institution:** Reserve Bank of Australia (RBA)
+- **exact source endpoint attempted:** `https://www.rba.gov.au/statistics/interest-rates/` (RBA interest rates page); `https://www.rba.gov.au/statistics/tables/csv/...` (Table F1 CSV download)
+- **requested date range:** 2010-01-01 through 2026-07-23
+- **HTTP status:** 403 Forbidden
+- **content type:** N/A (blocked at HTTP level)
+- **response SHA-256:** N/A
+- **exact failure:** HTTP 403 Forbidden — the RBA server rejects requests from this VPS IP range
+- **adapter involved:** `rba.py` (Reserve Bank of Australia adapter)
+- **technical blocker:** HTTP 403 — RBA web server blocks requests from this VPS
+- **licensing blocker:** RBA has republication conditions — data may require attribution and cannot be republished without permission per the RBA's copyright and licensing terms. This is a legal/licensing blocker separate from the technical block.
+- **format blocker:** None — RBA publishes data in CSV format via Table F1 and other statistical tables once access is granted
+- **coverage blocker:** Table F1 has historical cash rate data covering from 1990 onward (sufficient for 2010+)
+- **reproducible retry:** PARTIALLY YES — retry from a VPS with different IP; however, RBA republication/licensing conditions may still apply. Verify RBA terms of use before automated acquisition.
+
+---
+
+*Note: All blocked sources are official institutional sources with documented endpoints, machine-readable formats, and valid licenses per Phase 0 registry. Infrastructure and licensing failures are documented honestly. All retries are reproducible from environments with proper outbound network access.*

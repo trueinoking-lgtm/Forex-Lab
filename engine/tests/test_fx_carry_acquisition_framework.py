@@ -2,10 +2,12 @@
 import json
 import pytest
 from pathlib import Path
-from engine.carry_data.acquisition import SourceAcquisitionError, save_raw, acquire_source, ImmutableAcquisitionError
+from engine.carry_data.acquisition import save_raw, ImmutableAcquisitionError
+from engine.carry_data.adapters.base import SourceAcquisitionError
 from engine.carry_data.models import SourceRecord
 from engine.carry_data.source_registry import load_registry, validate_registry, registry_hash
 from engine.carry_data.models import AcquisitionManifest
+from engine.carry_data.acquisition import RAW_BASE
 from datetime import date, datetime, timezone
 
 REGISTRY_PATH = "engine/config/fx_carry_source_registry.json"
@@ -39,15 +41,17 @@ def test_registry_missing_fields_raises():
 
 
 def test_acquisition_id_is_unique():
+    import uuid as _uuid
     records = load_registry()
     canonical = [r for r in records if r.benchmark_type not in ("policy_rate_weekly", "policy_rate_daily")]
     if not canonical:
         pytest.skip("No canonical sources in registry")
     source = canonical[0]
     # acquire_source will fail for stubs but should generate unique IDs
-    # We test by calling save_raw with a synthetic manifest
+    # We test by calling save_raw with a synthetic manifest using a unique ID
+    unique_id = "test-acq-" + _uuid.uuid4().hex[:8]
     manifest = AcquisitionManifest(
-        acquisition_id="test-acq-001",
+        acquisition_id=unique_id,
         source_uri=source.official_source_location,
         response_sha256="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         request_metadata={"start": "2010-01-01", "end": "2010-01-02"},
@@ -71,7 +75,7 @@ def test_acquisition_id_is_unique():
 
     # Verify the manifest JSON is valid
     loaded_manifest = json.loads(manifest_file.read_text())
-    assert loaded_manifest["acquisition_id"] == "test-acq-001"
+    assert loaded_manifest["acquisition_id"] == unique_id
 
 
 def test_no_secret_persistence():
@@ -93,6 +97,7 @@ def test_raw_response_immutable_on_reacquire():
     # Clean up any prior test state
     if test_dir.exists():
         shutil.rmtree(test_dir)
+    assert not test_dir.exists()
 
     manifest = AcquisitionManifest(
         acquisition_id="test-immutable-reacquire",

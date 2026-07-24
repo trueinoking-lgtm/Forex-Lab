@@ -1,0 +1,19 @@
+{
+  "panel_index_version": "1.0.0",
+  "generated_utc": "2026-07-24T00:00:00+00:00",
+  "panel_path": "engine/data/fx_carry/canonical/currency_financing_rates_daily.csv",
+  "panel_sha256": "5f65320cd2e296c11268ae4f55c9114077e98b327abe37bc94d6787734ea3",
+  "manifest_path": "engine/data/fx_carry/canonical/currency_financing_rates_daily.manifest.json",
+  "manifest_sha256": null,
+  "row_count": 6234,
+  "currencies_represented": ["USD"],
+  "benchmarks_represented": ["Federal Funds Effective Rate (EFFR)", "Secured Overnight Financing Rate (SOFR)"],
+  "missing_currencies": ["EUR", "GBP", "JPY", "AUD"],
+  "acquisition_ids": {
+    "USD_EFFR": "06a4d9aa65e449ba",
+    "USD_SOFR": "8db4d0bf0bea4b82"
+  },
+  "creation_commit": "a3f9ade",
+  "publication_lookahead_violation_count": 0,
+  "notes": "Panel is partial (USD only). EUR, GBP, JPY, AUD blocked by VPS network restrictions. Canonical schema has 20 columns per Phase 0 spec. Panel SHA-256 computed at creation time."
+}

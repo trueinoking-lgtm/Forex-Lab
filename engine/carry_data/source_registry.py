@@ -15,8 +15,10 @@ REQUIRED_FIELDS = [
     "publication_time", "publication_lag", "first_available_date",
     "latest_available_date", "revision_policy", "methodology_changes",
     "holiday_handling", "missing_value_policy", "machine_readable_format",
-    "access_requirements", "licensing_or_redistribution_restrictions",
+    "access_requirements",
+    "licensing_or_redistribution_restrictions",
     "intended_research_role", "known_limitations",
+    "methodology_regime",
 ]
 
 
@@ -47,12 +49,21 @@ def get_source_by_currency(currency: str, registry: List[SourceRecord] = None) -
 
 
 def validate_registry(source_registry: List[SourceRecord]) -> None:
+    # Fields required for all records
+    universal_required = [f for f in REQUIRED_FIELDS if f != "methodology_regime"]
+    # Records that must have methodology_regime (canonical daily benchmarks)
+    canonical_types = ("overnight_unsecured", "overnight_secured", "overnight_transaction")
     missing = []
     for i, rec in enumerate(source_registry):
-        for field in REQUIRED_FIELDS:
+        for field in universal_required:
             val = getattr(rec, field, None)
             if val is None or val == "":
                 missing.append((i + 1, rec.benchmark_name, field))
+        # methodology_regime required only for canonical benchmark types
+        if rec.benchmark_type in canonical_types:
+            val = getattr(rec, "methodology_regime", None)
+            if val is None or val == "":
+                missing.append((i + 1, rec.benchmark_name, "methodology_regime"))
     if missing:
         raise ValueError(f"Registry validation failed — missing fields: {missing}")
 
