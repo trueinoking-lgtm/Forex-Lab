@@ -1,5 +1,5 @@
 {
-  "panel_index_version": "1.0.0",
+  "panel_index_version": "1.2.0",
   "generated_utc": "2026-07-24T00:00:00+00:00",
   "panel_path": "engine/data/fx_carry/canonical/currency_financing_rates_daily.csv",
   "panel_sha256": "5f65320cd2e296c11268ae4f55c9114077e98b327abe37bc94d6787734ea3",
@@ -13,7 +13,17 @@
     "USD_EFFR": "06a4d9aa65e449ba",
     "USD_SOFR": "8db4d0bf0bea4b82"
   },
-  "creation_commit": "a3f9ade",
+  "blocked_acquisition_ids": {
+    "EUR_ESTR": "pending-ecb-estr",
+    "EUR_EONIA": "pending-ecb-eonia",
+    "EUR_EONIA_RECAL": "pending-ecb-eonia-recal",
+    "GBP_SONIA": "pending-boe-sonia",
+    "JPY_TONA": "pending-boj-tona",
+    "AUD_AONIA": "pending-rba-aonia"
+  },
+  "creation_commit": "a02796b",
   "publication_lookahead_violation_count": 0,
-  "notes": "Panel is partial (USD only). EUR, GBP, JPY, AUD blocked by VPS network restrictions. Canonical schema has 20 columns per Phase 0 spec. Panel SHA-256 computed at creation time."
+  "duplicate_canonical_keys": 0,
+  "rebuild_deterministic": true,
+  "notes": "Panel is partial (USD only). All non-USD acquisitions blocked by infrastructure (DNS, 403, HTML-only, 404). Canonical schema has 20 columns per Phase 0 spec. Zero lookahead violations confirmed. Zero duplicate canonical keys confirmed."
 }
