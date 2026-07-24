@@ -1,0 +1,35 @@
+{
+  "acquisition_index_version": "1.0.0",
+  "entries": [
+    {
+      "acquisition_id": "bis-cbpol-20260723-fe531783d34e",
+      "acquisition_timestamp_utc": "2026-07-24T16:00:00+00:00",
+      "method": "GET",
+      "mirror_substitution": false,
+      "panel_sha256": "9b8fa699f7cce528ead5f3641e9469dcc403c0422b119e40d352588a85604412",
+      "parser_version": "bis-ws-cbpol-policy-proxy/1.0.0",
+      "policy_rate_proxy": true,
+      "raw_sha256": "fe531783d34ebe8cfb663cd628e1d4b376d06ba32366f0c4bceabfbab29fb195",
+      "registry_hash": "ea55153a0999c24e3f5c3d8e6b6367bbe1e08f4577db8cbdfc6add81b95c9399",
+      "request_url": "https://data.bis.org/static/bulk/WS_CBPOL_csv_flat.zip",
+      "requested_range": [
+        "2010-01-01",
+        "2026-07-23"
+      ],
+      "row_count": 136,
+      "source_identifier": "BIS,WS_CBPOL,1.0",
+      "source_institution": "Bank for International Settlements",
+      "status": "complete"
+    }
+  ],
+  "generated_utc": "2026-07-24T16:00:00+00:00",
+  "panel_type": "POLICY_RATE_PROXY",
+  "target_currencies": [
+    "USD",
+    "EUR",
+    "GBP",
+    "JPY",
+    "AUD"
+  ],
+  "target_period": "2010-01-01 through 2026-07-23"
+}

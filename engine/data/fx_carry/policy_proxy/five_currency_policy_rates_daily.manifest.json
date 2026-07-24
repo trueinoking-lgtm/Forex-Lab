@@ -1,0 +1,115 @@
+{
+  "acquisition_id": "bis-cbpol-20260723-fe531783d34e",
+  "acquisition_timestamp_utc": "2026-07-24T16:00:00+00:00",
+  "bis_dataset_identifier": "BIS,WS_CBPOL,1.0",
+  "columns": [
+    "observation_date",
+    "currency",
+    "policy_rate_percent",
+    "policy_rate_name",
+    "policy_rate_type",
+    "source_country",
+    "source_institution",
+    "source_series_id",
+    "source_frequency",
+    "publication_timestamp_utc",
+    "publication_timestamp_method",
+    "data_available_timestamp_utc",
+    "methodology_regime",
+    "observation_status",
+    "acquisition_id",
+    "acquisition_timestamp_utc",
+    "source_file_sha256",
+    "parser_version",
+    "quality_status",
+    "panel_type"
+  ],
+  "coverage": {
+    "AUD": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2026-07-23",
+      "row_count": 40
+    },
+    "EUR": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2026-07-23",
+      "row_count": 30
+    },
+    "GBP": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2026-07-23",
+      "row_count": 26
+    },
+    "JPY": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2026-07-23",
+      "row_count": 7
+    },
+    "USD": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2026-07-23",
+      "row_count": 33
+    }
+  },
+  "currencies": [
+    "AUD",
+    "EUR",
+    "GBP",
+    "JPY",
+    "USD"
+  ],
+  "duplicate_count": 0,
+  "frequency": "D",
+  "http_headers": {
+    "content-disposition": "attachment; filename=WS_CBPOL_csv_flat.zip",
+    "content-type": "application/zip",
+    "last-modified": "Thu, 23 Jul 2026 00:00:00 GMT"
+  },
+  "invalid_numeric_count": 0,
+  "lookahead_violations": 0,
+  "malformed_date_count": 0,
+  "manifest_version": "1.0.0",
+  "methodology_breaks": [
+    {
+      "currency": "JPY",
+      "description": "Negative interest rate framework; BIS splice changes underlying policy instrument.",
+      "effective_date": "2016-02-16"
+    },
+    {
+      "currency": "JPY",
+      "description": "Negative-rate/YCC framework ended; short-term policy rate regime begins.",
+      "effective_date": "2024-03-19"
+    },
+    {
+      "currency": "EUR",
+      "description": "ECB operational framework changed the spread between the deposit facility and MRO rates.",
+      "effective_date": "2024-09-18"
+    }
+  ],
+  "methodology_notes": "BIS long, spliced main-policy-rate series. Sparse output retains only observed change points plus the latest release endpoint; no dates or values were forward-filled.",
+  "mirror_substitution": false,
+  "observation_status": "A (normal value)",
+  "panel_path": "engine/data/fx_carry/policy_proxy/five_currency_policy_rates_daily.csv",
+  "panel_sha256": "9b8fa699f7cce528ead5f3641e9469dcc403c0422b119e40d352588a85604412",
+  "panel_type": "POLICY_RATE_PROXY",
+  "parser_version": "bis-ws-cbpol-policy-proxy/1.0.0",
+  "policy_rate_proxy": true,
+  "raw_response": "BIS Data Portal bulk-download response metadata\nDataset: BIS,WS_CBPOL,1.0 (Central bank policy rates)\nResource: https://data.bis.org/static/bulk/WS_CBPOL_csv_flat.zip\nRelease date: 2026-07-23\nFrequency: Daily and monthly\nUnit: Per cent per year\nSeasonal adjustment: Non seasonally adjusted\nCollection indicator: End of period\nDaily data are reported directly to the BIS by member central banks.\n",
+  "raw_sha256": "fe531783d34ebe8cfb663cd628e1d4b376d06ba32366f0c4bceabfbab29fb195",
+  "raw_source_hashes": [
+    "fe531783d34ebe8cfb663cd628e1d4b376d06ba32366f0c4bceabfbab29fb195"
+  ],
+  "registry_hash": "ea55153a0999c24e3f5c3d8e6b6367bbe1e08f4577db8cbdfc6add81b95c9399",
+  "release_revision_metadata": {
+    "release_date": "2026-07-23",
+    "revision_policy": "Latest BIS bulk release; historical observations may be revised by BIS."
+  },
+  "request_metadata": {
+    "method": "GET",
+    "timestamp": "2026-07-24T16:00:00+00:00",
+    "url": "https://data.bis.org/static/bulk/WS_CBPOL_csv_flat.zip"
+  },
+  "row_count": 136,
+  "source_unit": "Per cent per year",
+  "transport_note": "BIS-owned bulk endpoint identified from the BIS Data Portal. No FRED or other statistical mirror was used."
+}
