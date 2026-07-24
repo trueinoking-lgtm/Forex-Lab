@@ -1,0 +1,51 @@
+{
+  "acquisition_ids": [
+    "bis-cbpol-20260723-fe531783d34e"
+  ],
+  "coverage": {
+    "AUD": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2026-07-23",
+      "row_count": 40
+    },
+    "EUR": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2026-07-23",
+      "row_count": 30
+    },
+    "GBP": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2026-07-23",
+      "row_count": 26
+    },
+    "JPY": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2026-07-23",
+      "row_count": 7
+    },
+    "USD": {
+      "first_observation": "2010-01-01",
+      "last_observation": "2026-07-23",
+      "row_count": 33
+    }
+  },
+  "currencies_represented": [
+    "USD",
+    "EUR",
+    "GBP",
+    "JPY",
+    "AUD"
+  ],
+  "duplicate_keys": 0,
+  "generated_utc": "2026-07-24T16:00:00+00:00",
+  "lookahead_violations": 0,
+  "manifest_path": "engine/data/fx_carry/policy_proxy/five_currency_policy_rates_daily.manifest.json",
+  "manifest_sha256": "cf9b829bc8c13244aab7c6d8d067f07acc8a7bbe09b2170e27f1fac9c028ca66",
+  "panel_index_version": "1.0.0",
+  "panel_path": "engine/data/fx_carry/policy_proxy/five_currency_policy_rates_daily.csv",
+  "panel_sha256": "9b8fa699f7cce528ead5f3641e9469dcc403c0422b119e40d352588a85604412",
+  "panel_type": "POLICY_RATE_PROXY",
+  "policy_rate_proxy": true,
+  "rebuild_deterministic": true,
+  "row_count": 136
+}

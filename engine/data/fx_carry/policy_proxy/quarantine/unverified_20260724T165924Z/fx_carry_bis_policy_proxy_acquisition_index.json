@@ -1,0 +1,28 @@
+{
+  "acquisition_index_version": "1.0.0",
+  "generated_utc": "2026-07-24T00:00:00+00:00",
+  "panel_type": "POLICY_RATE_PROXY",
+  "target_currencies": ["USD", "EUR", "GBP", "JPY", "AUD"],
+  "target_period": "2010-01-01 through latest",
+  "entries": [
+    {
+      "acquisition_id": "pending-bis-policy-rates",
+      "currency": "ALL",
+      "benchmark": "BIS Central Bank Policy Rates",
+      "status": "blocked",
+      "source_institution": "Bank for International Settlements",
+      "source_identifier": "BIS_CRE05",
+      "requested_range": ["2010-01-01", "2026-07-23"],
+      "raw_artifact_path": null,
+      "raw_sha256": null,
+      "normalized_sha256": null,
+      "row_count": 0,
+      "first_observation": null,
+      "last_observation": null,
+      "acquisition_timestamp_utc": null,
+      "parser_version": null,
+      "registry_hash": null,
+      "failure_reason": "BIS website migrated to Next.js SPA (JavaScript-rendered); direct CSV links return 404; BIS data-api.bis.org and api.bis.org DNS timeout/failure; SDMX endpoint returns HTML page not data; BIS bulk download URL changed or removed"
+    }
+  ]
+}
