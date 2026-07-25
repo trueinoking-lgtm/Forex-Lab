@@ -1,0 +1,6722 @@
+[
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00038399999999998434,
+    "baseline_normalized_close_mae": 0.3096774193548491,
+    "forecast_origin": 256,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00047999999999999156,
+    "baseline_normalized_close_mae": 0.32876712328766167,
+    "forecast_origin": 261,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0003900000000000237,
+    "baseline_normalized_close_mae": 0.28676470588236447,
+    "forecast_origin": 266,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0024319999999999897,
+    "baseline_normalized_close_mae": 0.3199999999999965,
+    "forecast_origin": 271,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007060000000000066,
+    "baseline_normalized_close_mae": 0.28816326530611774,
+    "forecast_origin": 276,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0008260000000000379,
+    "baseline_normalized_close_mae": 0.41717171717171675,
+    "forecast_origin": 281,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0016259999999999942,
+    "baseline_normalized_close_mae": 0.21913746630727737,
+    "forecast_origin": 286,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0008080000000000087,
+    "baseline_normalized_close_mae": 0.42751322751324405,
+    "forecast_origin": 291,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0014300000000000868,
+    "baseline_normalized_close_mae": 0.31637168141594285,
+    "forecast_origin": 296,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006240000000000024,
+    "baseline_normalized_close_mae": 0.27368421052630965,
+    "forecast_origin": 301,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0009579999999999699,
+    "baseline_normalized_close_mae": 0.5668639053254363,
+    "forecast_origin": 306,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00048200000000000467,
+    "baseline_normalized_close_mae": 0.24343434343433437,
+    "forecast_origin": 311,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0034320000000000127,
+    "baseline_normalized_close_mae": 0.4619111709286663,
+    "forecast_origin": 316,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0019220000000000237,
+    "baseline_normalized_close_mae": 0.45980861244018906,
+    "forecast_origin": 321,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0010440000000001338,
+    "baseline_normalized_close_mae": 0.4442553191489791,
+    "forecast_origin": 326,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0032200000000000006,
+    "baseline_normalized_close_mae": 0.6440000000000139,
+    "forecast_origin": 331,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005059999999999842,
+    "baseline_normalized_close_mae": 0.39224806201548756,
+    "forecast_origin": 336,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0029279999999999974,
+    "baseline_normalized_close_mae": 0.5975510204081744,
+    "forecast_origin": 341,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002980000000000027,
+    "baseline_normalized_close_mae": 0.6300211416490379,
+    "forecast_origin": 346,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.000706000000000051,
+    "baseline_normalized_close_mae": 0.39222222222224534,
+    "forecast_origin": 351,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00036399999999998657,
+    "baseline_normalized_close_mae": 0.20800000000000204,
+    "forecast_origin": 356,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006680000000000242,
+    "baseline_normalized_close_mae": 0.40981595092025513,
+    "forecast_origin": 361,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002028000000000052,
+    "baseline_normalized_close_mae": 0.41642710472279026,
+    "forecast_origin": 366,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005159999999999609,
+    "baseline_normalized_close_mae": 0.4526315789473664,
+    "forecast_origin": 371,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0002959999999999852,
+    "baseline_normalized_close_mae": 0.5103448275861594,
+    "forecast_origin": 376,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.004527999999999954,
+    "baseline_normalized_close_mae": 0.5645885286783044,
+    "forecast_origin": 381,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007299999999999862,
+    "baseline_normalized_close_mae": 0.43195266272189314,
+    "forecast_origin": 386,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0025020000000000485,
+    "baseline_normalized_close_mae": 0.5547671840354857,
+    "forecast_origin": 391,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0011559999999999793,
+    "baseline_normalized_close_mae": 0.26094808126410757,
+    "forecast_origin": 396,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006419999999999426,
+    "baseline_normalized_close_mae": 0.5135999999999651,
+    "forecast_origin": 401,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0011319999999999553,
+    "baseline_normalized_close_mae": 0.41771217712175623,
+    "forecast_origin": 406,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007520000000000415,
+    "baseline_normalized_close_mae": 0.2148571428571511,
+    "forecast_origin": 411,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0017640000000000988,
+    "baseline_normalized_close_mae": 0.45818181818182824,
+    "forecast_origin": 416,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0016679999999999584,
+    "baseline_normalized_close_mae": 0.5346153846153693,
+    "forecast_origin": 421,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0034080000000000334,
+    "baseline_normalized_close_mae": 0.6346368715083747,
+    "forecast_origin": 426,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00029799999999999824,
+    "baseline_normalized_close_mae": 0.2660714285714247,
+    "forecast_origin": 431,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002519999999999989,
+    "baseline_normalized_close_mae": 0.5675675675675651,
+    "forecast_origin": 436,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0013659999999999783,
+    "baseline_normalized_close_mae": 0.26836935166993475,
+    "forecast_origin": 441,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00029200000000000336,
+    "baseline_normalized_close_mae": 0.39459459459461893,
+    "forecast_origin": 446,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0011020000000000253,
+    "baseline_normalized_close_mae": 0.34223602484472826,
+    "forecast_origin": 451,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.001743999999999879,
+    "baseline_normalized_close_mae": 0.5284848484848345,
+    "forecast_origin": 456,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005420000000000869,
+    "baseline_normalized_close_mae": 0.30621468926557727,
+    "forecast_origin": 461,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0024319999999999455,
+    "baseline_normalized_close_mae": 0.2955042527338952,
+    "forecast_origin": 466,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007960000000000189,
+    "baseline_normalized_close_mae": 0.41458333333331215,
+    "forecast_origin": 471,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0011360000000001148,
+    "baseline_normalized_close_mae": 0.6721893491124179,
+    "forecast_origin": 476,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0021340000000000803,
+    "baseline_normalized_close_mae": 0.6506097560975515,
+    "forecast_origin": 481,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0013840000000000074,
+    "baseline_normalized_close_mae": 0.5513944223107572,
+    "forecast_origin": 486,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0011360000000000259,
+    "baseline_normalized_close_mae": 0.4254681647940251,
+    "forecast_origin": 491,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.014186923460950806,
+    "baseline_normalized_close_mae": 11.441067307219242,
+    "forecast_origin": 256,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013964627846951228,
+    "baseline_normalized_close_mae": 9.5648135938021,
+    "forecast_origin": 261,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.014137255509537061,
+    "baseline_normalized_close_mae": 10.395040815835861,
+    "forecast_origin": 266,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.012749940819286421,
+    "baseline_normalized_close_mae": 1.67762379201136,
+    "forecast_origin": 271,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.014594036131170185,
+    "baseline_normalized_close_mae": 5.956749441293799,
+    "forecast_origin": 276,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013173213962079044,
+    "baseline_normalized_close_mae": 6.6531383646860744,
+    "forecast_origin": 281,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013425110785769601,
+    "baseline_normalized_close_mae": 1.809314122071379,
+    "forecast_origin": 286,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.01313018909021757,
+    "baseline_normalized_close_mae": 6.9471899948243045,
+    "forecast_origin": 291,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.012423256075670474,
+    "baseline_normalized_close_mae": 2.7485079813429767,
+    "forecast_origin": 296,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.01392786783350819,
+    "baseline_normalized_close_mae": 6.108713962064836,
+    "forecast_origin": 301,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.01479733665332672,
+    "baseline_normalized_close_mae": 8.755820504927213,
+    "forecast_origin": 306,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013888830628073511,
+    "baseline_normalized_close_mae": 7.014560923269121,
+    "forecast_origin": 311,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.011476205730975986,
+    "baseline_normalized_close_mae": 1.5445768143978347,
+    "forecast_origin": 316,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.011854013084072301,
+    "baseline_normalized_close_mae": 2.835888297624903,
+    "forecast_origin": 321,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.012770732603972278,
+    "baseline_normalized_close_mae": 5.4343542995625,
+    "forecast_origin": 326,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.017073746196175764,
+    "baseline_normalized_close_mae": 3.4147492392352254,
+    "forecast_origin": 331,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.01333451294253889,
+    "baseline_normalized_close_mae": 10.336831738402134,
+    "forecast_origin": 336,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.010904180893952953,
+    "baseline_normalized_close_mae": 2.225343039582279,
+    "forecast_origin": 341,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.01685374311278256,
+    "baseline_normalized_close_mae": 3.563159220461336,
+    "forecast_origin": 346,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013190980991509038,
+    "baseline_normalized_close_mae": 7.32832277306048,
+    "forecast_origin": 351,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013790429281489302,
+    "baseline_normalized_close_mae": 7.8802453037085405,
+    "forecast_origin": 356,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013247684606661059,
+    "baseline_normalized_close_mae": 8.127413869117113,
+    "forecast_origin": 361,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.011834960461670808,
+    "baseline_normalized_close_mae": 2.430176686174628,
+    "forecast_origin": 366,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013347744654479054,
+    "baseline_normalized_close_mae": 11.70854794252632,
+    "forecast_origin": 371,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013571371546216548,
+    "baseline_normalized_close_mae": 23.398916458993043,
+    "forecast_origin": 376,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.010423393096621414,
+    "baseline_normalized_close_mae": 1.2996749497034317,
+    "forecast_origin": 381,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.014547771351103921,
+    "baseline_normalized_close_mae": 8.608148728464014,
+    "forecast_origin": 386,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.01127420913227426,
+    "baseline_normalized_close_mae": 2.4998246413024887,
+    "forecast_origin": 391,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.014036949182012658,
+    "baseline_normalized_close_mae": 3.168611553501776,
+    "forecast_origin": 396,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013149108795628361,
+    "baseline_normalized_close_mae": 10.519287036502913,
+    "forecast_origin": 401,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.01265538387978995,
+    "baseline_normalized_close_mae": 4.669883350476013,
+    "forecast_origin": 406,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.014312326144516874,
+    "baseline_normalized_close_mae": 4.089236041290467,
+    "forecast_origin": 411,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.011998877854536572,
+    "baseline_normalized_close_mae": 3.1165916505288735,
+    "forecast_origin": 416,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.012074880937930032,
+    "baseline_normalized_close_mae": 3.870154146772432,
+    "forecast_origin": 421,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.010294789080615586,
+    "baseline_normalized_close_mae": 1.9170929386620856,
+    "forecast_origin": 426,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013915783684677451,
+    "baseline_normalized_close_mae": 12.424806861319043,
+    "forecast_origin": 431,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.011197884792171564,
+    "baseline_normalized_close_mae": 2.5220461243629653,
+    "forecast_origin": 436,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013401377225221677,
+    "baseline_normalized_close_mae": 2.632883541300899,
+    "forecast_origin": 441,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013442260983827614,
+    "baseline_normalized_close_mae": 18.1652175457139,
+    "forecast_origin": 446,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.012888893271502954,
+    "baseline_normalized_close_mae": 4.002761885559923,
+    "forecast_origin": 451,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.015430811152150259,
+    "baseline_normalized_close_mae": 4.676003379439672,
+    "forecast_origin": 456,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.013142556597827015,
+    "baseline_normalized_close_mae": 7.425173219111101,
+    "forecast_origin": 461,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.012666048532544893,
+    "baseline_normalized_close_mae": 1.5390095422290346,
+    "forecast_origin": 466,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.01416845191915792,
+    "baseline_normalized_close_mae": 7.3794020412275305,
+    "forecast_origin": 471,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.01474203929291571,
+    "baseline_normalized_close_mae": 8.723100173321917,
+    "forecast_origin": 476,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.015770622812431866,
+    "baseline_normalized_close_mae": 4.808116711107025,
+    "forecast_origin": 481,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.015031111391240026,
+    "baseline_normalized_close_mae": 5.9884905941195035,
+    "forecast_origin": 486,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.014782131150230037,
+    "baseline_normalized_close_mae": 5.536378707951428,
+    "forecast_origin": 491,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0004389999999999894,
+    "baseline_normalized_close_mae": 0.3540322580645339,
+    "forecast_origin": 256,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007005000000000372,
+    "baseline_normalized_close_mae": 0.4797945205479652,
+    "forecast_origin": 261,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.000512500000000049,
+    "baseline_normalized_close_mae": 0.376838235294146,
+    "forecast_origin": 266,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.007016499999999537,
+    "baseline_normalized_close_mae": 0.9232236842104592,
+    "forecast_origin": 271,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007460000000000466,
+    "baseline_normalized_close_mae": 0.30448979591837855,
+    "forecast_origin": 276,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0016059999999998187,
+    "baseline_normalized_close_mae": 0.8111111111109816,
+    "forecast_origin": 281,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.007190999999999814,
+    "baseline_normalized_close_mae": 0.9691374663072548,
+    "forecast_origin": 286,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007960000000000634,
+    "baseline_normalized_close_mae": 0.4211640211640664,
+    "forecast_origin": 291,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.004820000000000313,
+    "baseline_normalized_close_mae": 1.0663716814159796,
+    "forecast_origin": 296,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.000939499999999871,
+    "baseline_normalized_close_mae": 0.41206140350870457,
+    "forecast_origin": 301,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002225499999999947,
+    "baseline_normalized_close_mae": 1.3168639053254365,
+    "forecast_origin": 306,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0008410000000000472,
+    "baseline_normalized_close_mae": 0.4247474747474787,
+    "forecast_origin": 311,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.009004500000000215,
+    "baseline_normalized_close_mae": 1.2119111709286887,
+    "forecast_origin": 316,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002611999999999881,
+    "baseline_normalized_close_mae": 0.6248803827750803,
+    "forecast_origin": 321,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0019815000000003914,
+    "baseline_normalized_close_mae": 0.8431914893618421,
+    "forecast_origin": 326,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.006969999999999921,
+    "baseline_normalized_close_mae": 1.394000000000014,
+    "forecast_origin": 331,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0014734999999999943,
+    "baseline_normalized_close_mae": 1.1422480620154876,
+    "forecast_origin": 336,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.005808000000000213,
+    "baseline_normalized_close_mae": 1.1853061224490462,
+    "forecast_origin": 341,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.005747499999999839,
+    "baseline_normalized_close_mae": 1.2151162790697017,
+    "forecast_origin": 346,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0019409999999997485,
+    "baseline_normalized_close_mae": 1.0783333333331793,
+    "forecast_origin": 351,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0003734999999999822,
+    "baseline_normalized_close_mae": 0.21342857142857122,
+    "forecast_origin": 356,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0017640000000001433,
+    "baseline_normalized_close_mae": 1.0822085889571296,
+    "forecast_origin": 361,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00253049999999968,
+    "baseline_normalized_close_mae": 0.5196098562627518,
+    "forecast_origin": 366,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.001243499999999731,
+    "baseline_normalized_close_mae": 1.0907894736840522,
+    "forecast_origin": 371,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006334999999998647,
+    "baseline_normalized_close_mae": 1.0922413793100647,
+    "forecast_origin": 376,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.010100500000000156,
+    "baseline_normalized_close_mae": 1.2594139650873144,
+    "forecast_origin": 381,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0019974999999999633,
+    "baseline_normalized_close_mae": 1.1819526627218933,
+    "forecast_origin": 386,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.005884499999999892,
+    "baseline_normalized_close_mae": 1.304767184035449,
+    "forecast_origin": 391,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0024930000000002116,
+    "baseline_normalized_close_mae": 0.5627539503386566,
+    "forecast_origin": 396,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.001391999999999749,
+    "baseline_normalized_close_mae": 1.113599999999823,
+    "forecast_origin": 401,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.003164500000000281,
+    "baseline_normalized_close_mae": 1.167712177121879,
+    "forecast_origin": 406,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0008955000000000713,
+    "baseline_normalized_close_mae": 0.25585714285715894,
+    "forecast_origin": 411,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.004456500000000085,
+    "baseline_normalized_close_mae": 1.1575324675324503,
+    "forecast_origin": 416,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.004007999999999967,
+    "baseline_normalized_close_mae": 1.2846153846153694,
+    "forecast_origin": 421,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.006640500000000227,
+    "baseline_normalized_close_mae": 1.2365921787709697,
+    "forecast_origin": 426,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007930000000000437,
+    "baseline_normalized_close_mae": 0.7080357142857471,
+    "forecast_origin": 431,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0056174999999999645,
+    "baseline_normalized_close_mae": 1.2652027027026949,
+    "forecast_origin": 436,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0026644999999997586,
+    "baseline_normalized_close_mae": 0.5234774066797129,
+    "forecast_origin": 441,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00036449999999974556,
+    "baseline_normalized_close_mae": 0.4925675675672484,
+    "forecast_origin": 446,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0024689999999998767,
+    "baseline_normalized_close_mae": 0.7667701863353653,
+    "forecast_origin": 451,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0024939999999994632,
+    "baseline_normalized_close_mae": 0.7557575757574455,
+    "forecast_origin": 456,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.001869500000000235,
+    "baseline_normalized_close_mae": 1.05621468926564,
+    "forecast_origin": 461,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.006362000000000112,
+    "baseline_normalized_close_mae": 0.7730255164034197,
+    "forecast_origin": 466,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007105000000000583,
+    "baseline_normalized_close_mae": 0.370052083333336,
+    "forecast_origin": 471,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0018259999999999722,
+    "baseline_normalized_close_mae": 1.0804733727809264,
+    "forecast_origin": 476,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.004594000000000209,
+    "baseline_normalized_close_mae": 1.4006097560975515,
+    "forecast_origin": 481,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0031989999999999076,
+    "baseline_normalized_close_mae": 1.2745019920318295,
+    "forecast_origin": 486,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.003138500000000155,
+    "baseline_normalized_close_mae": 1.1754681647940874,
+    "forecast_origin": 491,
+    "baseline": "drift"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00040079999999997895,
+    "baseline_normalized_close_mae": 0.32322580645161997,
+    "forecast_origin": 256,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00045039999999998417,
+    "baseline_normalized_close_mae": 0.3084931506849171,
+    "forecast_origin": 261,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00038480000000000735,
+    "baseline_normalized_close_mae": 0.28294117647058786,
+    "forecast_origin": 266,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002168800000000015,
+    "baseline_normalized_close_mae": 0.2853684210526316,
+    "forecast_origin": 271,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0008232000000000461,
+    "baseline_normalized_close_mae": 0.3360000000000102,
+    "forecast_origin": 276,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005471999999999699,
+    "baseline_normalized_close_mae": 0.2763636363636082,
+    "forecast_origin": 281,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002317599999999942,
+    "baseline_normalized_close_mae": 0.3123450134770819,
+    "forecast_origin": 286,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006527999999999867,
+    "baseline_normalized_close_mae": 0.345396825396828,
+    "forecast_origin": 291,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0012359999999999704,
+    "baseline_normalized_close_mae": 0.27345132743361694,
+    "forecast_origin": 296,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006440000000000445,
+    "baseline_normalized_close_mae": 0.2824561403508893,
+    "forecast_origin": 301,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005503999999999732,
+    "baseline_normalized_close_mae": 0.3256804733727711,
+    "forecast_origin": 306,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0004967999999999862,
+    "baseline_normalized_close_mae": 0.25090909090907215,
+    "forecast_origin": 311,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002229599999999987,
+    "baseline_normalized_close_mae": 0.3000807537012076,
+    "forecast_origin": 316,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.001169600000000015,
+    "baseline_normalized_close_mae": 0.2798086124401901,
+    "forecast_origin": 321,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006048000000000275,
+    "baseline_normalized_close_mae": 0.25736170212766313,
+    "forecast_origin": 326,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0015039999999999943,
+    "baseline_normalized_close_mae": 0.3008000000000053,
+    "forecast_origin": 331,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0003832000000000502,
+    "baseline_normalized_close_mae": 0.2970542635659273,
+    "forecast_origin": 336,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0012463999999999587,
+    "baseline_normalized_close_mae": 0.25436734693877205,
+    "forecast_origin": 341,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0013520000000000199,
+    "baseline_normalized_close_mae": 0.2858350951374175,
+    "forecast_origin": 346,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006671999999999567,
+    "baseline_normalized_close_mae": 0.3706666666666377,
+    "forecast_origin": 351,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00040640000000000673,
+    "baseline_normalized_close_mae": 0.23222857142858613,
+    "forecast_origin": 356,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005431999999999882,
+    "baseline_normalized_close_mae": 0.33325153374231986,
+    "forecast_origin": 361,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0015776000000000234,
+    "baseline_normalized_close_mae": 0.3239425051334649,
+    "forecast_origin": 366,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00043119999999996494,
+    "baseline_normalized_close_mae": 0.3782456140350839,
+    "forecast_origin": 371,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00018880000000001118,
+    "baseline_normalized_close_mae": 0.3255172413793156,
+    "forecast_origin": 376,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00270640000000002,
+    "baseline_normalized_close_mae": 0.3374563591022504,
+    "forecast_origin": 381,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00039200000000003674,
+    "baseline_normalized_close_mae": 0.23195266272191944,
+    "forecast_origin": 386,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0011056000000000399,
+    "baseline_normalized_close_mae": 0.2451441241685225,
+    "forecast_origin": 391,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0012016000000000028,
+    "baseline_normalized_close_mae": 0.271241534988718,
+    "forecast_origin": 396,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00044559999999993494,
+    "baseline_normalized_close_mae": 0.35647999999995555,
+    "forecast_origin": 401,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006311999999999874,
+    "baseline_normalized_close_mae": 0.2329151291512877,
+    "forecast_origin": 406,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0009671999999999681,
+    "baseline_normalized_close_mae": 0.2763428571428434,
+    "forecast_origin": 411,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.001564800000000055,
+    "baseline_normalized_close_mae": 0.4064415584415589,
+    "forecast_origin": 416,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007943999999999729,
+    "baseline_normalized_close_mae": 0.254615384615375,
+    "forecast_origin": 421,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0017384000000000288,
+    "baseline_normalized_close_mae": 0.3237243947858468,
+    "forecast_origin": 426,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00027760000000003336,
+    "baseline_normalized_close_mae": 0.24785714285717045,
+    "forecast_origin": 431,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0017679999999999473,
+    "baseline_normalized_close_mae": 0.39819819819818636,
+    "forecast_origin": 436,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0014263999999999833,
+    "baseline_normalized_close_mae": 0.2802357563850633,
+    "forecast_origin": 441,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00028239999999999375,
+    "baseline_normalized_close_mae": 0.3816216216216323,
+    "forecast_origin": 446,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0012568000000000358,
+    "baseline_normalized_close_mae": 0.3903105590062222,
+    "forecast_origin": 451,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.001228799999999941,
+    "baseline_normalized_close_mae": 0.37236363636363445,
+    "forecast_origin": 456,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0004911999999999584,
+    "baseline_normalized_close_mae": 0.27751412429375405,
+    "forecast_origin": 461,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0023104000000000015,
+    "baseline_normalized_close_mae": 0.2807290400972069,
+    "forecast_origin": 466,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006824000000000385,
+    "baseline_normalized_close_mae": 0.3554166666666601,
+    "forecast_origin": 471,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005408000000001412,
+    "baseline_normalized_close_mae": 0.3200000000000473,
+    "forecast_origin": 476,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0010392000000000845,
+    "baseline_normalized_close_mae": 0.3168292682926921,
+    "forecast_origin": 481,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0008647999999999989,
+    "baseline_normalized_close_mae": 0.3445418326693206,
+    "forecast_origin": 486,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0008551999999999893,
+    "baseline_normalized_close_mae": 0.32029962546816676,
+    "forecast_origin": 491,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0004689557128974897,
+    "baseline_normalized_close_mae": 0.3781900910463908,
+    "forecast_origin": 256,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00041623557056991167,
+    "baseline_normalized_close_mae": 0.2850928565547307,
+    "forecast_origin": 261,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0003486853728642103,
+    "baseline_normalized_close_mae": 0.25638630357661996,
+    "forecast_origin": 266,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.003423965477347357,
+    "baseline_normalized_close_mae": 0.4505217733351755,
+    "forecast_origin": 271,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007311113682056281,
+    "baseline_normalized_close_mae": 0.29841280334922826,
+    "forecast_origin": 276,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005675225960376284,
+    "baseline_normalized_close_mae": 0.28662757375636455,
+    "forecast_origin": 281,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.004359120397365324,
+    "baseline_normalized_close_mae": 0.5874825333376461,
+    "forecast_origin": 286,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007574646366483417,
+    "baseline_normalized_close_mae": 0.4007749400255888,
+    "forecast_origin": 291,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0023153487590047207,
+    "baseline_normalized_close_mae": 0.5122453006647522,
+    "forecast_origin": 296,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007230999120738435,
+    "baseline_normalized_close_mae": 0.3171490842429055,
+    "forecast_origin": 301,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005391304857542689,
+    "baseline_normalized_close_mae": 0.3190121217480939,
+    "forecast_origin": 306,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00068217548243803,
+    "baseline_normalized_close_mae": 0.34453307193838284,
+    "forecast_origin": 311,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0029676630724852606,
+    "baseline_normalized_close_mae": 0.39941629508549686,
+    "forecast_origin": 316,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0012917603159178005,
+    "baseline_normalized_close_mae": 0.3090335684013823,
+    "forecast_origin": 321,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006260834631661271,
+    "baseline_normalized_close_mae": 0.266418494964301,
+    "forecast_origin": 326,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0015922482093365885,
+    "baseline_normalized_close_mae": 0.3184496418673245,
+    "forecast_origin": 331,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005888477331977171,
+    "baseline_normalized_close_mae": 0.45647111100597754,
+    "forecast_origin": 336,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0012521481070130402,
+    "baseline_normalized_close_mae": 0.25554043000266624,
+    "forecast_origin": 341,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0012814690072552094,
+    "baseline_normalized_close_mae": 0.2709236801807983,
+    "forecast_origin": 346,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007860234264529975,
+    "baseline_normalized_close_mae": 0.43667968136277063,
+    "forecast_origin": 351,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00036739805945047445,
+    "baseline_normalized_close_mae": 0.20994174825742376,
+    "forecast_origin": 356,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0006655087540683891,
+    "baseline_normalized_close_mae": 0.4082875791830557,
+    "forecast_origin": 361,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0015273674549185045,
+    "baseline_normalized_close_mae": 0.3136278141516339,
+    "forecast_origin": 366,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.000482164355386816,
+    "baseline_normalized_close_mae": 0.4229511889358336,
+    "forecast_origin": 371,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00019170437214959256,
+    "baseline_normalized_close_mae": 0.3305247795682488,
+    "forecast_origin": 376,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002876770553421748,
+    "baseline_normalized_close_mae": 0.35869957025209204,
+    "forecast_origin": 381,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0007178659509154972,
+    "baseline_normalized_close_mae": 0.424772752021012,
+    "forecast_origin": 386,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.001488986255726843,
+    "baseline_normalized_close_mae": 0.3301521631323367,
+    "forecast_origin": 391,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002099833217640734,
+    "baseline_normalized_close_mae": 0.474002983666087,
+    "forecast_origin": 396,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00042827734328803045,
+    "baseline_normalized_close_mae": 0.34262187463043164,
+    "forecast_origin": 401,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0011797932651519184,
+    "baseline_normalized_close_mae": 0.43534806832174266,
+    "forecast_origin": 406,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0008231048482886915,
+    "baseline_normalized_close_mae": 0.23517281379676508,
+    "forecast_origin": 411,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0017700428010963166,
+    "baseline_normalized_close_mae": 0.4597513769081185,
+    "forecast_origin": 416,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0010758425347463518,
+    "baseline_normalized_close_mae": 0.34482132523921405,
+    "forecast_origin": 421,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0016478077447154682,
+    "baseline_normalized_close_mae": 0.30685432862484885,
+    "forecast_origin": 426,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.00048498758233450623,
+    "baseline_normalized_close_mae": 0.4330246270843767,
+    "forecast_origin": 431,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0015920096359026913,
+    "baseline_normalized_close_mae": 0.3585607288069125,
+    "forecast_origin": 436,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.002133671710861362,
+    "baseline_normalized_close_mae": 0.4191889412301269,
+    "forecast_origin": 441,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0002683997408487127,
+    "baseline_normalized_close_mae": 0.36270235249827854,
+    "forecast_origin": 446,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.001426329348368327,
+    "baseline_normalized_close_mae": 0.4429594249591077,
+    "forecast_origin": 451,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.001131454445421376,
+    "baseline_normalized_close_mae": 0.3428649834610377,
+    "forecast_origin": 456,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.000920977062026429,
+    "baseline_normalized_close_mae": 0.5203260237437307,
+    "forecast_origin": 461,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0034554655930398416,
+    "baseline_normalized_close_mae": 0.4198621619732513,
+    "forecast_origin": 466,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0008630707884061284,
+    "baseline_normalized_close_mae": 0.44951603562815823,
+    "forecast_origin": 471,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0005702900334737748,
+    "baseline_normalized_close_mae": 0.337449723948941,
+    "forecast_origin": 476,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0009125920886873473,
+    "baseline_normalized_close_mae": 0.27822929533149376,
+    "forecast_origin": 481,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0009804714702207561,
+    "baseline_normalized_close_mae": 0.3906260837532874,
+    "forecast_origin": 486,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "EURUSD",
+    "baseline_close_mae": 0.0011410520616410124,
+    "baseline_normalized_close_mae": 0.42736032271199764,
+    "forecast_origin": 491,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0009339999999999016,
+    "baseline_normalized_close_mae": 0.5188888888888914,
+    "forecast_origin": 256,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0016579999999999818,
+    "baseline_normalized_close_mae": 0.24063860667633769,
+    "forecast_origin": 261,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0022060000000000634,
+    "baseline_normalized_close_mae": 0.6144846796657208,
+    "forecast_origin": 266,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0024060000000000414,
+    "baseline_normalized_close_mae": 0.29814126394052476,
+    "forecast_origin": 271,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0005560000000001342,
+    "baseline_normalized_close_mae": 0.5852631578947374,
+    "forecast_origin": 276,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00043199999999998795,
+    "baseline_normalized_close_mae": 0.2170854271356793,
+    "forecast_origin": 281,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0014919999999999157,
+    "baseline_normalized_close_mae": 0.28914728682169855,
+    "forecast_origin": 286,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0016160000000000174,
+    "baseline_normalized_close_mae": 0.3338842975206525,
+    "forecast_origin": 291,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002125999999999939,
+    "baseline_normalized_close_mae": 0.664375000000008,
+    "forecast_origin": 296,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0009020000000000472,
+    "baseline_normalized_close_mae": 0.5973509933774663,
+    "forecast_origin": 301,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0007759999999999323,
+    "baseline_normalized_close_mae": 0.39390862944158456,
+    "forecast_origin": 306,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00031000000000003247,
+    "baseline_normalized_close_mae": 0.21678321678323306,
+    "forecast_origin": 311,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.005693999999999999,
+    "baseline_normalized_close_mae": 0.38973305954825427,
+    "forecast_origin": 316,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0014019999999999922,
+    "baseline_normalized_close_mae": 0.21569230769230816,
+    "forecast_origin": 321,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0012820000000000054,
+    "baseline_normalized_close_mae": 0.4856060606060671,
+    "forecast_origin": 326,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0015439999999999898,
+    "baseline_normalized_close_mae": 0.7458937198067525,
+    "forecast_origin": 331,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0009079999999999977,
+    "baseline_normalized_close_mae": 0.6439716312057127,
+    "forecast_origin": 336,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.005496000000000079,
+    "baseline_normalized_close_mae": 0.6288329519450753,
+    "forecast_origin": 341,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0009280000000000844,
+    "baseline_normalized_close_mae": 0.37269076305222726,
+    "forecast_origin": 346,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0007819999999999716,
+    "baseline_normalized_close_mae": 0.398979591836728,
+    "forecast_origin": 351,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.000882000000000005,
+    "baseline_normalized_close_mae": 0.4546391752577742,
+    "forecast_origin": 356,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0030759999999999898,
+    "baseline_normalized_close_mae": 0.6164328657314821,
+    "forecast_origin": 361,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.000882000000000005,
+    "baseline_normalized_close_mae": 0.24985835694050898,
+    "forecast_origin": 366,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0023060000000001413,
+    "baseline_normalized_close_mae": 0.397586206896559,
+    "forecast_origin": 371,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00020799999999998597,
+    "baseline_normalized_close_mae": 0.2971428571428698,
+    "forecast_origin": 376,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0030359999999999055,
+    "baseline_normalized_close_mae": 0.5373451327433525,
+    "forecast_origin": 381,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.007048000000000032,
+    "baseline_normalized_close_mae": 0.7083417085427078,
+    "forecast_origin": 386,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00106799999999998,
+    "baseline_normalized_close_mae": 0.30254957507081304,
+    "forecast_origin": 391,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0007499999999999396,
+    "baseline_normalized_close_mae": 0.4601226993864603,
+    "forecast_origin": 396,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001164000000000076,
+    "baseline_normalized_close_mae": 0.5705882352941433,
+    "forecast_origin": 401,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0006940000000000612,
+    "baseline_normalized_close_mae": 0.3112107623318724,
+    "forecast_origin": 406,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.004935999999999963,
+    "baseline_normalized_close_mae": 0.5490545050055543,
+    "forecast_origin": 411,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0019719999999999517,
+    "baseline_normalized_close_mae": 0.5539325842696482,
+    "forecast_origin": 416,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0015220000000001122,
+    "baseline_normalized_close_mae": 0.3984293193717408,
+    "forecast_origin": 421,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00031199999999995673,
+    "baseline_normalized_close_mae": 0.3505617977528252,
+    "forecast_origin": 426,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0010099999999999998,
+    "baseline_normalized_close_mae": 0.3279220779220809,
+    "forecast_origin": 431,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0011179999999999524,
+    "baseline_normalized_close_mae": 0.29038961038960487,
+    "forecast_origin": 436,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.005664000000000025,
+    "baseline_normalized_close_mae": 0.5030195381882772,
+    "forecast_origin": 441,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0004760000000000097,
+    "baseline_normalized_close_mae": 0.4533333333333446,
+    "forecast_origin": 446,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00053399999999999,
+    "baseline_normalized_close_mae": 0.27668393782383083,
+    "forecast_origin": 451,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0009860000000000203,
+    "baseline_normalized_close_mae": 0.2917159763313531,
+    "forecast_origin": 456,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0032860000000000333,
+    "baseline_normalized_close_mae": 0.535179153094465,
+    "forecast_origin": 461,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0019200000000000107,
+    "baseline_normalized_close_mae": 0.3886639676113426,
+    "forecast_origin": 466,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001699999999999946,
+    "baseline_normalized_close_mae": 0.41871921182265165,
+    "forecast_origin": 471,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008779999999999788,
+    "baseline_normalized_close_mae": 0.25449275362318574,
+    "forecast_origin": 476,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001704000000000061,
+    "baseline_normalized_close_mae": 0.49679300291546324,
+    "forecast_origin": 481,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0033459999999999822,
+    "baseline_normalized_close_mae": 0.4634349030470887,
+    "forecast_origin": 486,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002122000000000046,
+    "baseline_normalized_close_mae": 0.4049618320610672,
+    "forecast_origin": 491,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.016957215599796526,
+    "baseline_normalized_close_mae": 9.42067533322133,
+    "forecast_origin": 256,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01759626408488968,
+    "baseline_normalized_close_mae": 2.5538844825674194,
+    "forecast_origin": 261,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.013854072661777517,
+    "baseline_normalized_close_mae": 3.8590731648403143,
+    "forecast_origin": 266,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01472332883793639,
+    "baseline_normalized_close_mae": 1.8244521484431662,
+    "forecast_origin": 271,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.016609407022908806,
+    "baseline_normalized_close_mae": 17.4835863398998,
+    "forecast_origin": 276,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01562552711854459,
+    "baseline_normalized_close_mae": 7.85202367766085,
+    "forecast_origin": 281,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01449984788747254,
+    "baseline_normalized_close_mae": 2.810048040207948,
+    "forecast_origin": 286,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01693334032052256,
+    "baseline_normalized_close_mae": 3.49862403316569,
+    "forecast_origin": 291,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.018098733187774885,
+    "baseline_normalized_close_mae": 5.655854121179882,
+    "forecast_origin": 296,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01686914581401715,
+    "baseline_normalized_close_mae": 11.171619744381314,
+    "forecast_origin": 301,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.015210244608966805,
+    "baseline_normalized_close_mae": 7.720936349729236,
+    "forecast_origin": 306,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.015994679306743854,
+    "baseline_normalized_close_mae": 11.18509042429607,
+    "forecast_origin": 311,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.013870064969826323,
+    "baseline_normalized_close_mae": 0.9493542073803088,
+    "forecast_origin": 316,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.015425790435266328,
+    "baseline_normalized_close_mae": 2.37319852850253,
+    "forecast_origin": 321,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.014593689327772098,
+    "baseline_normalized_close_mae": 5.527912624156149,
+    "forecast_origin": 326,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.017438313906964577,
+    "baseline_normalized_close_mae": 8.42430623524852,
+    "forecast_origin": 331,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.016809371642237458,
+    "baseline_normalized_close_mae": 11.921540171800364,
+    "forecast_origin": 336,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.011191350305569437,
+    "baseline_normalized_close_mae": 1.280474863337436,
+    "forecast_origin": 341,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01648215226387073,
+    "baseline_normalized_close_mae": 6.619338258582348,
+    "forecast_origin": 346,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01502774117932506,
+    "baseline_normalized_close_mae": 7.6672148874108945,
+    "forecast_origin": 351,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.014900076311304434,
+    "baseline_normalized_close_mae": 7.6804517068586255,
+    "forecast_origin": 356,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01891718484421534,
+    "baseline_normalized_close_mae": 3.7910190068569123,
+    "forecast_origin": 361,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01604549944635658,
+    "baseline_normalized_close_mae": 4.54546726525678,
+    "forecast_origin": 366,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01822717251064221,
+    "baseline_normalized_close_mae": 3.1426159501105904,
+    "forecast_origin": 371,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01612001520957156,
+    "baseline_normalized_close_mae": 23.028593156533336,
+    "forecast_origin": 376,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.012849883834277653,
+    "baseline_normalized_close_mae": 2.2743157228810276,
+    "forecast_origin": 381,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.009406279665341088,
+    "baseline_normalized_close_mae": 0.9453547402352733,
+    "forecast_origin": 386,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01623926850526498,
+    "baseline_normalized_close_mae": 4.600359349933379,
+    "forecast_origin": 391,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.015074716795245236,
+    "baseline_normalized_close_mae": 9.248292512420274,
+    "forecast_origin": 396,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.014646503300598334,
+    "baseline_normalized_close_mae": 7.179658480685311,
+    "forecast_origin": 401,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.015111896167850646,
+    "baseline_normalized_close_mae": 6.776635052847962,
+    "forecast_origin": 406,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.020822668027085454,
+    "baseline_normalized_close_mae": 2.3162033400539856,
+    "forecast_origin": 411,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.013897905905812502,
+    "baseline_normalized_close_mae": 3.9039061533181103,
+    "forecast_origin": 416,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.014321635446740677,
+    "baseline_normalized_close_mae": 3.7491192268953113,
+    "forecast_origin": 421,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.015727281326619914,
+    "baseline_normalized_close_mae": 17.67110261418295,
+    "forecast_origin": 426,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01630737472563091,
+    "baseline_normalized_close_mae": 5.294602183646448,
+    "forecast_origin": 431,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.015147956703450172,
+    "baseline_normalized_close_mae": 3.9345342086884494,
+    "forecast_origin": 436,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.012552315694791493,
+    "baseline_normalized_close_mae": 1.114770487992135,
+    "forecast_origin": 441,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.016292580794861334,
+    "baseline_normalized_close_mae": 15.51674361415372,
+    "forecast_origin": 446,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01576920845744705,
+    "baseline_normalized_close_mae": 8.170574330283499,
+    "forecast_origin": 451,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.016065423493790653,
+    "baseline_normalized_close_mae": 4.753083873902334,
+    "forecast_origin": 456,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01286524073603026,
+    "baseline_normalized_close_mae": 2.0953160807866755,
+    "forecast_origin": 461,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.013966050668594932,
+    "baseline_normalized_close_mae": 2.8271357628734997,
+    "forecast_origin": 466,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.013954841028189646,
+    "baseline_normalized_close_mae": 3.4371529626083275,
+    "forecast_origin": 471,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.015742216448997138,
+    "baseline_normalized_close_mae": 4.56296128956445,
+    "forecast_origin": 476,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.013900554664369746,
+    "baseline_normalized_close_mae": 4.052639843839524,
+    "forecast_origin": 481,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.018962905701097467,
+    "baseline_normalized_close_mae": 2.626441232838983,
+    "forecast_origin": 486,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.017759980882815496,
+    "baseline_normalized_close_mae": 3.389309328781497,
+    "forecast_origin": 491,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0019389999999998241,
+    "baseline_normalized_close_mae": 1.0772222222222432,
+    "forecast_origin": 256,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.006388500000000308,
+    "baseline_normalized_close_mae": 0.9272133526850871,
+    "forecast_origin": 261,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0037660000000002912,
+    "baseline_normalized_close_mae": 1.0490250696379044,
+    "forecast_origin": 266,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.007791000000000103,
+    "baseline_normalized_close_mae": 0.9654275092936905,
+    "forecast_origin": 271,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001268500000000472,
+    "baseline_normalized_close_mae": 1.3352631578949126,
+    "forecast_origin": 276,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0004945000000002419,
+    "baseline_normalized_close_mae": 0.2484924623116873,
+    "forecast_origin": 281,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.005361999999999955,
+    "baseline_normalized_close_mae": 1.0391472868217306,
+    "forecast_origin": 286,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002127500000000193,
+    "baseline_normalized_close_mae": 0.4395661157025031,
+    "forecast_origin": 291,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.003813500000000003,
+    "baseline_normalized_close_mae": 1.1917187500000495,
+    "forecast_origin": 296,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002034500000000028,
+    "baseline_normalized_close_mae": 1.3473509933773928,
+    "forecast_origin": 301,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0007669999999998734,
+    "baseline_normalized_close_mae": 0.389340101522773,
+    "forecast_origin": 306,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.000311000000000039,
+    "baseline_normalized_close_mae": 0.21748251748253833,
+    "forecast_origin": 311,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.016651500000000173,
+    "baseline_normalized_close_mae": 1.1397330595482655,
+    "forecast_origin": 316,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0020485000000001197,
+    "baseline_normalized_close_mae": 0.315153846153867,
+    "forecast_origin": 321,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0020919999999999828,
+    "baseline_normalized_close_mae": 0.7924242424242431,
+    "forecast_origin": 326,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0030964999999998355,
+    "baseline_normalized_close_mae": 1.495893719806672,
+    "forecast_origin": 331,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0019654999999999313,
+    "baseline_normalized_close_mae": 1.3939716312057127,
+    "forecast_origin": 336,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.011001000000000172,
+    "baseline_normalized_close_mae": 1.258695652173905,
+    "forecast_origin": 341,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0011640000000005645,
+    "baseline_normalized_close_mae": 0.4674698795182796,
+    "forecast_origin": 346,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0022060000000000634,
+    "baseline_normalized_close_mae": 1.125510204081687,
+    "forecast_origin": 351,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0019320000000002224,
+    "baseline_normalized_close_mae": 0.9958762886599953,
+    "forecast_origin": 356,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.006803500000000096,
+    "baseline_normalized_close_mae": 1.3634268537074812,
+    "forecast_origin": 361,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008915000000000006,
+    "baseline_normalized_close_mae": 0.2525495750708193,
+    "forecast_origin": 366,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.006656000000000661,
+    "baseline_normalized_close_mae": 1.1475862068966165,
+    "forecast_origin": 371,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0003535000000000288,
+    "baseline_normalized_close_mae": 0.5050000000000968,
+    "forecast_origin": 376,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.006816000000000022,
+    "baseline_normalized_close_mae": 1.2063716814159473,
+    "forecast_origin": 381,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.01217800000000011,
+    "baseline_normalized_close_mae": 1.2239195979899455,
+    "forecast_origin": 386,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0014279999999999404,
+    "baseline_normalized_close_mae": 0.40453257790366204,
+    "forecast_origin": 391,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008850000000001579,
+    "baseline_normalized_close_mae": 0.5429447852761637,
+    "forecast_origin": 396,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002056500000000261,
+    "baseline_normalized_close_mae": 1.0080882352942249,
+    "forecast_origin": 401,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002366500000000027,
+    "baseline_normalized_close_mae": 1.0612107623318725,
+    "forecast_origin": 406,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.009938499999999762,
+    "baseline_normalized_close_mae": 1.1055061179087544,
+    "forecast_origin": 411,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.004627000000000025,
+    "baseline_normalized_close_mae": 1.2997191011235998,
+    "forecast_origin": 416,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.004387000000000229,
+    "baseline_normalized_close_mae": 1.1484293193717408,
+    "forecast_origin": 421,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0003795000000000659,
+    "baseline_normalized_close_mae": 0.42640449438217537,
+    "forecast_origin": 426,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00103749999999998,
+    "baseline_normalized_close_mae": 0.33685064935064596,
+    "forecast_origin": 431,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001289499999999988,
+    "baseline_normalized_close_mae": 0.3349350649350697,
+    "forecast_origin": 436,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.013120500000000136,
+    "baseline_normalized_close_mae": 1.1652309058614636,
+    "forecast_origin": 441,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0005585000000002171,
+    "baseline_normalized_close_mae": 0.531904761904971,
+    "forecast_origin": 446,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0007974999999997845,
+    "baseline_normalized_close_mae": 0.4132124352330517,
+    "forecast_origin": 451,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0011610000000000565,
+    "baseline_normalized_close_mae": 0.34349112426035544,
+    "forecast_origin": 456,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.007891000000000226,
+    "baseline_normalized_close_mae": 1.2851791530944923,
+    "forecast_origin": 461,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.005072999999999927,
+    "baseline_normalized_close_mae": 1.0269230769230737,
+    "forecast_origin": 466,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.004744999999999911,
+    "baseline_normalized_close_mae": 1.1687192118226517,
+    "forecast_origin": 471,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00134149999999984,
+    "baseline_normalized_close_mae": 0.38884057971010383,
+    "forecast_origin": 476,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.004254000000000114,
+    "baseline_normalized_close_mae": 1.2402332361516206,
+    "forecast_origin": 481,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.008761000000000152,
+    "baseline_normalized_close_mae": 1.2134349030471119,
+    "forecast_origin": 486,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.006052000000000479,
+    "baseline_normalized_close_mae": 1.1549618320611308,
+    "forecast_origin": 491,
+    "baseline": "drift"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0005392000000000064,
+    "baseline_normalized_close_mae": 0.2995555555555921,
+    "forecast_origin": 256,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002001600000000048,
+    "baseline_normalized_close_mae": 0.29050798258345856,
+    "forecast_origin": 261,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001103200000000104,
+    "baseline_normalized_close_mae": 0.30729805013928724,
+    "forecast_origin": 266,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0028392000000000196,
+    "baseline_normalized_close_mae": 0.35182156133829146,
+    "forecast_origin": 271,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00036079999999998335,
+    "baseline_normalized_close_mae": 0.37978947368410165,
+    "forecast_origin": 276,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0006112000000000339,
+    "baseline_normalized_close_mae": 0.3071356783919867,
+    "forecast_origin": 281,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001467199999999913,
+    "baseline_normalized_close_mae": 0.28434108527131025,
+    "forecast_origin": 286,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001435200000000103,
+    "baseline_normalized_close_mae": 0.2965289256198451,
+    "forecast_origin": 291,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008504000000000289,
+    "baseline_normalized_close_mae": 0.26575000000001986,
+    "forecast_origin": 296,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00047359999999998517,
+    "baseline_normalized_close_mae": 0.31364238410592504,
+    "forecast_origin": 301,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0006423999999999985,
+    "baseline_normalized_close_mae": 0.32609137055837034,
+    "forecast_origin": 306,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0003344000000001124,
+    "baseline_normalized_close_mae": 0.2338461538462255,
+    "forecast_origin": 311,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.004904799999999954,
+    "baseline_normalized_close_mae": 0.33571526351813485,
+    "forecast_origin": 316,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0014760000000000328,
+    "baseline_normalized_close_mae": 0.22707692307692987,
+    "forecast_origin": 321,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0005936000000000164,
+    "baseline_normalized_close_mae": 0.22484848484849312,
+    "forecast_origin": 326,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0006175999999999959,
+    "baseline_normalized_close_mae": 0.298357487922701,
+    "forecast_origin": 331,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00039839999999999873,
+    "baseline_normalized_close_mae": 0.2825531914893786,
+    "forecast_origin": 336,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002536800000000028,
+    "baseline_normalized_close_mae": 0.2902517162471364,
+    "forecast_origin": 341,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008087999999999874,
+    "baseline_normalized_close_mae": 0.3248192771084152,
+    "forecast_origin": 346,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008191999999999755,
+    "baseline_normalized_close_mae": 0.417959183673465,
+    "forecast_origin": 351,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0006303999999999644,
+    "baseline_normalized_close_mae": 0.3249484536082574,
+    "forecast_origin": 356,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0015567999999999138,
+    "baseline_normalized_close_mae": 0.31198396793586525,
+    "forecast_origin": 361,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0009240000000000137,
+    "baseline_normalized_close_mae": 0.2617563739376785,
+    "forecast_origin": 366,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0019112000000000684,
+    "baseline_normalized_close_mae": 0.32951724137930793,
+    "forecast_origin": 371,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0001952000000000176,
+    "baseline_normalized_close_mae": 0.2788571428571987,
+    "forecast_origin": 376,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0019127999999999812,
+    "baseline_normalized_close_mae": 0.3385486725663724,
+    "forecast_origin": 381,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002902400000000016,
+    "baseline_normalized_close_mae": 0.2916984924623095,
+    "forecast_origin": 386,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.000981600000000027,
+    "baseline_normalized_close_mae": 0.27807365439093984,
+    "forecast_origin": 391,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0005280000000000395,
+    "baseline_normalized_close_mae": 0.3239263803681184,
+    "forecast_origin": 396,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0004656000000002436,
+    "baseline_normalized_close_mae": 0.2282352941177618,
+    "forecast_origin": 401,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0006407999999999081,
+    "baseline_normalized_close_mae": 0.2873542600896508,
+    "forecast_origin": 406,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0030528000000000777,
+    "baseline_normalized_close_mae": 0.3395773081201401,
+    "forecast_origin": 411,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0015775999999999347,
+    "baseline_normalized_close_mae": 0.44314606741571105,
+    "forecast_origin": 416,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0010623999999999523,
+    "baseline_normalized_close_mae": 0.2781151832460494,
+    "forecast_origin": 421,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00033679999999991495,
+    "baseline_normalized_close_mae": 0.37842696629210926,
+    "forecast_origin": 426,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0010951999999999629,
+    "baseline_normalized_close_mae": 0.3555844155844068,
+    "forecast_origin": 431,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0010767999999999223,
+    "baseline_normalized_close_mae": 0.2796883116882981,
+    "forecast_origin": 436,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.004598400000000069,
+    "baseline_normalized_close_mae": 0.40838365896980905,
+    "forecast_origin": 441,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00033680000000000374,
+    "baseline_normalized_close_mae": 0.32076190476190974,
+    "forecast_origin": 446,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0005431999999999437,
+    "baseline_normalized_close_mae": 0.2814507772020452,
+    "forecast_origin": 451,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0010352000000000139,
+    "baseline_normalized_close_mae": 0.306272189349102,
+    "forecast_origin": 456,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001548800000000039,
+    "baseline_normalized_close_mae": 0.25224755700326223,
+    "forecast_origin": 461,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0018295999999999868,
+    "baseline_normalized_close_mae": 0.3703643724696371,
+    "forecast_origin": 466,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0010799999999999254,
+    "baseline_normalized_close_mae": 0.2660098522167335,
+    "forecast_origin": 471,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008567999999999464,
+    "baseline_normalized_close_mae": 0.24834782608694436,
+    "forecast_origin": 476,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00136879999999997,
+    "baseline_normalized_close_mae": 0.3990670553935721,
+    "forecast_origin": 481,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0023792000000000257,
+    "baseline_normalized_close_mae": 0.32952908587257956,
+    "forecast_origin": 486,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0016583999999999933,
+    "baseline_normalized_close_mae": 0.31648854961831124,
+    "forecast_origin": 491,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0005516885762619328,
+    "baseline_normalized_close_mae": 0.3064936534788853,
+    "forecast_origin": 256,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.003765312539528454,
+    "baseline_normalized_close_mae": 0.5464894832406995,
+    "forecast_origin": 261,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0010835434309779401,
+    "baseline_normalized_close_mae": 0.30182268272364304,
+    "forecast_origin": 266,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.003984885649497771,
+    "baseline_normalized_close_mae": 0.4937900433082727,
+    "forecast_origin": 271,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0003391276371471186,
+    "baseline_normalized_close_mae": 0.35697646015477585,
+    "forecast_origin": 276,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0004910939886158428,
+    "baseline_normalized_close_mae": 0.24678089880193896,
+    "forecast_origin": 281,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00275226340876471,
+    "baseline_normalized_close_mae": 0.5333843815435659,
+    "forecast_origin": 286,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001434909744396684,
+    "baseline_normalized_close_mae": 0.2964689554538495,
+    "forecast_origin": 291,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008253521526525809,
+    "baseline_normalized_close_mae": 0.257922547703942,
+    "forecast_origin": 296,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00048394856052778044,
+    "baseline_normalized_close_mae": 0.32049573544883525,
+    "forecast_origin": 301,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.000722398157146431,
+    "baseline_normalized_close_mae": 0.36669957215554366,
+    "forecast_origin": 306,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0003151115738813992,
+    "baseline_normalized_close_mae": 0.2203577439729999,
+    "forecast_origin": 311,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.006635417156431655,
+    "baseline_normalized_close_mae": 0.45416955211715604,
+    "forecast_origin": 316,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0021468608450182724,
+    "baseline_normalized_close_mae": 0.3302862838489675,
+    "forecast_origin": 321,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0006221141088331716,
+    "baseline_normalized_close_mae": 0.2356492836489308,
+    "forecast_origin": 326,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0005300906823802798,
+    "baseline_normalized_close_mae": 0.2560824552561718,
+    "forecast_origin": 331,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00039827663370708424,
+    "baseline_normalized_close_mae": 0.2824656976646165,
+    "forecast_origin": 336,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002340170319979862,
+    "baseline_normalized_close_mae": 0.26775404118762136,
+    "forecast_origin": 341,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008021246702763385,
+    "baseline_normalized_close_mae": 0.32213842179771296,
+    "forecast_origin": 346,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0009505675001670877,
+    "baseline_normalized_close_mae": 0.48498341845260523,
+    "forecast_origin": 351,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0006906152169106506,
+    "baseline_normalized_close_mae": 0.3559872252117066,
+    "forecast_origin": 356,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0017326905250384605,
+    "baseline_normalized_close_mae": 0.347232570148,
+    "forecast_origin": 361,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008825683948560758,
+    "baseline_normalized_close_mae": 0.25001937531333357,
+    "forecast_origin": 366,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0026044233112747063,
+    "baseline_normalized_close_mae": 0.44903850194389555,
+    "forecast_origin": 371,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00019510591780176335,
+    "baseline_normalized_close_mae": 0.2787227397168355,
+    "forecast_origin": 376,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0020672898226562265,
+    "baseline_normalized_close_mae": 0.3658920040099559,
+    "forecast_origin": 381,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002963193731007152,
+    "baseline_normalized_close_mae": 0.29780841517659445,
+    "forecast_origin": 386,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0009378948277723786,
+    "baseline_normalized_close_mae": 0.2656925857712096,
+    "forecast_origin": 391,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0005989257048246265,
+    "baseline_normalized_close_mae": 0.3674390827144902,
+    "forecast_origin": 396,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.00046832045289773027,
+    "baseline_normalized_close_mae": 0.229568849459667,
+    "forecast_origin": 401,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.001150732750242911,
+    "baseline_normalized_close_mae": 0.5160236548174595,
+    "forecast_origin": 406,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0028716664249978765,
+    "baseline_normalized_close_mae": 0.3194289682978709,
+    "forecast_origin": 411,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0014356848021142455,
+    "baseline_normalized_close_mae": 0.4032822477848996,
+    "forecast_origin": 416,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0017152995202617482,
+    "baseline_normalized_close_mae": 0.44903128802661724,
+    "forecast_origin": 421,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0003355570261362129,
+    "baseline_normalized_close_mae": 0.37703036644525273,
+    "forecast_origin": 426,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0010370103814768329,
+    "baseline_normalized_close_mae": 0.3366916822976761,
+    "forecast_origin": 431,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0010345197114370209,
+    "baseline_normalized_close_mae": 0.2687064185550767,
+    "forecast_origin": 436,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.004624982337606287,
+    "baseline_normalized_close_mae": 0.41074443495615165,
+    "forecast_origin": 441,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0003813616651497931,
+    "baseline_normalized_close_mae": 0.3632015858569474,
+    "forecast_origin": 446,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0008570790565660235,
+    "baseline_normalized_close_mae": 0.4440824127285125,
+    "forecast_origin": 451,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0010528701209886915,
+    "baseline_normalized_close_mae": 0.31150003579545604,
+    "forecast_origin": 456,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002116378391719653,
+    "baseline_normalized_close_mae": 0.34468703448202626,
+    "forecast_origin": 461,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002140812398126313,
+    "baseline_normalized_close_mae": 0.43336283362881317,
+    "forecast_origin": 466,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0017610119240439649,
+    "baseline_normalized_close_mae": 0.43374677932117867,
+    "forecast_origin": 471,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0015327973221034076,
+    "baseline_normalized_close_mae": 0.44428907887055896,
+    "forecast_origin": 476,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0015593563792863918,
+    "baseline_normalized_close_mae": 0.4546228511038985,
+    "forecast_origin": 481,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.0028700396131240867,
+    "baseline_normalized_close_mae": 0.3975124117900395,
+    "forecast_origin": 486,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "GBPUSD",
+    "baseline_close_mae": 0.002325720918753049,
+    "baseline_normalized_close_mae": 0.44383986999102865,
+    "forecast_origin": 491,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.04119999999999777,
+    "baseline_normalized_close_mae": 0.36140350877194166,
+    "forecast_origin": 256,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.16260000000000333,
+    "baseline_normalized_close_mae": 0.49422492401215656,
+    "forecast_origin": 261,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.07299999999999898,
+    "baseline_normalized_close_mae": 0.3578431372548834,
+    "forecast_origin": 266,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.15979999999999564,
+    "baseline_normalized_close_mae": 0.6341269841269785,
+    "forecast_origin": 271,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.03760000000000048,
+    "baseline_normalized_close_mae": 0.3056910569105614,
+    "forecast_origin": 276,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.016600000000005367,
+    "baseline_normalized_close_mae": 0.26774193548390646,
+    "forecast_origin": 281,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.03239999999999839,
+    "baseline_normalized_close_mae": 0.3724137931034765,
+    "forecast_origin": 286,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.10120000000000004,
+    "baseline_normalized_close_mae": 0.3614285714285701,
+    "forecast_origin": 291,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.17800000000000296,
+    "baseline_normalized_close_mae": 0.4248210023866306,
+    "forecast_origin": 296,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.014200000000002433,
+    "baseline_normalized_close_mae": 0.33023255813954255,
+    "forecast_origin": 301,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.0832000000000022,
+    "baseline_normalized_close_mae": 0.5546666666666603,
+    "forecast_origin": 306,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.07319999999999709,
+    "baseline_normalized_close_mae": 0.3935483870967737,
+    "forecast_origin": 311,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.10039999999999907,
+    "baseline_normalized_close_mae": 0.3746268656716374,
+    "forecast_origin": 316,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 1.0981999999999972,
+    "baseline_normalized_close_mae": 0.6941845764854625,
+    "forecast_origin": 321,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.046199999999996064,
+    "baseline_normalized_close_mae": 0.29426751592354844,
+    "forecast_origin": 326,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.2532000000000039,
+    "baseline_normalized_close_mae": 0.4442105263157906,
+    "forecast_origin": 331,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.35100000000000764,
+    "baseline_normalized_close_mae": 0.6010273972602838,
+    "forecast_origin": 336,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.18140000000000214,
+    "baseline_normalized_close_mae": 0.5153409090909096,
+    "forecast_origin": 341,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.11200000000000046,
+    "baseline_normalized_close_mae": 0.3875432525951553,
+    "forecast_origin": 346,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.1078000000000003,
+    "baseline_normalized_close_mae": 0.5858695652174009,
+    "forecast_origin": 351,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.0774000000000001,
+    "baseline_normalized_close_mae": 0.2366972477064236,
+    "forecast_origin": 356,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05780000000000314,
+    "baseline_normalized_close_mae": 0.2964102564102613,
+    "forecast_origin": 361,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.13859999999999956,
+    "baseline_normalized_close_mae": 0.6663461538461568,
+    "forecast_origin": 366,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05700000000000216,
+    "baseline_normalized_close_mae": 0.36774193548388223,
+    "forecast_origin": 371,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.09020000000000436,
+    "baseline_normalized_close_mae": 0.5125000000000192,
+    "forecast_origin": 376,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.29560000000000175,
+    "baseline_normalized_close_mae": 0.4175141242937887,
+    "forecast_origin": 381,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.3273999999999944,
+    "baseline_normalized_close_mae": 0.5411570247933883,
+    "forecast_origin": 386,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.1219999999999942,
+    "baseline_normalized_close_mae": 0.7134502923976591,
+    "forecast_origin": 391,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.03300000000000125,
+    "baseline_normalized_close_mae": 0.32673267326734207,
+    "forecast_origin": 396,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.026600000000004797,
+    "baseline_normalized_close_mae": 0.3970149253731628,
+    "forecast_origin": 401,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.04920000000000187,
+    "baseline_normalized_close_mae": 0.2277777777777778,
+    "forecast_origin": 406,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.10279999999999631,
+    "baseline_normalized_close_mae": 0.5617486338797836,
+    "forecast_origin": 411,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.056799999999998366,
+    "baseline_normalized_close_mae": 0.2679245283018749,
+    "forecast_origin": 416,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.21180000000000235,
+    "baseline_normalized_close_mae": 0.38300180831827013,
+    "forecast_origin": 421,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.15440000000000112,
+    "baseline_normalized_close_mae": 0.4424068767908294,
+    "forecast_origin": 426,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.09420000000000357,
+    "baseline_normalized_close_mae": 0.5850931677018806,
+    "forecast_origin": 431,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06399999999999864,
+    "baseline_normalized_close_mae": 0.2782608695652067,
+    "forecast_origin": 436,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.1902000000000072,
+    "baseline_normalized_close_mae": 0.4189427312775418,
+    "forecast_origin": 441,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.017600000000001614,
+    "baseline_normalized_close_mae": 0.3199999999999897,
+    "forecast_origin": 446,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06959999999999696,
+    "baseline_normalized_close_mae": 0.3624999999999972,
+    "forecast_origin": 451,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.19759999999999991,
+    "baseline_normalized_close_mae": 0.5145833333333326,
+    "forecast_origin": 456,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.32200000000000273,
+    "baseline_normalized_close_mae": 0.6388888888888881,
+    "forecast_origin": 461,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.16800000000000068,
+    "baseline_normalized_close_mae": 0.38181818181818533,
+    "forecast_origin": 466,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.09040000000000532,
+    "baseline_normalized_close_mae": 0.6953846153846046,
+    "forecast_origin": 471,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.07100000000000647,
+    "baseline_normalized_close_mae": 0.4733333333333586,
+    "forecast_origin": 476,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.07999999999999545,
+    "baseline_normalized_close_mae": 0.3149606299212535,
+    "forecast_origin": 481,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.36180000000000234,
+    "baseline_normalized_close_mae": 0.6737430167597732,
+    "forecast_origin": 486,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.0657999999999987,
+    "baseline_normalized_close_mae": 0.39166666666667727,
+    "forecast_origin": 491,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8626687937783487,
+    "baseline_normalized_close_mae": 7.567270120863364,
+    "forecast_origin": 256,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.7374885664389239,
+    "baseline_normalized_close_mae": 2.2416065849206888,
+    "forecast_origin": 261,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9419454684146672,
+    "baseline_normalized_close_mae": 4.617379747130546,
+    "forecast_origin": 266,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 1.0527407457683666,
+    "baseline_normalized_close_mae": 4.17754264193804,
+    "forecast_origin": 271,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8869897578188756,
+    "baseline_normalized_close_mae": 7.211298844055626,
+    "forecast_origin": 276,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8766054108411027,
+    "baseline_normalized_close_mae": 14.138796949047347,
+    "forecast_origin": 281,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9102052566714434,
+    "baseline_normalized_close_mae": 10.462129387029398,
+    "forecast_origin": 286,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.7893881673440518,
+    "baseline_normalized_close_mae": 2.8192434548001737,
+    "forecast_origin": 291,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 1.0300092084694028,
+    "baseline_normalized_close_mae": 2.4582558674686763,
+    "forecast_origin": 296,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.897175849441129,
+    "baseline_normalized_close_mae": 20.8645546381627,
+    "forecast_origin": 301,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9786109531138919,
+    "baseline_normalized_close_mae": 6.524073020759032,
+    "forecast_origin": 306,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.843377439915946,
+    "baseline_normalized_close_mae": 4.534287311376229,
+    "forecast_origin": 311,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 1.0000848039180568,
+    "baseline_normalized_close_mae": 3.7316597161121425,
+    "forecast_origin": 316,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.44307319160087105,
+    "baseline_normalized_close_mae": 0.2800715496844961,
+    "forecast_origin": 321,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9325241189499792,
+    "baseline_normalized_close_mae": 5.939644069745224,
+    "forecast_origin": 326,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.7293009545683844,
+    "baseline_normalized_close_mae": 1.279475358891886,
+    "forecast_origin": 331,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 1.2373731310004898,
+    "baseline_normalized_close_mae": 2.1187896078775394,
+    "forecast_origin": 336,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.7010521669599654,
+    "baseline_normalized_close_mae": 1.9916254743180617,
+    "forecast_origin": 341,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.7701580946569238,
+    "baseline_normalized_close_mae": 2.664906901927058,
+    "forecast_origin": 346,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9899776994771343,
+    "baseline_normalized_close_mae": 5.380313584114933,
+    "forecast_origin": 351,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9060403115660393,
+    "baseline_normalized_close_mae": 2.7707654787952425,
+    "forecast_origin": 356,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9267302779014528,
+    "baseline_normalized_close_mae": 4.752462963597014,
+    "forecast_origin": 361,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.7442834730044325,
+    "baseline_normalized_close_mae": 3.578285927905953,
+    "forecast_origin": 366,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9316381044125507,
+    "baseline_normalized_close_mae": 6.010568415564799,
+    "forecast_origin": 371,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9710202442368455,
+    "baseline_normalized_close_mae": 5.51716047861838,
+    "forecast_origin": 376,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.7506731428333978,
+    "baseline_normalized_close_mae": 1.0602728006121462,
+    "forecast_origin": 381,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.6351647832507126,
+    "baseline_normalized_close_mae": 1.0498591458689641,
+    "forecast_origin": 386,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.755296099246695,
+    "baseline_normalized_close_mae": 4.416936252904849,
+    "forecast_origin": 391,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8567312029194397,
+    "baseline_normalized_close_mae": 8.48248715761829,
+    "forecast_origin": 396,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8608371306163918,
+    "baseline_normalized_close_mae": 12.84831538233281,
+    "forecast_origin": 401,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.839351424418328,
+    "baseline_normalized_close_mae": 3.885886224158779,
+    "forecast_origin": 406,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9805470101113428,
+    "baseline_normalized_close_mae": 5.358180383122305,
+    "forecast_origin": 411,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8507942775173689,
+    "baseline_normalized_close_mae": 4.01318055432715,
+    "forecast_origin": 416,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 1.0886502681458297,
+    "baseline_normalized_close_mae": 1.9686261630123598,
+    "forecast_origin": 421,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 1.026443955024689,
+    "baseline_normalized_close_mae": 2.941100157663834,
+    "forecast_origin": 426,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9805339213600917,
+    "baseline_normalized_close_mae": 6.090272803478778,
+    "forecast_origin": 431,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8591165236933591,
+    "baseline_normalized_close_mae": 3.735289233449323,
+    "forecast_origin": 436,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.6893212463396822,
+    "baseline_normalized_close_mae": 1.518328736430992,
+    "forecast_origin": 441,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8770210150851824,
+    "baseline_normalized_close_mae": 15.945836637910428,
+    "forecast_origin": 446,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9436091596912519,
+    "baseline_normalized_close_mae": 4.914631040058781,
+    "forecast_origin": 451,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 1.0820322538004263,
+    "baseline_normalized_close_mae": 2.8177923276052743,
+    "forecast_origin": 456,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 1.2105884756833831,
+    "baseline_normalized_close_mae": 2.4019612612765306,
+    "forecast_origin": 461,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.7762930330905249,
+    "baseline_normalized_close_mae": 1.7643023479330202,
+    "forecast_origin": 466,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.9761849863944093,
+    "baseline_normalized_close_mae": 7.509115279956436,
+    "forecast_origin": 471,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.955383241749928,
+    "baseline_normalized_close_mae": 6.369221611665945,
+    "forecast_origin": 476,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8306479068226651,
+    "baseline_normalized_close_mae": 3.270267349695652,
+    "forecast_origin": 481,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 1.2514961480248332,
+    "baseline_normalized_close_mae": 2.330532864105808,
+    "forecast_origin": 486,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8295198588126709,
+    "baseline_normalized_close_mae": 4.9376182072185095,
+    "forecast_origin": 491,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05379999999999825,
+    "baseline_normalized_close_mae": 0.4719298245614291,
+    "forecast_origin": 256,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.4093500000000091,
+    "baseline_normalized_close_mae": 1.2442249240121566,
+    "forecast_origin": 261,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.12169999999997572,
+    "baseline_normalized_close_mae": 0.5965686274508387,
+    "forecast_origin": 266,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.3488000000000028,
+    "baseline_normalized_close_mae": 1.3841269841270207,
+    "forecast_origin": 271,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06599999999998545,
+    "baseline_normalized_close_mae": 0.5365853658535199,
+    "forecast_origin": 276,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.017350000000001843,
+    "baseline_normalized_close_mae": 0.2798387096773957,
+    "forecast_origin": 281,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05875000000001194,
+    "baseline_normalized_close_mae": 0.675287356322061,
+    "forecast_origin": 286,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.3111999999999938,
+    "baseline_normalized_close_mae": 1.1114285714285448,
+    "forecast_origin": 291,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.37150000000001737,
+    "baseline_normalized_close_mae": 0.886634844868753,
+    "forecast_origin": 296,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.015250000000003183,
+    "baseline_normalized_close_mae": 0.3546511627907192,
+    "forecast_origin": 301,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.18370000000001313,
+    "baseline_normalized_close_mae": 1.2246666666667079,
+    "forecast_origin": 306,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06569999999999539,
+    "baseline_normalized_close_mae": 0.35322580645160173,
+    "forecast_origin": 311,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.30140000000000666,
+    "baseline_normalized_close_mae": 1.1246268656716638,
+    "forecast_origin": 316,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 2.2846999999999924,
+    "baseline_normalized_close_mae": 1.4441845764854624,
+    "forecast_origin": 321,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05444999999998572,
+    "baseline_normalized_close_mae": 0.34681528662412064,
+    "forecast_origin": 326,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.5370000000000147,
+    "baseline_normalized_close_mae": 0.9421052631579083,
+    "forecast_origin": 331,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.78900000000001,
+    "baseline_normalized_close_mae": 1.3510273972602838,
+    "forecast_origin": 336,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.37865000000002735,
+    "baseline_normalized_close_mae": 1.0757102272727932,
+    "forecast_origin": 341,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.1945000000000107,
+    "baseline_normalized_close_mae": 0.6730103806228709,
+    "forecast_origin": 346,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.15055000000001256,
+    "baseline_normalized_close_mae": 0.8182065217392098,
+    "forecast_origin": 351,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.17750000000001478,
+    "baseline_normalized_close_mae": 0.5428134556575406,
+    "forecast_origin": 356,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.15920000000000697,
+    "baseline_normalized_close_mae": 0.8164102564102612,
+    "forecast_origin": 361,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.25409999999999683,
+    "baseline_normalized_close_mae": 1.2216346153846094,
+    "forecast_origin": 366,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.14449999999999646,
+    "baseline_normalized_close_mae": 0.9322580645160994,
+    "forecast_origin": 371,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.20725000000001614,
+    "baseline_normalized_close_mae": 1.177556818181897,
+    "forecast_origin": 376,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.8265999999999935,
+    "baseline_normalized_close_mae": 1.1675141242937788,
+    "forecast_origin": 381,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.7053999999999945,
+    "baseline_normalized_close_mae": 1.165950413223151,
+    "forecast_origin": 386,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.2502499999999884,
+    "baseline_normalized_close_mae": 1.4634502923976593,
+    "forecast_origin": 391,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.02879999999999825,
+    "baseline_normalized_close_mae": 0.2851485148514704,
+    "forecast_origin": 396,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05039999999999338,
+    "baseline_normalized_close_mae": 0.7522388059699687,
+    "forecast_origin": 401,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.17394999999999924,
+    "baseline_normalized_close_mae": 0.80532407407404,
+    "forecast_origin": 406,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.24004999999999085,
+    "baseline_normalized_close_mae": 1.3117486338797837,
+    "forecast_origin": 411,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.1261000000000081,
+    "baseline_normalized_close_mae": 0.594811320754746,
+    "forecast_origin": 416,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.6116000000000212,
+    "baseline_normalized_close_mae": 1.1059674502712915,
+    "forecast_origin": 421,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.360600000000025,
+    "baseline_normalized_close_mae": 1.0332378223496308,
+    "forecast_origin": 426,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.15345000000000936,
+    "baseline_normalized_close_mae": 0.9531055900621619,
+    "forecast_origin": 431,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.1291000000000281,
+    "baseline_normalized_close_mae": 0.5613043478261994,
+    "forecast_origin": 436,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.39945000000000447,
+    "baseline_normalized_close_mae": 0.8798458149779684,
+    "forecast_origin": 441,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.018650000000002366,
+    "baseline_normalized_close_mae": 0.33909090909091005,
+    "forecast_origin": 446,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.17749999999999772,
+    "baseline_normalized_close_mae": 0.9244791666666882,
+    "forecast_origin": 451,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.420350000000019,
+    "baseline_normalized_close_mae": 1.0946614583333818,
+    "forecast_origin": 456,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.700000000000017,
+    "baseline_normalized_close_mae": 1.3888888888889093,
+    "forecast_origin": 461,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.497999999999999,
+    "baseline_normalized_close_mae": 1.1318181818181854,
+    "forecast_origin": 466,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.16165000000002577,
+    "baseline_normalized_close_mae": 1.2434615384616443,
+    "forecast_origin": 471,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.10550000000000068,
+    "baseline_normalized_close_mae": 0.7033333333333112,
+    "forecast_origin": 476,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.0730499999999978,
+    "baseline_normalized_close_mae": 0.2875984251968523,
+    "forecast_origin": 481,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.7645500000000283,
+    "baseline_normalized_close_mae": 1.4237430167598129,
+    "forecast_origin": 486,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.17225000000000817,
+    "baseline_normalized_close_mae": 1.0252976190477157,
+    "forecast_origin": 491,
+    "baseline": "drift"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.035919999999995865,
+    "baseline_normalized_close_mae": 0.3150877192982367,
+    "forecast_origin": 256,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.09368000000000051,
+    "baseline_normalized_close_mae": 0.2847416413373809,
+    "forecast_origin": 261,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06216000000000008,
+    "baseline_normalized_close_mae": 0.30470588235293006,
+    "forecast_origin": 266,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.08063999999999964,
+    "baseline_normalized_close_mae": 0.3200000000000045,
+    "forecast_origin": 271,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.038799999999997684,
+    "baseline_normalized_close_mae": 0.31544715447151395,
+    "forecast_origin": 276,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.018159999999997466,
+    "baseline_normalized_close_mae": 0.2929032258063549,
+    "forecast_origin": 281,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.03559999999999945,
+    "baseline_normalized_close_mae": 0.4091954022988956,
+    "forecast_origin": 286,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.07152000000000384,
+    "baseline_normalized_close_mae": 0.2554285714285841,
+    "forecast_origin": 291,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.15079999999999813,
+    "baseline_normalized_close_mae": 0.3599045346061912,
+    "forecast_origin": 296,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.014800000000005299,
+    "baseline_normalized_close_mae": 0.34418604651170015,
+    "forecast_origin": 301,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.050160000000002467,
+    "baseline_normalized_close_mae": 0.33440000000000375,
+    "forecast_origin": 306,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06255999999999631,
+    "baseline_normalized_close_mae": 0.3363440860214985,
+    "forecast_origin": 311,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.07367999999999882,
+    "baseline_normalized_close_mae": 0.27492537313432325,
+    "forecast_origin": 316,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.500959999999995,
+    "baseline_normalized_close_mae": 0.3166624525916542,
+    "forecast_origin": 321,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.044319999999993344,
+    "baseline_normalized_close_mae": 0.28229299363053717,
+    "forecast_origin": 326,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.21120000000000233,
+    "baseline_normalized_close_mae": 0.370526315789473,
+    "forecast_origin": 331,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.18680000000000235,
+    "baseline_normalized_close_mae": 0.3198630136986324,
+    "forecast_origin": 336,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.13432000000000244,
+    "baseline_normalized_close_mae": 0.3815909090909118,
+    "forecast_origin": 341,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.070799999999997,
+    "baseline_normalized_close_mae": 0.2449826989619261,
+    "forecast_origin": 346,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06343999999999994,
+    "baseline_normalized_close_mae": 0.3447826086956565,
+    "forecast_origin": 351,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.08199999999999932,
+    "baseline_normalized_close_mae": 0.2507645259938831,
+    "forecast_origin": 356,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.0586400000000026,
+    "baseline_normalized_close_mae": 0.30071794871795066,
+    "forecast_origin": 361,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05544000000000153,
+    "baseline_normalized_close_mae": 0.26653846153847094,
+    "forecast_origin": 366,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.062399999999999525,
+    "baseline_normalized_close_mae": 0.40258064516128433,
+    "forecast_origin": 371,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.07320000000000278,
+    "baseline_normalized_close_mae": 0.4159090909091021,
+    "forecast_origin": 376,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.21192000000000064,
+    "baseline_normalized_close_mae": 0.29932203389830664,
+    "forecast_origin": 381,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.24711999999999817,
+    "baseline_normalized_close_mae": 0.4084628099173593,
+    "forecast_origin": 386,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05560000000000116,
+    "baseline_normalized_close_mae": 0.32514619883043083,
+    "forecast_origin": 391,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.02863999999999862,
+    "baseline_normalized_close_mae": 0.2835643564356325,
+    "forecast_origin": 396,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.02312000000000012,
+    "baseline_normalized_close_mae": 0.34507462686563595,
+    "forecast_origin": 401,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.0599200000000053,
+    "baseline_normalized_close_mae": 0.2774074074074214,
+    "forecast_origin": 406,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06223999999999989,
+    "baseline_normalized_close_mae": 0.34010928961749926,
+    "forecast_origin": 411,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05471999999999468,
+    "baseline_normalized_close_mae": 0.25811320754714073,
+    "forecast_origin": 416,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.23592000000000155,
+    "baseline_normalized_close_mae": 0.42661844484629785,
+    "forecast_origin": 421,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.13032000000000324,
+    "baseline_normalized_close_mae": 0.3734097421203491,
+    "forecast_origin": 426,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05103999999999757,
+    "baseline_normalized_close_mae": 0.3170186335403549,
+    "forecast_origin": 431,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06912000000000092,
+    "baseline_normalized_close_mae": 0.30052173913043356,
+    "forecast_origin": 436,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.141040000000001,
+    "baseline_normalized_close_mae": 0.31066079295153876,
+    "forecast_origin": 441,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.01839999999999975,
+    "baseline_normalized_close_mae": 0.3345454545454085,
+    "forecast_origin": 446,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.08199999999999648,
+    "baseline_normalized_close_mae": 0.42708333333333043,
+    "forecast_origin": 451,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.1428800000000024,
+    "baseline_normalized_close_mae": 0.37208333333333926,
+    "forecast_origin": 456,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.12880000000000108,
+    "baseline_normalized_close_mae": 0.2555555555555552,
+    "forecast_origin": 461,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.1583999999999975,
+    "baseline_normalized_close_mae": 0.35999999999999616,
+    "forecast_origin": 466,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.03615999999999531,
+    "baseline_normalized_close_mae": 0.27815384615378935,
+    "forecast_origin": 471,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05759999999999934,
+    "baseline_normalized_close_mae": 0.383999999999981,
+    "forecast_origin": 476,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06919999999999789,
+    "baseline_normalized_close_mae": 0.27244094488189147,
+    "forecast_origin": 481,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.17504000000000416,
+    "baseline_normalized_close_mae": 0.32595903165735973,
+    "forecast_origin": 486,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.0539999999999992,
+    "baseline_normalized_close_mae": 0.32142857142858167,
+    "forecast_origin": 491,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.03502233534381105,
+    "baseline_normalized_close_mae": 0.30721346792819376,
+    "forecast_origin": 256,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.12346516112114614,
+    "baseline_normalized_close_mae": 0.3752740459609217,
+    "forecast_origin": 261,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05963618348322086,
+    "baseline_normalized_close_mae": 0.2923342327608755,
+    "forecast_origin": 266,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.07846188676528812,
+    "baseline_normalized_close_mae": 0.31135669351305384,
+    "forecast_origin": 271,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.055484862788657094,
+    "baseline_normalized_close_mae": 0.45109644543621946,
+    "forecast_origin": 276,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.014895040646649704,
+    "baseline_normalized_close_mae": 0.2402425910749494,
+    "forecast_origin": 281,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.040536917230988935,
+    "baseline_normalized_close_mae": 0.4659415773677474,
+    "forecast_origin": 286,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.13425512826445357,
+    "baseline_normalized_close_mae": 0.4794826009444751,
+    "forecast_origin": 291,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.14451651729475543,
+    "baseline_normalized_close_mae": 0.34490815583472934,
+    "forecast_origin": 296,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.01479018104597003,
+    "baseline_normalized_close_mae": 0.3439576987434381,
+    "forecast_origin": 301,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05268776075811843,
+    "baseline_normalized_close_mae": 0.3512517383874429,
+    "forecast_origin": 306,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.07821262128433659,
+    "baseline_normalized_close_mae": 0.42049796389429894,
+    "forecast_origin": 311,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.1253305505421963,
+    "baseline_normalized_close_mae": 0.4676513079932686,
+    "forecast_origin": 316,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.4482945881602802,
+    "baseline_normalized_close_mae": 0.2833720531986612,
+    "forecast_origin": 321,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.03730911914274202,
+    "baseline_normalized_close_mae": 0.23763770154613287,
+    "forecast_origin": 326,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.2163427316807315,
+    "baseline_normalized_close_mae": 0.3795486520714539,
+    "forecast_origin": 331,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.17125849723108785,
+    "baseline_normalized_close_mae": 0.29325085142309404,
+    "forecast_origin": 336,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.12578991058252315,
+    "baseline_normalized_close_mae": 0.3573577005185277,
+    "forecast_origin": 341,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06905750176109678,
+    "baseline_normalized_close_mae": 0.23895329329099108,
+    "forecast_origin": 346,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06978251243052114,
+    "baseline_normalized_close_mae": 0.3792527849484896,
+    "forecast_origin": 351,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.13769288413777758,
+    "baseline_normalized_close_mae": 0.42107915638464327,
+    "forecast_origin": 356,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.08603677171547872,
+    "baseline_normalized_close_mae": 0.44121421392551513,
+    "forecast_origin": 361,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05124367007574051,
+    "baseline_normalized_close_mae": 0.24636379844106202,
+    "forecast_origin": 366,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.07184046256446663,
+    "baseline_normalized_close_mae": 0.46348685525462,
+    "forecast_origin": 371,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06632483995866209,
+    "baseline_normalized_close_mae": 0.37684568158330317,
+    "forecast_origin": 376,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.3068881607971946,
+    "baseline_normalized_close_mae": 0.43345785423332667,
+    "forecast_origin": 381,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.22822593569551658,
+    "baseline_normalized_close_mae": 0.3772329515628437,
+    "forecast_origin": 386,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05019909091376462,
+    "baseline_normalized_close_mae": 0.29356193516822743,
+    "forecast_origin": 391,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.03761449087569986,
+    "baseline_normalized_close_mae": 0.37242070173960595,
+    "forecast_origin": 396,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.024296895840728895,
+    "baseline_normalized_close_mae": 0.3626402364287501,
+    "forecast_origin": 401,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.11287810634457288,
+    "baseline_normalized_close_mae": 0.5225838256692991,
+    "forecast_origin": 406,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06840528277826081,
+    "baseline_normalized_close_mae": 0.373799359444063,
+    "forecast_origin": 411,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.08144314560290696,
+    "baseline_normalized_close_mae": 0.38416578114578154,
+    "forecast_origin": 416,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.2739485080804826,
+    "baseline_normalized_close_mae": 0.4953860905614538,
+    "forecast_origin": 421,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.14709674878265844,
+    "baseline_normalized_close_mae": 0.4214806555376987,
+    "forecast_origin": 426,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.04905108056828169,
+    "baseline_normalized_close_mae": 0.3046650966973992,
+    "forecast_origin": 431,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.08378008545821843,
+    "baseline_normalized_close_mae": 0.3642612411226825,
+    "forecast_origin": 436,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.15028218694885426,
+    "baseline_normalized_close_mae": 0.3310180329269861,
+    "forecast_origin": 441,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.01811604938272069,
+    "baseline_normalized_close_mae": 0.32938271604942626,
+    "forecast_origin": 446,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.09238358708562658,
+    "baseline_normalized_close_mae": 0.48116451607098915,
+    "forecast_origin": 451,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.1323298841532079,
+    "baseline_normalized_close_mae": 0.3446090733156453,
+    "forecast_origin": 456,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.13404941151063668,
+    "baseline_normalized_close_mae": 0.265971054584594,
+    "forecast_origin": 461,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.20281754207351527,
+    "baseline_normalized_close_mae": 0.4609489592579916,
+    "forecast_origin": 466,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.0353907692782343,
+    "baseline_normalized_close_mae": 0.27223668675562823,
+    "forecast_origin": 471,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.05421868974347319,
+    "baseline_normalized_close_mae": 0.36145793162314094,
+    "forecast_origin": 476,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.09056997547317565,
+    "baseline_normalized_close_mae": 0.35657470658731877,
+    "forecast_origin": 481,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.15581939623922098,
+    "baseline_normalized_close_mae": 0.2901664734436112,
+    "forecast_origin": 486,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "USDJPY",
+    "baseline_close_mae": 0.06843321455567661,
+    "baseline_normalized_close_mae": 0.4073405628314274,
+    "forecast_origin": 491,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.000988000000000011,
+    "baseline_normalized_close_mae": 0.5744186046511509,
+    "forecast_origin": 256,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001424000000000003,
+    "baseline_normalized_close_mae": 0.5014084507042346,
+    "forecast_origin": 261,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010159999999999948,
+    "baseline_normalized_close_mae": 0.38631178707223823,
+    "forecast_origin": 266,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009560000000000013,
+    "baseline_normalized_close_mae": 0.2739255014326657,
+    "forecast_origin": 271,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0012459999999999915,
+    "baseline_normalized_close_mae": 0.3236363636363597,
+    "forecast_origin": 276,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00101800000000003,
+    "baseline_normalized_close_mae": 0.4757009345794464,
+    "forecast_origin": 281,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001880000000000015,
+    "baseline_normalized_close_mae": 0.29057187017001884,
+    "forecast_origin": 286,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001780000000000026,
+    "baseline_normalized_close_mae": 0.511494252873565,
+    "forecast_origin": 291,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00048799999999997733,
+    "baseline_normalized_close_mae": 0.4206896551724164,
+    "forecast_origin": 296,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0008719999999999839,
+    "baseline_normalized_close_mae": 0.2831168831168805,
+    "forecast_origin": 301,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0019480000000000163,
+    "baseline_normalized_close_mae": 0.4447488584474872,
+    "forecast_origin": 306,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001466000000000034,
+    "baseline_normalized_close_mae": 0.4713826366559508,
+    "forecast_origin": 311,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.003888000000000047,
+    "baseline_normalized_close_mae": 0.5618497109826627,
+    "forecast_origin": 316,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00448599999999999,
+    "baseline_normalized_close_mae": 0.6111716621253381,
+    "forecast_origin": 321,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0020639999999999548,
+    "baseline_normalized_close_mae": 0.7020408163265289,
+    "forecast_origin": 326,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009240000000000137,
+    "baseline_normalized_close_mae": 0.21339491916859163,
+    "forecast_origin": 331,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0016279999999999628,
+    "baseline_normalized_close_mae": 0.760747663551413,
+    "forecast_origin": 336,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0034820000000000072,
+    "baseline_normalized_close_mae": 0.6472118959107759,
+    "forecast_origin": 341,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001114000000000015,
+    "baseline_normalized_close_mae": 0.40656934306570414,
+    "forecast_origin": 346,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0016979999999999773,
+    "baseline_normalized_close_mae": 0.41213592233009033,
+    "forecast_origin": 351,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009959999999999969,
+    "baseline_normalized_close_mae": 0.33877551020407437,
+    "forecast_origin": 356,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00015599999999997837,
+    "baseline_normalized_close_mae": 0.205263157894713,
+    "forecast_origin": 361,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0020959999999999646,
+    "baseline_normalized_close_mae": 0.46371681415928745,
+    "forecast_origin": 366,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006860000000000532,
+    "baseline_normalized_close_mae": 0.4234567901234724,
+    "forecast_origin": 371,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00029799999999999824,
+    "baseline_normalized_close_mae": 0.37721518987343583,
+    "forecast_origin": 376,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.005441999999999969,
+    "baseline_normalized_close_mae": 0.585791173304624,
+    "forecast_origin": 381,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006599999999999939,
+    "baseline_normalized_close_mae": 0.3267326732673202,
+    "forecast_origin": 386,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0011620000000000185,
+    "baseline_normalized_close_mae": 0.5008620689655277,
+    "forecast_origin": 391,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009839999999999849,
+    "baseline_normalized_close_mae": 0.26522911051212594,
+    "forecast_origin": 396,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0022440000000000016,
+    "baseline_normalized_close_mae": 0.6561403508771976,
+    "forecast_origin": 401,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0015260000000000273,
+    "baseline_normalized_close_mae": 0.45963855421687716,
+    "forecast_origin": 406,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009919999999999929,
+    "baseline_normalized_close_mae": 0.24019370460048445,
+    "forecast_origin": 411,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0013020000000000032,
+    "baseline_normalized_close_mae": 0.3287878787878734,
+    "forecast_origin": 416,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0011300000000000088,
+    "baseline_normalized_close_mae": 0.4538152610441817,
+    "forecast_origin": 421,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00039399999999998323,
+    "baseline_normalized_close_mae": 0.25419354838709574,
+    "forecast_origin": 426,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009179999999999744,
+    "baseline_normalized_close_mae": 0.2441489361702069,
+    "forecast_origin": 431,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0013080000000000424,
+    "baseline_normalized_close_mae": 0.4722021660649887,
+    "forecast_origin": 436,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.003114000000000017,
+    "baseline_normalized_close_mae": 0.5472759226713588,
+    "forecast_origin": 441,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00045399999999997667,
+    "baseline_normalized_close_mae": 0.46804123711336526,
+    "forecast_origin": 446,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0008100000000000219,
+    "baseline_normalized_close_mae": 0.24846625766871527,
+    "forecast_origin": 451,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0011240000000000139,
+    "baseline_normalized_close_mae": 0.32114285714285573,
+    "forecast_origin": 456,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006340000000000012,
+    "baseline_normalized_close_mae": 0.2948837209302351,
+    "forecast_origin": 461,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0015040000000000164,
+    "baseline_normalized_close_mae": 0.2615652173913057,
+    "forecast_origin": 466,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010600000000000164,
+    "baseline_normalized_close_mae": 0.2834224598930467,
+    "forecast_origin": 471,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0007600000000000274,
+    "baseline_normalized_close_mae": 0.22754491017964826,
+    "forecast_origin": 476,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006319999999999881,
+    "baseline_normalized_close_mae": 0.37176470588233834,
+    "forecast_origin": 481,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.002393999999999985,
+    "baseline_normalized_close_mae": 0.4141868512110696,
+    "forecast_origin": 486,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0021079999999999766,
+    "baseline_normalized_close_mae": 0.421599999999995,
+    "forecast_origin": 491,
+    "baseline": "last_value"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008081974018536409,
+    "baseline_normalized_close_mae": 4.698822103800088,
+    "forecast_origin": 256,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.007806818259162495,
+    "baseline_normalized_close_mae": 2.7488796687192334,
+    "forecast_origin": 261,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009889600910273754,
+    "baseline_normalized_close_mae": 3.760304528621169,
+    "forecast_origin": 266,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008539276570171127,
+    "baseline_normalized_close_mae": 2.4467841175275487,
+    "forecast_origin": 271,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.01005915184944508,
+    "baseline_normalized_close_mae": 2.612766714141566,
+    "forecast_origin": 276,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008026193679969906,
+    "baseline_normalized_close_mae": 3.7505577943784068,
+    "forecast_origin": 281,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008505784919462012,
+    "baseline_normalized_close_mae": 1.3146499102723406,
+    "forecast_origin": 286,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.007174501627542962,
+    "baseline_normalized_close_mae": 2.061638398719219,
+    "forecast_origin": 291,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009301717434734846,
+    "baseline_normalized_close_mae": 8.01872192649598,
+    "forecast_origin": 296,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008265078492490873,
+    "baseline_normalized_close_mae": 2.683467043016542,
+    "forecast_origin": 301,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.010892111072835586,
+    "baseline_normalized_close_mae": 2.4867833499624337,
+    "forecast_origin": 306,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.010420599651644014,
+    "baseline_normalized_close_mae": 3.3506751291459236,
+    "forecast_origin": 311,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.006586394332712553,
+    "baseline_normalized_close_mae": 0.9517910885422712,
+    "forecast_origin": 316,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0047635528247851775,
+    "baseline_normalized_close_mae": 0.6489853984720939,
+    "forecast_origin": 321,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.006777283790872968,
+    "baseline_normalized_close_mae": 2.3051985683241836,
+    "forecast_origin": 326,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008733362826832325,
+    "baseline_normalized_close_mae": 2.0169429161275314,
+    "forecast_origin": 331,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.010496926587358634,
+    "baseline_normalized_close_mae": 4.905105881943471,
+    "forecast_origin": 336,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.006345194011468802,
+    "baseline_normalized_close_mae": 1.179404091351067,
+    "forecast_origin": 341,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009901358201742382,
+    "baseline_normalized_close_mae": 3.6136343801979964,
+    "forecast_origin": 346,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.007604875546135692,
+    "baseline_normalized_close_mae": 1.845843579159143,
+    "forecast_origin": 351,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009331396178025364,
+    "baseline_normalized_close_mae": 3.173944278239862,
+    "forecast_origin": 356,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008896512419419711,
+    "baseline_normalized_close_mae": 11.705937393973567,
+    "forecast_origin": 361,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00676341824956026,
+    "baseline_normalized_close_mae": 1.4963314711416609,
+    "forecast_origin": 366,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009552868081237453,
+    "baseline_normalized_close_mae": 5.896832148911769,
+    "forecast_origin": 371,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009057260177641325,
+    "baseline_normalized_close_mae": 11.464886300812422,
+    "forecast_origin": 376,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0056598769648080974,
+    "baseline_normalized_close_mae": 0.6092440220460802,
+    "forecast_origin": 381,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009088976897214884,
+    "baseline_normalized_close_mae": 4.499493513472666,
+    "forecast_origin": 386,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00761243135398193,
+    "baseline_normalized_close_mae": 3.2812204111991234,
+    "forecast_origin": 391,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008561599934710817,
+    "baseline_normalized_close_mae": 2.3077088772805494,
+    "forecast_origin": 396,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.011084107501660733,
+    "baseline_normalized_close_mae": 3.240967105748773,
+    "forecast_origin": 401,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.007459000908618241,
+    "baseline_normalized_close_mae": 2.2466870206681517,
+    "forecast_origin": 406,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008549387981760526,
+    "baseline_normalized_close_mae": 2.070069729239853,
+    "forecast_origin": 411,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.007905250152395404,
+    "baseline_normalized_close_mae": 1.996275291008903,
+    "forecast_origin": 416,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.007632668461860392,
+    "baseline_normalized_close_mae": 3.0653286995423357,
+    "forecast_origin": 421,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00865048986010326,
+    "baseline_normalized_close_mae": 5.5809612000668345,
+    "forecast_origin": 426,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009531735935094866,
+    "baseline_normalized_close_mae": 2.535036152950772,
+    "forecast_origin": 431,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0075265201279028915,
+    "baseline_normalized_close_mae": 2.7171552808313195,
+    "forecast_origin": 436,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0067808293984316535,
+    "baseline_normalized_close_mae": 1.1917099118509114,
+    "forecast_origin": 441,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008313177570507002,
+    "baseline_normalized_close_mae": 8.570286155161625,
+    "forecast_origin": 446,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008789493714344853,
+    "baseline_normalized_close_mae": 2.69616371605667,
+    "forecast_origin": 451,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009570200412890185,
+    "baseline_normalized_close_mae": 2.7343429751114354,
+    "forecast_origin": 456,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008477727738829998,
+    "baseline_normalized_close_mae": 3.943129180851189,
+    "forecast_origin": 461,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008349113190471425,
+    "baseline_normalized_close_mae": 1.45201968529937,
+    "forecast_origin": 466,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009191759060544901,
+    "baseline_normalized_close_mae": 2.4576895883809393,
+    "forecast_origin": 471,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.008543724167655142,
+    "baseline_normalized_close_mae": 2.5580012478009335,
+    "forecast_origin": 476,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009190781902928057,
+    "baseline_normalized_close_mae": 5.406342295839923,
+    "forecast_origin": 481,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.01106560407201922,
+    "baseline_normalized_close_mae": 1.914464372321662,
+    "forecast_origin": 486,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.010839692845940307,
+    "baseline_normalized_close_mae": 2.1679385691880597,
+    "forecast_origin": 491,
+    "baseline": "random_walk"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.002015500000000081,
+    "baseline_normalized_close_mae": 1.1718023255814052,
+    "forecast_origin": 256,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0030410000000000493,
+    "baseline_normalized_close_mae": 1.0707746478873588,
+    "forecast_origin": 261,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0024135000000000016,
+    "baseline_normalized_close_mae": 0.9176806083650122,
+    "forecast_origin": 266,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0021934999999999373,
+    "baseline_normalized_close_mae": 0.6285100286532784,
+    "forecast_origin": 271,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0034204999999998486,
+    "baseline_normalized_close_mae": 0.8884415584415145,
+    "forecast_origin": 276,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0019555000000001767,
+    "baseline_normalized_close_mae": 0.9137850467290414,
+    "forecast_origin": 281,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.006732500000000164,
+    "baseline_normalized_close_mae": 1.0405718701700446,
+    "forecast_origin": 286,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0036925000000002316,
+    "baseline_normalized_close_mae": 1.0610632183908595,
+    "forecast_origin": 291,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0008279999999999177,
+    "baseline_normalized_close_mae": 0.7137931034482425,
+    "forecast_origin": 296,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.002503499999999903,
+    "baseline_normalized_close_mae": 0.8128246753246513,
+    "forecast_origin": 301,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00523300000000011,
+    "baseline_normalized_close_mae": 1.1947488584475,
+    "forecast_origin": 306,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.003385999999999956,
+    "baseline_normalized_close_mae": 1.0887459807073614,
+    "forecast_origin": 311,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.009078000000000076,
+    "baseline_normalized_close_mae": 1.3118497109826628,
+    "forecast_origin": 316,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.007396000000000069,
+    "baseline_normalized_close_mae": 1.0076294277929232,
+    "forecast_origin": 321,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.004141499999999909,
+    "baseline_normalized_close_mae": 1.4086734693877516,
+    "forecast_origin": 326,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001723000000000008,
+    "baseline_normalized_close_mae": 0.39792147806004285,
+    "forecast_origin": 331,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.003210500000000005,
+    "baseline_normalized_close_mae": 1.5002336448598717,
+    "forecast_origin": 336,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0075170000000001295,
+    "baseline_normalized_close_mae": 1.3972118959107913,
+    "forecast_origin": 341,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.002938999999999958,
+    "baseline_normalized_close_mae": 1.072627737226276,
+    "forecast_origin": 346,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0047879999999999034,
+    "baseline_normalized_close_mae": 1.16213592233007,
+    "forecast_origin": 351,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0016485000000001193,
+    "baseline_normalized_close_mae": 0.560714285714316,
+    "forecast_origin": 356,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0003429999999999822,
+    "baseline_normalized_close_mae": 0.45131578947367096,
+    "forecast_origin": 361,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.003438499999999878,
+    "baseline_normalized_close_mae": 0.7607300884955535,
+    "forecast_origin": 366,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006935000000001023,
+    "baseline_normalized_close_mae": 0.4280864197531322,
+    "forecast_origin": 371,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00030600000000000625,
+    "baseline_normalized_close_mae": 0.3873417721519275,
+    "forecast_origin": 376,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.011944499999999936,
+    "baseline_normalized_close_mae": 1.2857373519913788,
+    "forecast_origin": 381,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006979999999999986,
+    "baseline_normalized_close_mae": 0.34554455445544113,
+    "forecast_origin": 386,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.002452000000000143,
+    "baseline_normalized_close_mae": 1.0568965517242046,
+    "forecast_origin": 391,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0011300000000000975,
+    "baseline_normalized_close_mae": 0.3045822102426146,
+    "forecast_origin": 396,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.004733999999999993,
+    "baseline_normalized_close_mae": 1.3842105263157962,
+    "forecast_origin": 401,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0040160000000000196,
+    "baseline_normalized_close_mae": 1.209638554216877,
+    "forecast_origin": 406,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0020519999999997875,
+    "baseline_normalized_close_mae": 0.49685230024208327,
+    "forecast_origin": 411,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.004237499999999961,
+    "baseline_normalized_close_mae": 1.0700757575757276,
+    "forecast_origin": 416,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0029974999999999195,
+    "baseline_normalized_close_mae": 1.2038152610441482,
+    "forecast_origin": 421,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00043400000000002323,
+    "baseline_normalized_close_mae": 0.2800000000000258,
+    "forecast_origin": 426,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.003105499999999961,
+    "baseline_normalized_close_mae": 0.8259308510638226,
+    "forecast_origin": 431,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.002950500000000145,
+    "baseline_normalized_close_mae": 1.065162454873679,
+    "forecast_origin": 436,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.007381499999999997,
+    "baseline_normalized_close_mae": 1.2972759226713588,
+    "forecast_origin": 441,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009414999999998397,
+    "baseline_normalized_close_mae": 0.9706185567008393,
+    "forecast_origin": 446,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0013229999999999852,
+    "baseline_normalized_close_mae": 0.4058282208588861,
+    "forecast_origin": 451,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001079500000000011,
+    "baseline_normalized_close_mae": 0.3084285714285694,
+    "forecast_origin": 456,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0014894999999999214,
+    "baseline_normalized_close_mae": 0.6927906976743868,
+    "forecast_origin": 461,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0042870000000001076,
+    "baseline_normalized_close_mae": 0.7455652173913188,
+    "forecast_origin": 466,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010250000000000092,
+    "baseline_normalized_close_mae": 0.2740641711229915,
+    "forecast_origin": 471,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0017470000000000096,
+    "baseline_normalized_close_mae": 0.5230538922155702,
+    "forecast_origin": 476,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0008794999999998998,
+    "baseline_normalized_close_mae": 0.5173529411764011,
+    "forecast_origin": 481,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0067290000000000735,
+    "baseline_normalized_close_mae": 1.1641868512110838,
+    "forecast_origin": 486,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.005857999999999896,
+    "baseline_normalized_close_mae": 1.1715999999999782,
+    "forecast_origin": 491,
+    "baseline": "drift"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00047440000000003034,
+    "baseline_normalized_close_mae": 0.27581395348838095,
+    "forecast_origin": 256,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001172799999999996,
+    "baseline_normalized_close_mae": 0.41295774647887856,
+    "forecast_origin": 261,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010111999999999899,
+    "baseline_normalized_close_mae": 0.3844866920152022,
+    "forecast_origin": 266,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009552000000000004,
+    "baseline_normalized_close_mae": 0.2736962750716339,
+    "forecast_origin": 271,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010695999999999818,
+    "baseline_normalized_close_mae": 0.27781818181817564,
+    "forecast_origin": 276,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0005624000000000295,
+    "baseline_normalized_close_mae": 0.262803738317767,
+    "forecast_origin": 281,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0018360000000000377,
+    "baseline_normalized_close_mae": 0.2837712519320007,
+    "forecast_origin": 286,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0011120000000000463,
+    "baseline_normalized_close_mae": 0.31954022988506725,
+    "forecast_origin": 291,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00041839999999997434,
+    "baseline_normalized_close_mae": 0.3606896551724107,
+    "forecast_origin": 296,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009632000000000085,
+    "baseline_normalized_close_mae": 0.31272727272727835,
+    "forecast_origin": 301,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0011976000000000209,
+    "baseline_normalized_close_mae": 0.27342465753424816,
+    "forecast_origin": 306,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001095199999999985,
+    "baseline_normalized_close_mae": 0.35215434083600156,
+    "forecast_origin": 311,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0018183999999999978,
+    "baseline_normalized_close_mae": 0.2627745664739867,
+    "forecast_origin": 316,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.002036799999999972,
+    "baseline_normalized_close_mae": 0.27749318801089484,
+    "forecast_origin": 321,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0008256000000000485,
+    "baseline_normalized_close_mae": 0.2808163265306342,
+    "forecast_origin": 326,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009448000000000345,
+    "baseline_normalized_close_mae": 0.21819861431871182,
+    "forecast_origin": 331,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006512000000000517,
+    "baseline_normalized_close_mae": 0.3042990654205963,
+    "forecast_origin": 336,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0014576000000000144,
+    "baseline_normalized_close_mae": 0.2709293680297399,
+    "forecast_origin": 341,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00119680000000002,
+    "baseline_normalized_close_mae": 0.4367883211678961,
+    "forecast_origin": 346,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0014936000000000283,
+    "baseline_normalized_close_mae": 0.36252427184466596,
+    "forecast_origin": 351,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009047999999999945,
+    "baseline_normalized_close_mae": 0.3077551020408088,
+    "forecast_origin": 356,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0001631999999999856,
+    "baseline_normalized_close_mae": 0.21473684210524902,
+    "forecast_origin": 361,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0011831999999999843,
+    "baseline_normalized_close_mae": 0.26176991150442314,
+    "forecast_origin": 366,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0005448000000000342,
+    "baseline_normalized_close_mae": 0.3362962962963037,
+    "forecast_origin": 371,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00033599999999998074,
+    "baseline_normalized_close_mae": 0.4253164556962011,
+    "forecast_origin": 376,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0030096000000000124,
+    "baseline_normalized_close_mae": 0.3239612486544678,
+    "forecast_origin": 381,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0007183999999999857,
+    "baseline_normalized_close_mae": 0.35564356435642475,
+    "forecast_origin": 386,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006864000000000204,
+    "baseline_normalized_close_mae": 0.29586206896552747,
+    "forecast_origin": 391,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009847999999999634,
+    "baseline_normalized_close_mae": 0.26544474393530076,
+    "forecast_origin": 396,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009751999999999983,
+    "baseline_normalized_close_mae": 0.28514619883041065,
+    "forecast_origin": 401,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009951999999999739,
+    "baseline_normalized_close_mae": 0.2997590361445714,
+    "forecast_origin": 406,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010423999999999989,
+    "baseline_normalized_close_mae": 0.2523970944309945,
+    "forecast_origin": 411,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0015360000000000263,
+    "baseline_normalized_close_mae": 0.3878787878787872,
+    "forecast_origin": 416,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006959999999999855,
+    "baseline_normalized_close_mae": 0.27951807228915165,
+    "forecast_origin": 421,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00041919999999999734,
+    "baseline_normalized_close_mae": 0.2704516129032345,
+    "forecast_origin": 426,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010048000000000058,
+    "baseline_normalized_close_mae": 0.26723404255319405,
+    "forecast_origin": 431,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009464000000000139,
+    "baseline_normalized_close_mae": 0.3416606498194934,
+    "forecast_origin": 436,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0020752000000000105,
+    "baseline_normalized_close_mae": 0.364710017574696,
+    "forecast_origin": 441,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0002847999999999962,
+    "baseline_normalized_close_mae": 0.2936082474226685,
+    "forecast_origin": 446,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0008328000000000114,
+    "baseline_normalized_close_mae": 0.2554601226993868,
+    "forecast_origin": 451,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001056799999999991,
+    "baseline_normalized_close_mae": 0.3019428571428495,
+    "forecast_origin": 456,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006904000000000021,
+    "baseline_normalized_close_mae": 0.32111627906977064,
+    "forecast_origin": 461,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0016384000000000177,
+    "baseline_normalized_close_mae": 0.2849391304347841,
+    "forecast_origin": 466,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001057600000000014,
+    "baseline_normalized_close_mae": 0.28278074866309955,
+    "forecast_origin": 471,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0008272000000000279,
+    "baseline_normalized_close_mae": 0.24766467065869027,
+    "forecast_origin": 476,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0005576000000000025,
+    "baseline_normalized_close_mae": 0.32799999999999474,
+    "forecast_origin": 481,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0017767999999999784,
+    "baseline_normalized_close_mae": 0.3074048442906533,
+    "forecast_origin": 486,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0016056000000000293,
+    "baseline_normalized_close_mae": 0.32112000000000557,
+    "forecast_origin": 491,
+    "baseline": "rolling_mean_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00048601324550985315,
+    "baseline_normalized_close_mae": 0.28256584041269633,
+    "forecast_origin": 256,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010477351103706622,
+    "baseline_normalized_close_mae": 0.3689208135108026,
+    "forecast_origin": 261,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0011600307999239056,
+    "baseline_normalized_close_mae": 0.4410763497809491,
+    "forecast_origin": 266,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0013543359094204677,
+    "baseline_normalized_close_mae": 0.38806186516345853,
+    "forecast_origin": 271,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001667733382695391,
+    "baseline_normalized_close_mae": 0.4331775019988006,
+    "forecast_origin": 276,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0005639767175200205,
+    "baseline_normalized_close_mae": 0.26354052220561325,
+    "forecast_origin": 281,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0034480041649312065,
+    "baseline_normalized_close_mae": 0.5329218183819504,
+    "forecast_origin": 286,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010710225986086063,
+    "baseline_normalized_close_mae": 0.30776511454269956,
+    "forecast_origin": 291,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0003846971169419788,
+    "baseline_normalized_close_mae": 0.3316354456396544,
+    "forecast_origin": 296,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0013900938497848347,
+    "baseline_normalized_close_mae": 0.4513291720080674,
+    "forecast_origin": 301,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0018108082126275127,
+    "baseline_normalized_close_mae": 0.4134265325633543,
+    "forecast_origin": 306,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0012153385369265024,
+    "baseline_normalized_close_mae": 0.39078409547475246,
+    "forecast_origin": 311,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.002241024881607978,
+    "baseline_normalized_close_mae": 0.3238475262439257,
+    "forecast_origin": 316,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0021209780801209276,
+    "baseline_normalized_close_mae": 0.28896159129712856,
+    "forecast_origin": 321,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0007312943372359993,
+    "baseline_normalized_close_mae": 0.24873957048843998,
+    "forecast_origin": 326,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0015160721921420929,
+    "baseline_normalized_close_mae": 0.35013214599124093,
+    "forecast_origin": 331,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0004962597991576611,
+    "baseline_normalized_close_mae": 0.23189710241013073,
+    "forecast_origin": 336,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0014661226443714258,
+    "baseline_normalized_close_mae": 0.2725135026712661,
+    "forecast_origin": 341,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0013673461880595373,
+    "baseline_normalized_close_mae": 0.49903145549618794,
+    "forecast_origin": 346,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0017981234670738423,
+    "baseline_normalized_close_mae": 0.4364377347266594,
+    "forecast_origin": 351,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009555694283760685,
+    "baseline_normalized_close_mae": 0.32502361509389494,
+    "forecast_origin": 356,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.00026790923534940613,
+    "baseline_normalized_close_mae": 0.3525121517755423,
+    "forecast_origin": 361,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0011352067811251088,
+    "baseline_normalized_close_mae": 0.2511519427267957,
+    "forecast_origin": 366,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0006276937695713469,
+    "baseline_normalized_close_mae": 0.3874652898588404,
+    "forecast_origin": 371,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0003009383024562773,
+    "baseline_normalized_close_mae": 0.38093456007125764,
+    "forecast_origin": 376,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.003184746952144435,
+    "baseline_normalized_close_mae": 0.3428145266032753,
+    "forecast_origin": 381,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0007914918783840763,
+    "baseline_normalized_close_mae": 0.39182766256637014,
+    "forecast_origin": 386,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0007484707400723156,
+    "baseline_normalized_close_mae": 0.32261669830703416,
+    "forecast_origin": 391,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0015529349190923857,
+    "baseline_normalized_close_mae": 0.41858084072571144,
+    "forecast_origin": 396,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001018408893413736,
+    "baseline_normalized_close_mae": 0.2977803781911527,
+    "forecast_origin": 401,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0013346062905888133,
+    "baseline_normalized_close_mae": 0.4019898465628968,
+    "forecast_origin": 406,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0016158592561740237,
+    "baseline_normalized_close_mae": 0.3912492145699846,
+    "forecast_origin": 411,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001969167291406415,
+    "baseline_normalized_close_mae": 0.4972644675268631,
+    "forecast_origin": 416,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010115598747435285,
+    "baseline_normalized_close_mae": 0.4062489456801332,
+    "forecast_origin": 421,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0004055066253258577,
+    "baseline_normalized_close_mae": 0.2616171776295957,
+    "forecast_origin": 426,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0018942704737223482,
+    "baseline_normalized_close_mae": 0.5037953387559456,
+    "forecast_origin": 431,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001035763853538385,
+    "baseline_normalized_close_mae": 0.3739219687864138,
+    "forecast_origin": 436,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0021605765704618696,
+    "baseline_normalized_close_mae": 0.3797146872516485,
+    "forecast_origin": 441,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0003053911281821975,
+    "baseline_normalized_close_mae": 0.3148362146208136,
+    "forecast_origin": 446,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0009051524724780436,
+    "baseline_normalized_close_mae": 0.2776541326619731,
+    "forecast_origin": 451,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0012017450445031442,
+    "baseline_normalized_close_mae": 0.34335572700089256,
+    "forecast_origin": 456,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0010057115707961639,
+    "baseline_normalized_close_mae": 0.46777282362612593,
+    "forecast_origin": 461,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0025799114566462445,
+    "baseline_normalized_close_mae": 0.44868025332977907,
+    "forecast_origin": 466,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001421012602773608,
+    "baseline_normalized_close_mae": 0.379949893789727,
+    "forecast_origin": 471,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.001555040399833385,
+    "baseline_normalized_close_mae": 0.4655809580339463,
+    "forecast_origin": 476,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0005484995346589194,
+    "baseline_normalized_close_mae": 0.3226467850934754,
+    "forecast_origin": 481,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.002524985114227096,
+    "baseline_normalized_close_mae": 0.43684863567942783,
+    "forecast_origin": 486,
+    "baseline": "ema_20"
+  },
+  {
+    "pair": "AUDUSD",
+    "baseline_close_mae": 0.0021520161044009225,
+    "baseline_normalized_close_mae": 0.4304032208801841,
+    "forecast_origin": 491,
+    "baseline": "ema_20"
+  }
+]
