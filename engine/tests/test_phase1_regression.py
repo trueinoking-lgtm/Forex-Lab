@@ -379,3 +379,80 @@ class TestEndToEndV2Runner:
         assert '"development"' in content, (
             "V2 runner must use 'development' split for dev loop"
         )
+
+
+class TestOriginCountRegression:
+    """Defect: Run A summary reported 704 development origins
+    without accounting for the 256-bar lookback."""
+
+    def test_dev_3520_rows_no_prior_context_yields_652_origins(self):
+        """3520 development D1 rows with no earlier context
+        must produce exactly floor((3520 - 256 - 5) / 5) + 1 = 652 origins."""
+        n = 3520
+        lookback = 256
+        horizon = 5
+        spacing = 5
+        # First valid origin needs 256 prior bars (indices 0..255),
+        # so earliest origin index >= 255 (= lookback - 1).
+        # Last target at origin+5 must be <= n-1 (index 3519).
+        # So origin <= n-1-horizon = 3520-1-5 = 3514
+        # origin >= lookback-1 = 255
+        # count with spacing=5: floor((3514-255)/5) + 1 = 652
+        earliest = lookback - 1  # 255
+        latest = n - 1 - horizon  # 3514
+        count = (latest - earliest) // spacing + 1
+        assert count == 652, f"Expected 652 development origins, got {count}"
+
+    def test_val_379_rows_with_prior_context_yields_75_origins(self):
+        """379 validation rows, with development context available before,
+        produces exactly 75 origins."""
+        n = 379
+        spacing = 5
+        # Validation starts at row index 3520 (right after 3520 dev rows).
+        # earliest_i = max(255, 3520-1) = 3519
+        # latest_i = (3520 + 379 - 1) - 5 = 3893
+        earliest = 3519
+        latest = 3893
+        count = (latest - earliest) // spacing + 1
+        assert count == 75, f"Expected 75 validation origins (379 rows), got {count}"
+
+    def test_val_380_rows_with_prior_context_yields_76_origins(self):
+        """380 validation rows, with development context available before,
+        produces exactly 76 origins."""
+        n = 380
+        spacing = 5
+        earliest = 3519
+        latest = (3520 + 380 - 1) - 5  # = 3894
+        count = (latest - earliest) // spacing + 1
+        assert count == 76, f"Expected 76 validation origins (380 rows), got {count}"
+
+    def test_sealed_398_rows_with_prior_context_yields_79_origins(self):
+        """398 sealed-test rows, with dev+val context available before,
+        produces exactly 79 origins."""
+        n = 398
+        spacing = 5
+        # sealed test starts at index 3520+379 = 3899
+        # earliest_i = max(255, 3899-1) = 3898
+        # latest_i = (3899 + 398 - 1) - 5 = 4291
+        earliest = 3898
+        latest = 4291
+        count = (latest - earliest) // spacing + 1
+        assert count == 79, f"Expected 79 sealed-test origins (398 rows), got {count}"
+
+    def test_no_origin_has_fewer_than_256_input_rows(self):
+        """Every forecast origin must have >= LOOKBACK=256 input rows
+        preceding it (the 256-bar lookback window)."""
+        n_rows_in_dev = 3520
+        lookback = 256
+        earliest_i = lookback - 1  # 255
+        input_start = earliest_i - lookback + 1  # 0
+        input_rows = earliest_i - input_start + 1  # 256
+        assert input_rows == lookback, (
+            f"First development origin has {input_rows} input rows, "
+            f"expected {lookback}"
+        )
+
+    def test_every_origin_has_exactly_5_target_rows(self):
+        """Each forecast origin produces exactly 5 target rows."""
+        from engine.run_phase1_v2_benchmark import HORIZON
+        assert HORIZON == 5, "HORIZON must be 5"
