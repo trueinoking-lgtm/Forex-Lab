@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "created_at": "2026-07-25T15:30:00Z",
+  "commit": "d37c5d4",
+  "description": "Phase 1 Kronos zero-shot benchmark — canonical dataset manifest with verified SHA-256 hashes, row counts, and development/validation/test boundaries.",
+  "model": {
+    "name": "NeoQuasar/Kronos-mini",
+    "tokenizer": "NeoQuasar/Kronos-Tokenizer-2k",
+    "device": "cpu",
+    "lookback": 256,
+    "prediction_horizon": 5
+  },
+  "datasets": {
+    "EURUSD": {
+      "csv_path": "/root/aether-forex-lab/engine/data/raw_mt5_EURUSD_1h.csv",
+      "manifest_path": "/root/aether-forex-lab/engine/data/raw_mt5_EURUSD_1h.manifest.json",
+      "sha256": "80cc20e9de10f929619902d618a32035f45d557751153d16484de46d8d5fcfc1",
+      "row_count": 102675,
+      "first_timestamp": "2010-01-04T00:00:00+00:00",
+      "last_timestamp": "2026-07-20T19:00:00+00:00",
+      "boundaries": {
+        "development": {"start": "2010-01-04T00:00:00+00:00", "end": "2023-07-20T00:00:00+00:00", "rows": 76110},
+        "validation": {"start": "2023-07-21T00:00:00+00:00", "end": "2025-01-03T00:00:00+00:00", "rows": 155},
+        "test": {"start": "2025-01-06T00:00:00+00:00", "end": "2026-07-20T00:00:00+00:00", "rows": 125}
+      }
+    },
+    "GBPUSD": {
+      "csv_path": "/root/aether-forex-lab/engine/data/raw_mt5_GBPUSD_1h.csv",
+      "manifest_path": "/root/aether-forex-lab/engine/data/raw_mt5_GBPUSD_1h.manifest.json",
+      "sha256": "99a2564ae0040d6c47ec20d1ce84c82a464be44dafac05898ea7e2e53d1fa789",
+      "row_count": 102677,
+      "first_timestamp": "2010-01-04T00:00:00+00:00",
+      "last_timestamp": "2026-07-20T19:00:00+00:00",
+      "boundaries": {
+        "development": {"start": "2010-01-04T00:00:00+00:00", "end": "2023-07-20T00:00:00+00:00", "rows": 76110},
+        "validation": {"start": "2023-07-21T00:00:00+00:00", "end": "2025-01-03T00:00:00+00:00", "rows": 155},
+        "test": {"start": "2025-01-06T00:00:00+00:00", "end": "2026-07-20T00:00:00+00:00", "rows": 125}
+      }
+    },
+    "USDJPY": {
+      "csv_path": "/root/aether-forex-lab/engine/data/raw_mt5_USDJPY_1h.csv",
+      "manifest_path": "/root/aether-forex-lab/engine/data/raw_mt5_USDJPY_1h.manifest.json",
+      "sha256": "3aad2f78b5b06f39ac7804d33845c40e31d2d00073937e2df8eb51512802db60",
+      "row_count": 102684,
+      "first_timestamp": "2010-01-04T00:00:00+00:00",
+      "last_timestamp": "2026-07-20T19:00:00+00:00",
+      "boundaries": {
+        "development": {"start": "2010-01-04T00:00:00+00:00", "end": "2023-07-20T00:00:00+00:00", "rows": 76110},
+        "validation": {"start": "2023-07-21T00:00:00+00:00", "end": "2025-01-03T00:00:00+00:00", "rows": 155},
+        "test": {"start": "2025-01-06T00:00:00+00:00", "end": "2026-07-20T00:00:00+00:00", "rows": 125}
+      }
+    },
+    "AUDUSD": {
+      "csv_path": "/root/aether-forex-lab/engine/data/raw_mt5_AUDUSD_1h.csv",
+      "manifest_path": "/root/aether-forex-lab/engine/data/raw_mt5_AUDUSD_1h.manifest.json",
+      "sha256": "776a10f7326ba04bf68a7c95011aedeebee693b0c5eb22d2ea22a98332bb94a7",
+      "row_count": 102677,
+      "first_timestamp": "2010-01-04T00:00:00+00:00",
+      "last_timestamp": "2026-07-20T19:00:00+00:00",
+      "boundaries": {
+        "development": {"start": "2010-01-04T00:00:00+00:00", "end": "2023-07-20T00:00:00+00:00", "rows": 76110},
+        "validation": {"start": "2023-07-21T00:00:00+00:00", "end": "2025-01-03T00:00:00+00:00", "rows": 155},
+        "test": {"start": "2025-01-06T00:00:00+00:00", "end": "2026-07-20T00:00:00+00:00", "rows": 125}
+      }
+    }
+  }
+}
