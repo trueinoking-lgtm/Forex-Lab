@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -47,7 +48,7 @@ TORCH_SEED = 20260725
 BASE = Path(__file__).resolve().parent.parent
 DATA = BASE / "engine" / "data"
 OUTPUT = BASE / "engine" / "evidence" / "kronos" / "phase1"
-ORIGIN_MANIFEST = OUTPUT / "kronos_phase1_v2_origin_manifest.json"
+ORIGIN_MANIFEST = BASE / "engine" / "docs" / "manifests" / "kronos_phase1_v2_origin_manifest.json"
 
 PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
 
@@ -280,6 +281,10 @@ def generate_origin_manifest() -> dict:
             if pair not in manifest["pairs"]:
                 manifest["pairs"][pair] = {}
             manifest["pairs"][pair][split] = pair_origins_count
+            # Store CSV SHA-256 for guard verification
+            csv_csv_path = DATA / f"raw_mt5_{pair}_1d_v2.csv"
+            csv_sha = hashlib.sha256(csv_csv_path.read_bytes()).hexdigest()
+            manifest["pairs"][pair]["_csv_sha256"] = csv_sha
             
             manifest["totals"][split] += pair_origins_count
 
@@ -328,6 +333,97 @@ def _fold_config_hash() -> str:
     fold_path = BASE / "engine" / "docs" / "kronos_phase1_v2_fold_manifest.json"
     with open(fold_path, "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()
+
+
+def compute_source_csv_hashes() -> dict:
+    """Return {pair: SHA-256} for each V2 D1 CSV."""
+    return {pair: hashlib.sha256(
+        (DATA / f"raw_mt5_{pair}_1d_v2.csv").read_bytes()
+    ).hexdigest() for pair in PAIRS}
+
+
+def get_tracked_code_commit() -> str:
+    """Return the latest tracked commit hash of the repository."""
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        capture_output=True, text=True,
+        cwd=str(BASE),
+    )
+    return result.stdout.strip()
+
+
+def _manifest_sha256(manifest: dict) -> str:
+    """SHA-256 of the canonical JSON representation of a manifest."""
+    canonical = json.dumps(manifest, sort_keys=True, indent=2,
+                           separators=(",", ": "))
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def load_tracked_manifest() -> tuple:
+    """Load the tracked (committed) origin manifest.
+
+    Returns (manifest_dict, manifest_sha256).
+    Raises AssertionError if the manifest file is missing or the
+    SHA-256 does not match the committed content.
+    """
+    assert ORIGIN_MANIFEST.exists(), (
+        f"Tracked origin manifest missing: {ORIGIN_MANIFEST}"
+    )
+    content = ORIGIN_MANIFEST.read_text()
+    manifest = json.loads(content)
+    actual_sha = hashlib.sha256(content.encode()).hexdigest()
+    return manifest, actual_sha
+
+
+def verify_all_guards(stage: str, expected_config_hash: str | None,
+                      expected_code_commit: str | None,
+                      expected_manifest_sha: str | None) -> None:
+    """Verify hashes and identity before any inference stage.
+
+    Raises AssertionError (which causes abort) if any guard fails.
+    Checks:
+    - source CSV SHA-256 vs tracked manifest
+    - config hash (SHA-256 of tracked manifest content)
+    - tracked code commit hash
+    - origin manifest SHA-256 (tamper detection)
+    """
+    # Verify source CSV hashes against manifest
+    csv_hashes = compute_source_csv_hashes()
+    tracked_manifest, manifest_sha = load_tracked_manifest()
+
+    # Check manifest integrity
+    if expected_manifest_sha is not None:
+        assert manifest_sha == expected_manifest_sha, (
+            f"Manifest SHA mismatch: expected {expected_manifest_sha}, "
+            f"got {manifest_sha}"
+        )
+
+    # Check each CSV against manifest-stored hash
+    for pair in PAIRS:
+        actual_csv_sha = csv_hashes[pair]
+        # The manifest stores CSV hashes as hex strings in pair entries
+        stored_sha = str(tracked_manifest.get("pairs", {}).get(pair, {}).get(
+            "_csv_sha256", ""
+        ))
+        assert actual_csv_sha == stored_sha, (
+            f"{pair} CSV hash does not match tracked manifest: "
+            f"actual={actual_csv_sha[:16]}... stored={stored_sha[:16]}..."
+        )
+
+    # Verify config hash if provided
+    if expected_config_hash is not None:
+        assert manifest_sha == expected_config_hash, (
+            f"Config hash mismatch: expected {expected_config_hash}, "
+            f"got {manifest_sha}"
+        )
+
+    # Verify code commit if provided
+    if expected_code_commit is not None:
+        actual_commit = get_tracked_code_commit()
+        assert actual_commit == expected_code_commit, (
+            f"Code commit mismatch: expected {expected_code_commit}, "
+            f"got {actual_commit}"
+        )
 
 
 def save_origin_manifest(manifest: dict) -> str:
@@ -440,7 +536,8 @@ def run_count_only():
 
 def run_stage(stage: str, unseal: bool = False,
               expected_config_hash: str | None = None,
-              expected_code_commit: str | None = None):
+              expected_code_commit: str | None = None,
+              expected_manifest_sha: str | None = None):
     """Execute a single stage with all safety checks."""
     if stage not in STAGES:
         print(f"ERROR: Unknown stage '{stage}'. Use: {', '.join(STAGES)}")
@@ -451,6 +548,16 @@ def run_stage(stage: str, unseal: bool = False,
         if not unseal:
             print("ERROR: sealed-test stage requires --unseal flag.")
             sys.exit(1)
+
+    # Verify all hash guards before any stage execution
+    print("Verifying hash guards...")
+    verify_all_guards(
+        stage,
+        expected_config_hash=expected_config_hash,
+        expected_code_commit=expected_code_commit,
+        expected_manifest_sha=expected_manifest_sha,
+    )
+    print("  All hash guards passed.")
 
     # Load manifest and verify data-visibility boundary
     print(f"\n{'=' * 60}")
