@@ -695,13 +695,15 @@ def main():
             print("ERROR: sealed-test requires --unseal")
             sys.exit(1)
         print(f"Sealed-test mode authorised with unseal flag.")
-        print(f"Expected config hash: {args.expected_config_hash}")
-        print(f"Expected code commit: {args.expected_code_commit}")
 
     run_stage(
         args.stage,
         unseal=args.unseal,
         expected_config_hash=args.expected_config_hash,
+        expected_dataset_manifest_hash=args.expected_dataset_manifest_hash,
+        expected_fold_manifest_hash=args.expected_fold_manifest_hash,
+        expected_metric_spec_hash=args.expected_metric_spec_hash,
+        expected_origin_manifest_hash=args.expected_origin_manifest_hash,
         expected_code_commit=args.expected_code_commit,
     )
 
