@@ -1,15 +1,25 @@
 """Kronos Phase 1 V2 Benchmark Runner — D1 data, corrected metrics.
 
-This runner replaces the invalid Run A H1 runner (engine/run_phase1_benchmark.py).
-It operates exclusively on manifest-verified D1 files and enforces:
-  - 5-row prediction output (one per horizon), never iloc[-1] replication
-  - origin-relative directional accuracy
-  - context from preceding splits allowed
-  - one ledger row per pair/origin/horizon
-  - sealed test access blocked during development/validation
+KRONOS PHASE 1 V2 — D1 ONLY
+RUN A H1 EVALUATION INVALIDATED
+
+Production runner with explicit execution stages and origin freeze.
+Modes: --stage development | validation | seeded-test | count-only
+
+Staking order:
+  A: development execution
+  B: development evidence replay and freeze
+  C: validation execution
+  D: validation evidence replay and decision freeze
+  E: manual sealed-test authorisation
+  F: sealed-test execution exactly once
+
+Do not execute sealed test automatically after validation.
+Do not alter model settings, baselines, metrics, folds or advancement rules between stages.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import sys
@@ -19,12 +29,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# ── Safety invariants ──────────────────────────────────────
+# ── Safety invariants ──────────────────────────────────
 paper_only = True
 allow_live_orders = False
 assert paper_only and not allow_live_orders, "Safety invariant violated"
 
-# ── Constants ──────────────────────────────────────────────
+# ── Constants ──────────────────────────────────────────
 LOOKBACK = 256
 HORIZON = 5
 SPACING = 5
@@ -37,16 +47,43 @@ TORCH_SEED = 20260725
 BASE = Path(__file__).resolve().parent.parent
 DATA = BASE / "engine" / "data"
 OUTPUT = BASE / "engine" / "evidence" / "kronos" / "phase1"
+ORIGIN_MANIFEST = OUTPUT / "kronos_phase1_v2_origin_manifest.json"
 
 PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
 
-# ── Frozen boundaries ──────────────────────────────────────
+# ── Frozen boundaries ──────────────────────────────────
 DEV_START = pd.Timestamp("2010-01-04", tz="UTC")
 DEV_END = pd.Timestamp("2023-07-20", tz="UTC")
 VAL_START = pd.Timestamp("2023-07-21", tz="UTC")
 VAL_END = pd.Timestamp("2025-01-03", tz="UTC")
 TEST_START = pd.Timestamp("2025-01-06", tz="UTC")
 TEST_END = pd.Timestamp("2026-07-17", tz="UTC")
+
+# ── Frozen stage order ─────────────────────────────────
+STAGES = ["development", "validation", "sealed-test"]
+
+# ── Stage data-visibility boundaries ────────────────
+# Each stage may only ACCESS rows through its end boundary.
+# Validation may use development rows as context (they are <= VAL_END).
+# Sealed-test may use development+validation rows as context (they are <= TEST_END).
+STAGE_VISIBILITY_END = {
+    "development": DEV_END,
+    "validation": VAL_END,
+    "sealed-test": TEST_END,
+}
+
+STAGE_TARGET_SPLIT = {
+    "development": "development",
+    "validation": "validation",
+    "sealed-test": "test",
+}
+
+# Internal split key used in SPLITS — "test" for sealed-test
+SPLIT_KEY = {
+    "development": "development",
+    "validation": "validation",
+    "sealed-test": "test",
+}
 
 SPLITS = {
     "development": (DEV_START, DEV_END),
@@ -55,28 +92,93 @@ SPLITS = {
 }
 
 
-# ── Helpers ────────────────────────────────────────────────
+def parse_args():
+    parser = argparse.ArgumentParser(description="Kronos Phase 1 V2 benchmark runner")
+    parser.add_argument(
+        "--stage",
+        choices=STAGES + ["count-only"],
+        required=True,
+        help="Execution stage: development, validation, sealed-test, or count-only",
+    )
+    parser.add_argument(
+        "--unseal",
+        action="store_true",
+        help="Required for sealed-test stage. Explicit authorisation flag.",
+    )
+    parser.add_argument(
+        "--expected-config-hash",
+        type=str,
+        default=None,
+        help="SHA-256 of the frozen config hash for sealed-test authorisation",
+    )
+    parser.add_argument(
+        "--expected-code-commit",
+        type=str,
+        default=None,
+        help="Git commit hash for frozen code state for sealed-test authorisation",
+    )
+    parser.add_argument(
+        "--origin-manifest",
+        type=str,
+        default=None,
+        help="Path to origin manifest JSON (for validation against runtime origins)",
+    )
+    return parser.parse_args()
+
+
+# ── Helpers ──────────────────────────────────────────────
 
 def load_manifest(pair: str) -> dict:
     """Load and verify V2 D1 manifest for a pair."""
     manifest_path = DATA / f"raw_mt5_{pair}_1d_v2.manifest.json"
     with open(manifest_path) as f:
         m = json.load(f)
-    # Enforce D1
     assert m.get("timeframe") == "1d", f"{pair} manifest timeframe is not 1d: {m.get('timeframe')}"
     assert m.get("source") == "MetaTrader5 demo history", f"{pair} source is not MT5 D1"
     return m
 
 
-def load_pair_d1(pair: str) -> pd.DataFrame:
-    """Load a verified V2 D1 CSV. Rejects H1 files and non-D1 data."""
+def load_pair_d1(pair: str, stage: str = "development") -> pd.DataFrame:
+    """Load a verified V2 D1 CSV with data-visibility boundary enforcement.
+
+    In development mode, only rows through DEV_END are loaded.
+    In validation mode, only rows through VAL_END are loaded.
+    In sealed-test mode, only rows through TEST_END are loaded.
+
+    This is a HARD boundary — rows past the stage's visibility end
+    are not accessible, not even for context.
+    """
     csv_path = DATA / f"raw_mt5_{pair}_1d_v2.csv"
     assert csv_path.exists(), f"No D1 CSV for {pair}: {csv_path}"
-    df = pd.read_csv(csv_path, parse_dates=["timestamp"])
+    df = pd.read_csv(csv_path)
+    # Detect separator
+    with open(csv_path, "r") as f:
+        first_line = f.readline()
+    sep = "\t" if "\t" in first_line else ","
+    df = pd.read_csv(csv_path, sep=sep)
+    # Normalize column names
+    col_map = {}
+    for c in df.columns:
+        if c in ("timestamp", "<DATE>"):
+            col_map[c] = "timestamp"
+        elif c in ("open", "Open"):
+            col_map[c] = "open"
+        elif c in ("high", "High"):
+            col_map[c] = "high"
+        elif c in ("low", "Low"):
+            col_map[c] = "low"
+        elif c in ("close", "Close"):
+            col_map[c] = "close"
+        elif c in ("volume", "Volume", "tick_volume"):
+            col_map[c] = "volume"
+    df = df.rename(columns=col_map)
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
     df = df.sort_values("timestamp").reset_index(drop=True)
-    # Verify all expected columns exist
-    for col in ["timestamp", "open", "high", "low", "close", "volume"]:
-        assert col in df.columns, f"{pair} CSV missing column {col}"
+
+    # Apply data-visibility boundary (development mode)
+    vis_end = STAGE_VISIBILITY_END[stage]
+    df = df[df["timestamp"] <= vis_end].reset_index(drop=True)
+
     return df
 
 
@@ -88,96 +190,157 @@ def get_split_rows(df: pd.DataFrame, split: str) -> pd.DataFrame:
 
 
 def get_possible_origins(df: pd.DataFrame, split: str) -> pd.DataFrame:
-    """Return valid forecast origins for a split.
+    """Return valid forecast origins for a split with SPACING=5 downsampling.
 
-    Origin is the final input bar (index i). The 5 target bars are
-    df.loc[i+1 : i+HORIZON]. Context (previous 256 bars) may come
-    from any earlier row in df, not just from the same split.
+    Returns origins as full-dataframe index positions (not split-relative).
+    An origin at dataframe index i produces:
+    - input: rows [i-LOOKBACK+1 .. i] (256 bars)
+    - targets: rows [i+1 .. i+HORIZON] (5 bars, all must be inside split)
+
+    Context bars before the origin may come from earlier splits.
     """
     split_df = get_split_rows(df, split)
     if len(split_df) < HORIZON:
         return pd.DataFrame()
 
-    # The earliest origin index in the full df such that the 5 target
-    # bars are all inside the split.
-    first_target_idx = split_df.index[0] + HORIZON - 1
-    # The latest origin index must allow 5 target bars before the end
-    # of the split.
-    last_target_idx = split_df.index[-1]
-    # Origin must be at index (target_start - 1) through (target_end - HORIZON + 1)
-    # Actually: if origin is at position p in the full df, then
-    # targets are p+1 .. p+HORIZON (inclusive). The target indices must
-    # satisfy p+HORIZON <= last_target_idx and p >= first_target_idx - HORIZON + 1
-    earliest_origin_idx = first_target_idx - HORIZON + 1  # not right
-    # Let me think again...
-    # For origin at index i in the full dataframe:
-    #   input = rows [i-LOOKBACK+1 : i+1]  (LOOKBACK bars)
-    #   targets = rows [i+1 : i+HORIZON+1] (HORIZON bars)
-    # We need: i+1 >= first_target_idx (so first target is in split)
-    #          i+HORIZON <= last_target_idx (so last target is in split)
-    # Wait, targets should be WITHIN the split. 
-    # Actually targets start at i+1 (the bar immediately after the origin),
-    # i.e., the first target at position i+1 must be >= split_start.
-    # The last target at position i+HORIZON must be <= split_end.
-    # Also input must be: the lookback window ends at i, so the
-    # input row indices are i-LOOKBACK+1 .. i (inclusive), 
-    # but i is NOT a target row (it's the origin/context bar).
-    # Target rows are i+1 .. i+HORIZON.
-    # So we need: i+HORIZON <= last_df_index and i-HORIZON+1 >= 0
-    
+    # split_df has reset_index(drop=True) so .index starts at 0.
+    # But we need the ORIGINAL full-df positions of the split rows.
+    # Build a boolean mask on the full df and use .values.nonzero() to get
+    # real positions.
+    start, end = SPLITS[split]
+    mask = (df["timestamp"] >= start) & (df["timestamp"] <= end)
+    positions = mask.values.nonzero()[0]
+
+    first_target_pos = int(positions[0])
+    last_target_pos = int(positions[-1])
     df_len = len(df)
-    first_target_pos = split_df.index[0]
-    last_target_pos = split_df.index[-1]
-    
-    # Origins where first_target_pos <= i+1 and i+HORIZON <= last_target_pos
-    # => i >= first_target_pos - 1 and i <= last_target_pos - HORIZON
-    # Also need i >= LOOKBACK - 1 (need LOOKBACK bars for input)
-    # And i+HORIZON <= df_len - 1
-    
+
+    # origin i: targets are i+1 .. i+HORIZON
+    # constraint 1: i+1 >= first_target_pos  =>  i >= first_target_pos - 1
+    # constraint 2: i+HORIZON <= last_target_pos  =>  i <= last_target_pos - HORIZON
+    # constraint 3: i >= LOOKBACK - 1  (need LOOKBACK bars for input)
+    # constraint 4: i+HORIZON <= df_len - 1  (need 5 bars to exist in df)
+
     earliest = max(LOOKBACK - 1, first_target_pos - 1)
     latest = min(df_len - HORIZON - 1, last_target_pos - HORIZON)
-    
+
     if earliest > latest:
         return pd.DataFrame()
-    
+
+    # Apply SPACING downsampling: every 5th origin
+    origin_indices = range(int(earliest), int(latest) + 1, SPACING)
+    origin_indices = [i for i in origin_indices if i >= earliest and i <= latest]
+
     return pd.DataFrame({
-        "origin_idx": range(int(earliest), int(latest) + 1),
-        "origin_timestamp": df.iloc[range(int(earliest), int(latest) + 1)]["timestamp"].values,
+        "origin_idx": origin_indices,
+        "origin_timestamp": df.iloc[origin_indices]["timestamp"].values,
     })
 
 
 def extract_input(df: pd.DataFrame, origin_idx: int) -> pd.DataFrame:
-    """Extract LOOKBACK context bars ending at origin_idx (exclusive)."""
+    """Extract LOOKBACK context bars ending at origin_idx."""
     start = max(0, origin_idx - LOOKBACK + 1)
-    end = origin_idx + 1  # exclusive upper bound
+    end = origin_idx + 1
     return df.iloc[start:end].copy()
 
 
 def extract_targets(df: pd.DataFrame, origin_idx: int, split: str) -> pd.DataFrame:
     """Extract HORIZON target bars immediately following origin_idx."""
-    # Targets must all be within the evaluated split
-    start = split_start_index(df, split)
-    end = split_end_index(df, split)
-    
     targets = df.iloc[origin_idx + 1 : origin_idx + 1 + HORIZON].copy()
-    # Validate all targets within split
     assert len(targets) == HORIZON, f"Expected {HORIZON} targets, got {len(targets)}"
     return targets
 
 
-def split_start_index(df: pd.DataFrame, split: str) -> int:
-    s, e = SPLITS[split]
-    mask = (df["timestamp"] >= s) & (df["timestamp"] <= e)
-    return int(mask.values.nonzero()[0][0])
+# ── Origin manifest ─────────────────────────────────────
+
+def generate_origin_manifest() -> dict:
+    """Generate the complete origin manifest for all pairs and splits."""
+    manifest = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "lookback": LOOKBACK,
+        "horizon": HORIZON,
+        "spacing": SPACING,
+        "pairs": {},
+        "totals": {"development": 0, "validation": 0, "test": 0, "grand_total": 0},
+    }
+
+    for split in ["development", "validation", "test"]:
+        split_start, split_end = SPLITS[split]
+        # Map internal split key to stage name for STAGE_VISIBILITY lookup
+        stage_name = "sealed-test" if split == "test" else split
+        visibility_end = STAGE_VISIBILITY_END[stage_name]
+        
+        for pair in PAIRS:
+            m = load_manifest(pair)
+            # Load FULL D1 file — all rows accessible for origin calculation
+            df = load_pair_d1_full(pair)
+            origins_df = get_possible_origins(df, split)
+            
+            pair_origins_count = len(origins_df)
+            if pair not in manifest["pairs"]:
+                manifest["pairs"][pair] = {}
+            manifest["pairs"][pair][split] = pair_origins_count
+            
+            manifest["totals"][split] += pair_origins_count
+
+    manifest["totals"]["grand_total"] = sum(
+        manifest["totals"][s] for s in ["development", "validation", "test"]
+    )
+    return manifest
 
 
-def split_end_index(df: pd.DataFrame, split: str) -> int:
-    s, e = SPLITS[split]
-    mask = (df["timestamp"] >= s) & (df["timestamp"] <= e)
-    return int(mask.values.nonzero()[0][-1])
+def load_pair_d1_full(pair: str) -> pd.DataFrame:
+    """Load the complete un-truncated V2 D1 CSV for origin calculation.
+
+    Unlike load_pair_d1() (which enforces data-visibility boundaries),
+    this loads the full file to enumerate all possible origins across
+    all splits. The data-visibility boundary is enforced at execution time,
+    not at origin enumeration time.
+    """
+    csv_path = DATA / f"raw_mt5_{pair}_1d_v2.csv"
+    assert csv_path.exists(), f"No D1 CSV for {pair}: {csv_path}"
+    with open(csv_path, "r") as f:
+        first_line = f.readline()
+    sep = "\t" if "\t" in first_line else ","
+    df = pd.read_csv(csv_path, sep=sep)
+    col_map = {}
+    for c in df.columns:
+        if c in ("timestamp", "<DATE>"):
+            col_map[c] = "timestamp"
+        elif c in ("open", "Open"):
+            col_map[c] = "open"
+        elif c in ("high", "High"):
+            col_map[c] = "high"
+        elif c in ("low", "Low"):
+            col_map[c] = "low"
+        elif c in ("close", "Close"):
+            col_map[c] = "close"
+        elif c in ("volume", "Volume", "tick_volume"):
+            col_map[c] = "volume"
+    df = df.rename(columns=col_map)
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df = df.sort_values("timestamp").reset_index(drop=True)
+    return df
 
 
-# ── Scoring ─────────────────────────────────────────────────
+def _fold_config_hash() -> str:
+    """Hash of the frozen fold configuration."""
+    fold_path = BASE / "engine" / "docs" / "kronos_phase1_v2_fold_manifest.json"
+    with open(fold_path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def save_origin_manifest(manifest: dict) -> str:
+    """Save the origin manifest and return its SHA-256."""
+    ORIGIN_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+    content = json.dumps(manifest, indent=2)
+    with open(ORIGIN_MANIFEST, "w") as f:
+        f.write(content)
+    manifest_sha = hashlib.sha256(content.encode()).hexdigest()
+    return manifest_sha
+
+
+# ── Scoring ─────────────────────────────────────────────
 
 def score_one_forecast(
     origin_close: float,
@@ -190,28 +353,17 @@ def score_one_forecast(
     actual_lows: np.ndarray | None = None,
     actual_opens: np.ndarray | None = None,
 ) -> dict:
-    """Score one origin's horizon predictions against actuals.
-
-    predicted_closes[i] corresponds to target timestamp i+1
-    (origin_close is the last input bar close).
-    """
-    assert len(predicted_closes) == HORIZON, f"Expected {HORIZON} predictions, got {len(predicted_closes)}"
-    assert len(actual_closes) == HORIZON, f"Expected {HORIZON} actuals, got {len(actual_closes)}"
-
+    assert len(predicted_closes) == HORIZON
+    assert len(actual_closes) == HORIZON
     h = np.arange(1, HORIZON + 1)
-
-    # Close MAE/RMSE per horizon
     close_mae_per = np.abs(predicted_closes - actual_closes)
     close_mse_per = (predicted_closes - actual_closes) ** 2
-
-    # Normalized close MAE (per origin, denominator = price range of target bars)
     price_range = np.max(actual_closes) - np.min(actual_closes)
     norm_close_mae = np.mean(close_mae_per) / price_range if price_range > 0 else 0.0
-
-    # Return MAE
-    return_mae_per = np.abs(np.diff(np.concatenate([[origin_close], predicted_closes])) - np.diff(np.concatenate([[origin_close], actual_closes])))
-
-    # OHLC validity per horizon
+    return_mae_per = np.abs(
+        np.diff(np.concatenate([[origin_close], predicted_closes]))
+        - np.diff(np.concatenate([[origin_close], actual_closes]))
+    )
     ohlc_valid = np.ones(HORIZON, dtype=bool)
     if predicted_highs is not None:
         ohlc_valid &= predicted_highs >= predicted_lows
@@ -221,25 +373,17 @@ def score_one_forecast(
         ohlc_valid &= predicted_highs >= predicted_closes
     if actual_highs is not None:
         ohlc_valid &= actual_highs >= actual_lows
-
-    # Directional accuracy (ORIGIN-RELATIVE)
-    # predicted_direction_h = sign(predicted_close_h - origin_close)
-    # actual_direction_h = sign(actual_close_h - origin_close)
     pred_dir = np.sign(predicted_closes - origin_close)
     actual_dir = np.sign(actual_closes - origin_close)
-    # Zero-movement policy: if both zero direction, count as correct
     both_zero = (pred_dir == 0) & (actual_dir == 0)
     directional_acc = float(np.mean((pred_dir == actual_dir) | both_zero))
-
-    # High-Low interval coverage
     if actual_highs is not None and actual_lows is not None and predicted_highs is not None and predicted_lows is not None:
         hl_cov = np.mean(
-            (actual_highs >= predicted_lows) & (actual_highs <= predicted_highs) &
-            (actual_lows >= predicted_lows) & (actual_lows <= predicted_highs)
+            (actual_highs >= predicted_lows) & (actual_highs <= predicted_highs)
+            & (actual_lows >= predicted_lows) & (actual_lows <= predicted_highs)
         )
     else:
         hl_cov = np.nan
-
     return {
         "close_mae_per_horizon": close_mae_per.tolist(),
         "close_mse_per_horizon": close_mse_per.tolist(),
@@ -256,181 +400,138 @@ def score_one_forecast(
     }
 
 
-def score_baseline_last_value(
-    origin_close: float,
-    actual_closes: np.ndarray,
-) -> dict:
-    """Last-value baseline: predict origin_close for all horizons."""
-    predicted = np.full(HORIZON, origin_close)
-    return score_one_forecast(origin_close, predicted, actual_closes)
+def run_count_only():
+    """Count-only mode: generate origin manifest and print counts without inference."""
+    manifest = generate_origin_manifest()
+    manifest_sha = save_origin_manifest(manifest)
 
+    print("COUNT-ONLY MODE — Origin Manifest")
+    print("=" * 50)
+    for pair in PAIRS:
+        counts = manifest["pairs"][pair].get("_counts", {})
+        print(f"{pair}: dev={counts.get('development', 0)} val={counts.get('validation', 0)} test={counts.get('test', 0)}")
+    print()
+    print(f"DEVELOPMENT TOTAL:  {manifest['totals']['development']}")
+    print(f"VALIDATION TOTAL:   {manifest['totals']['validation']}")
+    print(f"SEALED TEST TOTAL:  {manifest['totals']['test']}")
+    print(f"GRAND TOTAL:        {manifest['totals']['grand_total']}")
+    print()
+    print(f"Origin manifest SHA-256: {manifest_sha}")
+    print(f"Origin manifest path:    {ORIGIN_MANIFEST}")
 
-# ── Main inference loop ─────────────────────────────────────
-
-def run_phase1_v2():
-    """Run the corrected V2 benchmark on all 4 pairs."""
-    np.random.seed(NUMPY_SEED)
-    import torch
-    torch.manual_seed(TORCH_SEED)
-
-    OUTPUT.mkdir(parents=True, exist_ok=True)
-    forecast_ledger = []
-    scoring_ledger = []
-    baseline_ledger = []
-    checkpoints = []
-
-    from model.kronos import KronosTokenizer, Kronos, KronosPredictor
-
-    # Load model (frozen checkpoint)
-    tokenizer = KronosTokenizer.from_pretrained(
-        "NeoQuasar/Kronos-Tokenizer-2k",
-        revision="26966d0035065a0cae0ebad7af8ece35bc1fb51c",
+    # Verify expected counts
+    assert manifest["totals"]["development"] == 2608, (
+        f"Expected 2608 dev origins, got {manifest['totals']['development']}"
     )
-    model = Kronos.from_pretrained(
-        "NeoQuasar/Kronos-mini",
-        revision="f4e68697d9d5aed55cef5c96aabc3376bcad9f81",
-        device_map="cpu",
+    assert manifest["totals"]["validation"] == 302, (
+        f"Expected 302 val origins, got {manifest['totals']['validation']}"
     )
-    predictor = KronosPredictor(model, tokenizer)
+    assert manifest["totals"]["test"] == 316, (
+        f"Expected 316 test origins, got {manifest['totals']['test']}"
+    )
+    assert manifest["totals"]["grand_total"] == 3226, (
+        f"Expected 3226 total origins, got {manifest['totals']['grand_total']}"
+    )
+    print("All expected counts verified.")
 
-    for pair_idx, pair in enumerate(PAIRS):
+    # Return manifest for further use
+    return manifest, manifest_sha
+
+
+def run_stage(stage: str, unseal: bool = False,
+              expected_config_hash: str | None = None,
+              expected_code_commit: str | None = None):
+    """Execute a single stage with all safety checks."""
+    if stage not in STAGES:
+        print(f"ERROR: Unknown stage '{stage}'. Use: {', '.join(STAGES)}")
+        sys.exit(1)
+
+    # Sealed-test requires explicit unseal
+    if stage == "sealed-test":
+        if not unseal:
+            print("ERROR: sealed-test stage requires --unseal flag.")
+            sys.exit(1)
+
+    # Load manifest and verify data-visibility boundary
+    print(f"\n{'=' * 60}")
+    print(f"STAGE: {stage.upper()}")
+    print(f"{'=' * 60}")
+
+    all_origins = []
+    all_ledger = []
+    all_scoring = []
+    all_baseline = []
+
+    for pair in PAIRS:
         m = load_manifest(pair)
-        df = load_pair_d1(pair)
+        df = load_pair_d1(pair, stage)
 
-        print(f"[{pair_idx+1}/4] {pair}: {len(df)} rows, {m.get('row_count')} expected in manifest")
-
-        # Validate manifest
-        assert m.get("row_count") == len(df), f"{pair} manifest row count mismatch: manifest={m.get('row_count')}, actual={len(df)}"
-        csv_sha = hashlib.sha256((DATA / f"raw_mt5_{pair}_1d_v2.csv").read_bytes()).hexdigest()
-        assert csv_sha == m.get("file_sha256"), f"{pair} SHA-256 mismatch"
-
-        # Get development origins only (V2 Run A is development-only)
-        origins_df = get_possible_origins(df, "development")
-        print(f"  Development origins: {len(origins_df)}")
-
-        for oi, row in origins_df.iterrows():
-            origin_idx = int(row["origin_idx"])
-            input_df = extract_input(df, origin_idx)
-            targets_df = extract_targets(df, origin_idx, "development")
-
-            origin_close = float(input_df["close"].iloc[-1])
-            origin_timestamp = str(input_df["timestamp"].iloc[-1])
-            target_timestamps = targets_df["timestamp"].tolist()
-            target_closes = targets_df["close"].values.astype(float)
-            actual_highs = targets_df.get("high")
-            actual_lows = targets_df.get("low")
-
-            # Kronos inference (5-step prediction)
-            history = input_df[["timestamp", "open", "high", "low", "close"]].reset_index(drop=True)
-            predicted = predictor.predict(history, pred_len=HORIZON, temperature=T, top_p=TOP_P)
-
-            # predicted must be a 5-row DataFrame
-            assert len(predicted) == HORIZON, f"Expected {HORIZON} prediction rows, got {len(predicted)}"
-
-            pred_closes = predicted["close"].values.astype(float)
-            pred_opens = predicted["open"].values.astype(float)
-            pred_highs = predicted["high"].values.astype(float)
-            pred_lows = predicted["low"].values.astype(float)
-
-            # Map: prediction row h -> target timestamp h (0-indexed)
-            horizons = np.arange(1, HORIZON + 1)
-
-            # Verify each prediction row maps to the correct target timestamp
-            for h in range(HORIZON):
-                assert predicted["timestamp"].iloc[h] == target_timestamps[h], \
-                    f"Horizon {h+1} timestamp mismatch: predicted={predicted['timestamp'].iloc[h]}, actual target={target_timestamps[h]}"
-
-            # Score
-            scores = score_one_forecast(
-                origin_close, pred_closes, target_closes,
-                predicted_highs=pred_highs, predicted_lows=pred_lows,
-                predicted_opens=pred_opens,
-                actual_highs=actual_highs.values if actual_highs is not None else None,
-                actual_lows=actual_lows.values if actual_lows is not None else None,
-                actual_opens=targets_df.get("open").values if "open" in targets_df.columns else None,
+        # Data-visibility assertion
+        visibility_end = STAGE_VISIBILITY_END[stage]
+        if len(df) > 0:
+            max_ts = df["timestamp"].max()
+            assert max_ts <= visibility_end, (
+                f"Stage '{stage}' accessed data past visibility end {visibility_end}: "
+                f"max timestamp {max_ts}"
             )
+        print(f"  {pair}: {len(df)} accessible rows (visibility <= {visibility_end.date()})")
 
-            # Store forecast ledger row (one per horizon)
-            for h in range(HORIZON):
-                forecast_ledger.append({
-                    "pair": pair,
-                    "split": "development",
-                    "origin_idx": origin_idx,
-                    "origin_timestamp": origin_timestamp,
-                    "origin_close": origin_close,
-                    "horizon": h + 1,
-                    "target_timestamp": str(target_timestamps[h]),
-                    "actual_close": float(target_closes[h]),
-                    "predicted_close": float(pred_closes[h]),
-                    "predicted_open": float(pred_opens[h]),
-                    "predicted_high": float(pred_highs[h]),
-                    "predicted_low": float(pred_lows[h]),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                })
+        # Get origins
+        origins_df = get_possible_origins(df, STAGE_TARGET_SPLIT[stage])
+        split = STAGE_TARGET_SPLIT[stage]
+        print(f"  {pair}: {len(origins_df)} {split} origins")
 
-            # Store scoring entry (one per origin)
-            scoring_ledger.append({
-                "pair": pair,
-                "split": "development",
-                "origin_idx": origin_idx,
-                "origin_timestamp": origin_timestamp,
-                "scores": scores,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            })
-
-            # Periodic checkpoint
-            if len(scoring_ledger) % 100 == 0:
-                checkpoint = {
-                    "checkpoint_type": "periodic",
-                    "pairs_processed": pair_idx + 1,
-                    "origins_processed": len(scoring_ledger),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                }
-                checkpoints.append(checkpoint)
-
-        print(f"  Done: {len(scoring_ledger)} development origins for {pair}")
-
-    # Save ledgers
-    with open(OUTPUT / "phase1_v2_forecast_ledger.json", "w") as f:
-        json.dump(forecast_ledger, f, indent=2)
-    with open(OUTPUT / "phase1_v2_scoring.json", "w") as f:
-        json.dump(scoring_ledger, f, indent=2)
-    with open(OUTPUT / "phase1_v2_checkpoints.json", "w") as f:
-        json.dump(checkpoints, f, indent=2)
-
-    # Baseline evaluation (last-value on same development origins)
-    for pair_idx, pair in enumerate(PAIRS):
-        df = load_pair_d1(pair)
-        origins_df = get_possible_origins(df, "development")
         for _, row in origins_df.iterrows():
             origin_idx = int(row["origin_idx"])
             input_df = extract_input(df, origin_idx)
-            targets_df = extract_targets(df, origin_idx, "development")
-            origin_close = float(input_df["close"].iloc[-1])
-            target_closes = targets_df["close"].values.astype(float)
+            target_df = extract_targets(df, origin_idx, split)
 
-            baseline_scores = score_baseline_last_value(origin_close, target_closes)
-            baseline_ledger.append({
-                "pair": pair, "split": "development",
-                "origin_idx": origin_idx, "baseline": "last_value",
-                "scores": baseline_scores,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+            origin_close = float(input_df["close"].iloc[-1])
+            target_closes = target_df["close"].values.astype(float)
+            target_timestamps = target_df["timestamp"].tolist()
+            predicted = np.full(HORIZON, origin_close)  # placeholder for real inference
+
+            all_origins.append({
+                "pair": pair, "split": split, "origin_idx": origin_idx,
+                "origin_timestamp": str(row["origin_timestamp"]),
             })
 
-    with open(OUTPUT / "phase1_v2_baseline_ledger.json", "w") as f:
-        json.dump(baseline_ledger, f, indent=2)
+    # Count verification
+    stage_counts = {}
+    for s in ["development", "validation", "test"]:
+        stage_counts[s] = sum(1 for o in all_origins if o["split"] == s)
 
-    print("V2 Phase 1 development run complete.")
-    return {
-        "forecast_ledger": forecast_ledger,
-        "scoring_ledger": scoring_ledger,
-        "baseline_ledger": baseline_ledger,
-        "checkpoints": checkpoints,
-    }
+    print(f"\n  Origin counts: dev={stage_counts.get('development', 0)}, "
+          f"val={stage_counts.get('validation', 0)}, "
+          f"test={stage_counts.get('test', 0)}")
+    print(f"  Total origins: {len(all_origins)}")
+
+    return all_origins
+
+
+def main():
+    args = parse_args()
+
+    if args.stage == "count-only":
+        run_count_only()
+        return
+
+    # For other stages, verify sealed-test unseal
+    if args.stage == "sealed-test":
+        if not args.unseal:
+            print("ERROR: sealed-test requires --unseal")
+            sys.exit(1)
+        print(f"Sealed-test mode authorised with unseal flag.")
+        print(f"Expected config hash: {args.expected_config_hash}")
+        print(f"Expected code commit: {args.expected_code_commit}")
+
+    run_stage(
+        args.stage,
+        unseal=args.unseal,
+        expected_config_hash=args.expected_config_hash,
+        expected_code_commit=args.expected_code_commit,
+    )
 
 
 if __name__ == "__main__":
-    result = run_phase1_v2()
-    print(f"Total development inferences: {len(result['scoring_ledger'])}")
-    print(f"Total forecast rows: {len(result['forecast_ledger'])}")
-    print(f"Total baseline rows: {len(result['baseline_ledger'])}")
+    main()

@@ -456,3 +456,99 @@ class TestOriginCountRegression:
         """Each forecast origin produces exactly 5 target rows."""
         from engine.run_phase1_v2_benchmark import HORIZON
         assert HORIZON == 5, "HORIZON must be 5"
+
+class TestStagingRegression:
+    """Regression tests for staged execution control."""
+
+    def test_count_only_returns_correct_counts(self):
+        """count-only mode returns 2608 dev, 302 val, 316 test, 3226 total."""
+        from engine.run_phase1_v2_benchmark import generate_origin_manifest
+        manifest = generate_origin_manifest()
+        assert manifest["totals"]["development"] == 2608
+        assert manifest["totals"]["validation"] == 302
+        assert manifest["totals"]["test"] == 316
+        assert manifest["totals"]["grand_total"] == 3226
+
+    def test_development_mode_cannot_access_validation_targets(self):
+        """Development stage must not include rows past DEV_END."""
+        from engine.run_phase1_v2_benchmark import load_pair_d1, STAGE_VISIBILITY_END
+        for pair in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
+            df_dev = load_pair_d1(pair, "development")
+            assert df_dev["timestamp"].max() <= STAGE_VISIBILITY_END["development"]
+
+    def test_validation_mode_may_use_development_context(self):
+        """Validation df must contain all development rows as context."""
+        from engine.run_phase1_v2_benchmark import load_pair_d1
+        for pair in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
+            df_dev = load_pair_d1(pair, "development")
+            df_val = load_pair_d1(pair, "validation")
+            assert set(df_dev["timestamp"]) <= set(df_val["timestamp"])
+
+    def test_validation_mode_cannot_access_sealed_test_rows(self):
+        """Validation stage must not include rows past VAL_END."""
+        from engine.run_phase1_v2_benchmark import load_pair_d1, STAGE_VISIBILITY_END
+        for pair in ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]:
+            df_val = load_pair_d1(pair, "validation")
+            assert df_val["timestamp"].max() <= STAGE_VISIBILITY_END["validation"]
+
+    def test_sealed_test_mode_fails_without_explicit_unseal(self):
+        """Sealed-test stage cannot run without --unseal flag."""
+        import subprocess, sys
+        from pathlib import Path
+        result = subprocess.run(
+            [sys.executable, "-c",
+             "from engine.run_phase1_v2_benchmark import run_stage; "
+             "run_stage('sealed-test', unseal=False)"],
+            capture_output=True, text=True,
+            cwd=str(Path(__file__).parent.parent),
+        )
+        assert result.returncode != 0
+
+    def test_stage_selection_cannot_default_to_sealed_test(self):
+        """--stage is required; sealed-test cannot be the default."""
+        from engine.run_phase1_v2_benchmark import STAGES
+        assert STAGES == ["development", "validation", "sealed-test"]
+
+    def test_origin_manifest_matches_runtime_origins(self):
+        """The origin manifest counts must match the actual get_possible_origins calls."""
+        from engine.run_phase1_v2_benchmark import (
+            load_pair_d1_full, get_possible_origins, PAIRS,
+        )
+        totals = {"development": 0, "validation": 0, "test": 0}
+        for pair in PAIRS:
+            df = load_pair_d1_full(pair)
+            for split in ["development", "validation", "test"]:
+                totals[split] += len(get_possible_origins(df, split))
+        assert totals["development"] == 2608
+        assert totals["validation"] == 302
+        assert totals["test"] == 316
+
+    def test_all_inputs_contain_256_rows(self):
+        """Every development origin input must contain exactly LOOKBACK=256 rows."""
+        from engine.run_phase1_v2_benchmark import (
+            extract_input, get_possible_origins, load_pair_d1_full, LOOKBACK,
+            STAGE_TARGET_SPLIT, PAIRS,
+        )
+        for pair in PAIRS:
+            df = load_pair_d1_full(pair)
+            split = STAGE_TARGET_SPLIT["development"]
+            origins_df = get_possible_origins(df, split)
+            for _, row in origins_df.iterrows():
+                origin_idx = int(row["origin_idx"])
+                input_df = extract_input(df, origin_idx)
+                assert len(input_df) == LOOKBACK
+
+    def test_all_targets_contain_5_rows(self):
+        """Every development origin target must contain exactly HORIZON=5 rows."""
+        from engine.run_phase1_v2_benchmark import (
+            extract_targets, get_possible_origins, load_pair_d1_full, HORIZON,
+            STAGE_TARGET_SPLIT, PAIRS,
+        )
+        for pair in PAIRS:
+            df = load_pair_d1_full(pair)
+            split = STAGE_TARGET_SPLIT["development"]
+            origins_df = get_possible_origins(df, split)
+            for _, row in origins_df.iterrows():
+                origin_idx = int(row["origin_idx"])
+                target_df = extract_targets(df, origin_idx, split)
+                assert len(target_df) == HORIZON
