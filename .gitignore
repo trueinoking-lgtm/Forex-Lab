@@ -31,4 +31,6 @@ app/forex_lab.db-wal
 .env.local
 *.env
 tsconfig.tsbuildinfo
-engine/evidence/
+
+# Kronos Phase 0: evidence excluded from VCS, kept on disk only
+# engine/evidence/kronos/phase0/ contains hashes and manifests only

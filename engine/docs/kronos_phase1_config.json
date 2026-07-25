@@ -1,0 +1,1 @@
+{"model": "NeoQuasar/Kronos-mini", "tokenizer": "NeoQuasar/Kronos-Tokenizer-2k", "device": "cpu", "lookback": 256, "prediction_horizon": 5, "T": 1.0, "top_p": 0.9, "sample_count": 1, "numpy_seed": 20260725, "torch_seed": 20260725}
