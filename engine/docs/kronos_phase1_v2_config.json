@@ -1,0 +1,68 @@
+{
+  "$schema": "kronos-phase1-v2",
+  "version": "2.0.0",
+  "preregistration_commit": null,
+  "model": {
+    "repo": "NeoQuasar/Kronos-mini",
+    "tokenizer_repo": "NeoQuasar/Kronos-Tokenizer-2k",
+    "model_revision": "f4e68697d9d5aed55cef5c96aabc3376bcad9f81",
+    "tokenizer_revision": "26966d0035065a0cae0ebad7af8ece35bc1fb51c",
+    "device": "cpu"
+  },
+  "forecast": {
+    "lookback": 256,
+    "prediction_horizon": 5,
+    "origin_spacing": 5,
+    "T": 1.0,
+    "top_p": 0.9,
+    "sample_count": 1,
+    "numpy_seed": 20260725,
+    "torch_seed": 20260725
+  },
+  "dataset": {
+    "frequency": "D1",
+    "source": "mt5_direct_export",
+    "pairs": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"],
+    "expected_common_start": "2010-01-04",
+    "expected_common_end": "2026-07-22",
+    "scoring_columns": ["open", "high", "low", "close"],
+    "audit_columns": ["volume", "amount"],
+    "manifest_file": "kronos_phase1_v2_dataset_manifest.json",
+    "fold_manifest_file": "kronos_phase1_v2_fold_manifest.json"
+  },
+  "evaluation": {
+    "split_strategy": "context_from_prior_splits_allowed",
+    "validation_context": "development_and_validation_bars_permitted",
+    "sealed_test_context": "development_validation_and_test_context_permitted",
+    "forecast_ledger_one_row_per_horizon": true,
+    "metrics": [
+      "close_mae",
+      "close_rmse",
+      "normalized_close_mae",
+      "return_mae",
+      "directional_accuracy",
+      "high_low_interval_coverage",
+      "ohlc_validity_rate",
+      "inference_duration",
+      "forecast_failure_count"
+    ]
+  },
+  "baselines": [
+    "last_value",
+    "random_walk",
+    "drift",
+    "rolling_mean_20",
+    "ema_20"
+  ],
+  "advancement_gates": {
+    "zero_leakage_failures": true,
+    "deterministic_replay": true,
+    "ohlc_validity_min": 0.999,
+    "norm_close_mae_improvement_min_pct": 2.0,
+    "pairs_improved_min": 3,
+    "max_single_pair_contribution_pct": 50.0,
+    "directional_accuracy_max_degradation_pp": 1.0,
+    "max_forecast_failure_rate_pct": 1.0
+  },
+  "frozen_since": "2026-07-25"
+}

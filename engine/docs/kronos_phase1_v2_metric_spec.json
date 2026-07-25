@@ -1,0 +1,34 @@
+{
+  "$schema": "kronos-phase1-v2-metric-spec",
+  "version": "2.0.0",
+  "close_mae": {
+    "formula": "mean(|predicted_close_h - actual_close_h|)",
+    "scoring_target_only": true,
+    "denominator": "number of scored predictions"
+  },
+  "close_rmse": {
+    "formula": "sqrt(mean((predicted_close_h - actual_close_h)^2))",
+    "scoring_target_only": true
+  },
+  "normalized_close_mae": {
+    "formula": "close_mae / price_range_per_origin",
+    "aggregate_method": "mean_across_origins"
+  },
+  "return_mae": {
+    "formula": "mean(|log(predicted_close_h) - log(actual_close_h)|)"
+  },
+  "directional_accuracy": {
+    "formula": "mean(sign(predicted_close_h - origin_close) == sign(actual_close_h - origin_close))",
+    "zero_movement_policy": "count_as_correct",
+    "per_horizon": true
+  },
+  "high_low_interval_coverage": {
+    "formula": "mean(actual_high_in_range AND actual_low_in_range)"
+  },
+  "ohlc_validity_rate": {
+    "formula": "mean(high >= low AND low <= open <= high AND low <= close <= high)"
+  },
+  "forecast_failure_count": {
+    "threshold_max_pct": 1.0
+  }
+}

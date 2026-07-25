@@ -1,0 +1,120 @@
+{
+  "schema_version": "2.0.0",
+  "created_at": "2026-07-25T16:00:00Z",
+  "commit": null,
+  "description": "Kronos Phase 1 V2 D1 manifest",
+  "datasets": {
+    "EURUSD": {
+      "csv_path": "engine/data/raw_mt5_EURUSD_1d.csv",
+      "sha256": "cc4b4b05b90b7c60c5dd1454621836041ad431f5fd0cffa7058680e2389ed947",
+      "row_count": 4300,
+      "first_timestamp": "2010.01.04 00:00:00+00:00",
+      "last_timestamp": "2026.07.22 00:00:00+00:00",
+      "boundaries": {
+        "development": {
+          "start": "2010-01-04T00:00:00+00:00",
+          "end": "2023-07-20T00:00:00+00:00",
+          "rows": 3520
+        },
+        "validation": {
+          "start": "2023-07-21T00:00:00+00:00",
+          "end": "2025-01-03T00:00:00+00:00",
+          "rows": 379
+        },
+        "test": {
+          "start": "2025-01-06T00:00:00+00:00",
+          "end": "2026-07-20T00:00:00+00:00",
+          "rows": 399
+        }
+      },
+      "broker": "MT5_demo",
+      "timeframe": "D1",
+      "timezone_semantics": "broker_server_UTC_native",
+      "source": "raw_mt5_direct_export"
+    },
+    "GBPUSD": {
+      "csv_path": "engine/data/raw_mt5_GBPUSD_1d.csv",
+      "sha256": "98e820191abd55c1f7001e083c80ff694ab7c34bde2b2221f1406250e29d78dc",
+      "row_count": 4300,
+      "first_timestamp": "2010.01.04 00:00:00+00:00",
+      "last_timestamp": "2026.07.22 00:00:00+00:00",
+      "boundaries": {
+        "development": {
+          "start": "2010-01-04T00:00:00+00:00",
+          "end": "2023-07-20T00:00:00+00:00",
+          "rows": 3520
+        },
+        "validation": {
+          "start": "2023-07-21T00:00:00+00:00",
+          "end": "2025-01-03T00:00:00+00:00",
+          "rows": 379
+        },
+        "test": {
+          "start": "2025-01-06T00:00:00+00:00",
+          "end": "2026-07-20T00:00:00+00:00",
+          "rows": 399
+        }
+      },
+      "broker": "MT5_demo",
+      "timeframe": "D1",
+      "timezone_semantics": "broker_server_UTC_native",
+      "source": "raw_mt5_direct_export"
+    },
+    "USDJPY": {
+      "csv_path": "engine/data/raw_mt5_USDJPY_1d.csv",
+      "sha256": "372f4ec0a1758d7ce50fe9055462a5fc603aac7e0862426d47375cea37742fab",
+      "row_count": 4301,
+      "first_timestamp": "2010.01.04 00:00:00+00:00",
+      "last_timestamp": "2026.07.22 00:00:00+00:00",
+      "boundaries": {
+        "development": {
+          "start": "2010-01-04T00:00:00+00:00",
+          "end": "2023-07-20T00:00:00+00:00",
+          "rows": 3520
+        },
+        "validation": {
+          "start": "2023-07-21T00:00:00+00:00",
+          "end": "2025-01-03T00:00:00+00:00",
+          "rows": 380
+        },
+        "test": {
+          "start": "2025-01-06T00:00:00+00:00",
+          "end": "2026-07-20T00:00:00+00:00",
+          "rows": 399
+        }
+      },
+      "broker": "MT5_demo",
+      "timeframe": "D1",
+      "timezone_semantics": "broker_server_UTC_native",
+      "source": "raw_mt5_direct_export"
+    },
+    "AUDUSD": {
+      "csv_path": "engine/data/raw_mt5_AUDUSD_1d.csv",
+      "sha256": "2d530f7f869f9f67602d8ca2732c6b6f8cf2584e941168707dfb6638f2f6b7db",
+      "row_count": 4301,
+      "first_timestamp": "2010.01.04 00:00:00+00:00",
+      "last_timestamp": "2026.07.22 00:00:00+00:00",
+      "boundaries": {
+        "development": {
+          "start": "2010-01-04T00:00:00+00:00",
+          "end": "2023-07-20T00:00:00+00:00",
+          "rows": 3520
+        },
+        "validation": {
+          "start": "2023-07-21T00:00:00+00:00",
+          "end": "2025-01-03T00:00:00+00:00",
+          "rows": 380
+        },
+        "test": {
+          "start": "2025-01-06T00:00:00+00:00",
+          "end": "2026-07-20T00:00:00+00:00",
+          "rows": 399
+        }
+      },
+      "broker": "MT5_demo",
+      "timeframe": "D1",
+      "timezone_semantics": "broker_server_UTC_native",
+      "source": "raw_mt5_direct_export"
+    }
+  }
+}

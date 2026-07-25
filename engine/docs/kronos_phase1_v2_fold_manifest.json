@@ -1,0 +1,37 @@
+{
+  "$schema": "kronos-phase1-v2-fold",
+  "version": "2.0.0",
+  "folds": [
+    {
+      "fold_id": "fold_0",
+      "description": "Single static fold — development, validation, sealed test per preregistration",
+      "splits": {
+        "development": {"start": "2010-01-04T00:00:00+00:00", "end": "2023-07-20T00:00:00+00:00"},
+        "validation": {"start": "2023-07-21T00:00:00+00:00", "end": "2025-01-03T00:00:00+00:00"},
+        "test": {"start": "2025-01-06T00:00:00+00:00", "end": "2026-07-20T00:00:00+00:00"}
+      },
+      "context_policy": "prior_splits_provided_for_validation_and_test",
+      "non_overlapping_targets": true,
+      "origin_spacing": 5
+    }
+  ],
+  "context_rules": {
+    "development": {
+      "context_source": "development_lookback_only",
+      "max_lookback_bars": 256,
+      "context_must_precede_first_target": true
+    },
+    "validation": {
+      "context_source": "development_and_validation_bars",
+      "max_lookback_bars": 256,
+      "context_must_precede_first_target": true,
+      "target_bars_must_be_within_validation": true
+    },
+    "test": {
+      "context_source": "development_validation_and_test_bars",
+      "max_lookback_bars": 256,
+      "context_must_precede_first_target": true,
+      "target_bars_must_be_within_test": true
+    }
+  }
+}
