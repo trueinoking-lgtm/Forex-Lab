@@ -110,7 +110,31 @@ def parse_args():
         "--expected-config-hash",
         type=str,
         default=None,
-        help="SHA-256 of the frozen config hash for sealed-test authorisation",
+        help="SHA-256 of the frozen configuration file for sealed-test authorisation",
+    )
+    parser.add_argument(
+        "--expected-dataset-manifest-hash",
+        type=str,
+        default=None,
+        help="SHA-256 of the frozen dataset manifest for sealed-test authorisation",
+    )
+    parser.add_argument(
+        "--expected-fold-manifest-hash",
+        type=str,
+        default=None,
+        help="SHA-256 of the frozen fold manifest for sealed-test authorisation",
+    )
+    parser.add_argument(
+        "--expected-metric-spec-hash",
+        type=str,
+        default=None,
+        help="SHA-256 of the frozen metric spec for sealed-test authorisation",
+    )
+    parser.add_argument(
+        "--expected-origin-manifest-hash",
+        type=str,
+        default=None,
+        help="SHA-256 of the frozen origin manifest for sealed-test authorisation",
     )
     parser.add_argument(
         "--expected-code-commit",
@@ -377,31 +401,37 @@ def load_tracked_manifest() -> tuple:
 
 def verify_all_guards(stage: str, expected_config_hash: str | None,
                       expected_code_commit: str | None,
-                      expected_manifest_sha: str | None) -> None:
+                      expected_manifest_sha: str | None,
+                      expected_dataset_manifest_sha: str | None,
+                      expected_fold_manifest_sha: str | None,
+                      expected_metric_spec_sha: str | None,
+                      expected_origin_manifest_sha: str | None) -> None:
     """Verify hashes and identity before any inference stage.
 
     Raises AssertionError (which causes abort) if any guard fails.
     Checks:
-    - source CSV SHA-256 vs tracked manifest
-    - config hash (SHA-256 of tracked manifest content)
-    - tracked code commit hash
-    - origin manifest SHA-256 (tamper detection)
+    - source CSV SHA-256 vs manifest-stored values
+    - origin manifest SHA-256
+    - config file SHA-256
+    - dataset manifest SHA-256
+    - fold manifest SHA-256
+    - metric spec SHA-256
+    - code commit hash
     """
     # Verify source CSV hashes against manifest
     csv_hashes = compute_source_csv_hashes()
     tracked_manifest, manifest_sha = load_tracked_manifest()
 
-    # Check manifest integrity
-    if expected_manifest_sha is not None:
-        assert manifest_sha == expected_manifest_sha, (
-            f"Manifest SHA mismatch: expected {expected_manifest_sha}, "
+    # Check origin manifest integrity
+    if expected_origin_manifest_sha is not None:
+        assert manifest_sha == expected_origin_manifest_sha, (
+            f"Origin manifest SHA mismatch: expected {expected_origin_manifest_sha}, "
             f"got {manifest_sha}"
         )
 
     # Check each CSV against manifest-stored hash
     for pair in PAIRS:
         actual_csv_sha = csv_hashes[pair]
-        # The manifest stores CSV hashes as hex strings in pair entries
         stored_sha = str(tracked_manifest.get("pairs", {}).get(pair, {}).get(
             "_csv_sha256", ""
         ))
@@ -410,11 +440,40 @@ def verify_all_guards(stage: str, expected_config_hash: str | None,
             f"actual={actual_csv_sha[:16]}... stored={stored_sha[:16]}..."
         )
 
-    # Verify config hash if provided
+    # Verify config file hash
     if expected_config_hash is not None:
-        assert manifest_sha == expected_config_hash, (
+        config_path = BASE / "engine" / "docs" / "kronos_phase1_v2_config.json"
+        actual_config_hash = hashlib.sha256(config_path.read_bytes()).hexdigest()
+        assert actual_config_hash == expected_config_hash, (
             f"Config hash mismatch: expected {expected_config_hash}, "
-            f"got {manifest_sha}"
+            f"got {actual_config_hash}"
+        )
+
+    # Verify dataset manifest hash
+    if expected_dataset_manifest_sha is not None:
+        ds_path = BASE / "engine" / "docs" / "kronos_phase1_v2_dataset_manifest.json"
+        actual_ds_hash = hashlib.sha256(ds_path.read_bytes()).hexdigest()
+        assert actual_ds_hash == expected_dataset_manifest_sha, (
+            f"Dataset manifest hash mismatch: expected {expected_dataset_manifest_sha}, "
+            f"got {actual_ds_hash}"
+        )
+
+    # Verify fold manifest hash
+    if expected_fold_manifest_sha is not None:
+        fold_path = BASE / "engine" / "docs" / "kronos_phase1_v2_fold_manifest.json"
+        actual_fold_hash = hashlib.sha256(fold_path.read_bytes()).hexdigest()
+        assert actual_fold_hash == expected_fold_manifest_sha, (
+            f"Fold manifest hash mismatch: expected {expected_fold_manifest_sha}, "
+            f"got {actual_fold_hash}"
+        )
+
+    # Verify metric spec hash
+    if expected_metric_spec_sha is not None:
+        ms_path = BASE / "engine" / "docs" / "kronos_phase1_v2_metric_spec.json"
+        actual_ms_hash = hashlib.sha256(ms_path.read_bytes()).hexdigest()
+        assert actual_ms_hash == expected_metric_spec_sha, (
+            f"Metric spec hash mismatch: expected {expected_metric_spec_sha}, "
+            f"got {actual_ms_hash}"
         )
 
     # Verify code commit if provided
@@ -536,8 +595,11 @@ def run_count_only():
 
 def run_stage(stage: str, unseal: bool = False,
               expected_config_hash: str | None = None,
-              expected_code_commit: str | None = None,
-              expected_manifest_sha: str | None = None):
+              expected_dataset_manifest_hash: str | None = None,
+              expected_fold_manifest_hash: str | None = None,
+              expected_metric_spec_hash: str | None = None,
+              expected_origin_manifest_hash: str | None = None,
+              expected_code_commit: str | None = None):
     """Execute a single stage with all safety checks."""
     if stage not in STAGES:
         print(f"ERROR: Unknown stage '{stage}'. Use: {', '.join(STAGES)}")
@@ -555,7 +617,11 @@ def run_stage(stage: str, unseal: bool = False,
         stage,
         expected_config_hash=expected_config_hash,
         expected_code_commit=expected_code_commit,
-        expected_manifest_sha=expected_manifest_sha,
+        expected_manifest_sha=None,
+        expected_dataset_manifest_sha=expected_dataset_manifest_hash,
+        expected_fold_manifest_sha=expected_fold_manifest_hash,
+        expected_metric_spec_sha=expected_metric_spec_hash,
+        expected_origin_manifest_sha=expected_origin_manifest_hash,
     )
     print("  All hash guards passed.")
 

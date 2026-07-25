@@ -638,6 +638,10 @@ class TestManifestAndHashGuards:
                 expected_config_hash=wrong_hash,
                 expected_code_commit=None,
                 expected_manifest_sha=None,
+                expected_dataset_manifest_sha=None,
+                expected_fold_manifest_sha=None,
+                expected_metric_spec_sha=None,
+                expected_origin_manifest_sha=None,
             )
             assert False, "Should have raised AssertionError"
         except AssertionError:
@@ -652,6 +656,10 @@ class TestManifestAndHashGuards:
                 expected_config_hash=None,
                 expected_code_commit="0000000000000000000000000000000000000000",
                 expected_manifest_sha=None,
+                expected_dataset_manifest_sha=None,
+                expected_fold_manifest_sha=None,
+                expected_metric_spec_sha=None,
+                expected_origin_manifest_sha=None,
             )
             assert False, "Should have raised AssertionError"
         except AssertionError:
@@ -667,7 +675,11 @@ class TestManifestAndHashGuards:
                 "sealed-test",
                 expected_config_hash=None,
                 expected_code_commit=None,
-                expected_manifest_sha="0" * 64,
+                expected_manifest_sha=None,
+                expected_dataset_manifest_sha=None,
+                expected_fold_manifest_sha=None,
+                expected_metric_spec_sha=None,
+                expected_origin_manifest_sha="0" * 64,
             )
             assert False, "Should have raised AssertionError"
         except AssertionError:
@@ -685,7 +697,11 @@ class TestManifestAndHashGuards:
         # No exception raised = pass
         verify_all_guards(
             "development",
-            expected_config_hash=manifest_sha,
+            expected_config_hash=None,
             expected_code_commit=code_commit,
-            expected_manifest_sha=manifest_sha,
+            expected_manifest_sha=None,
+            expected_dataset_manifest_sha=None,
+            expected_fold_manifest_sha=None,
+            expected_metric_spec_sha=None,
+            expected_origin_manifest_sha=manifest_sha,
         )

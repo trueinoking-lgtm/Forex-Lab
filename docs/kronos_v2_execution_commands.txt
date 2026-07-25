@@ -15,4 +15,4 @@ Notes:
 - Sealed-test mode requires explicit --unseal + --expected-config-hash + --expected-code-commit.
 - count-only mode produces the origin manifest (3226 total: 2608 dev + 302 val + 316 test).
 - The origin manifest is tracked at engine/docs/manifests/kronos_phase1_v2_origin_manifest.json.
-- SHA-256 of tracked manifest: b4e93cbb9bcfa440a83c518d439a7eaa676a76259051997c8e3555371556dc3d
+- SHA-256 of tracked manifest: 2796b2fb7dce21c490fcc2829e2e50ac515812c0ba41ac1b631487318baef102
