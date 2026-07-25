@@ -1,15 +1,16 @@
 {
-  "schema_version": "2.0.0",
+  "schema_version": "2.1.0",
   "created_at": "2026-07-25T16:00:00Z",
   "commit": null,
-  "description": "Kronos Phase 1 V2 D1 manifest",
+  "description": "Kronos Phase 1 V2 dataset manifest v2 \u2014 verified direct MT5 D1 exports",
   "datasets": {
     "EURUSD": {
-      "csv_path": "engine/data/raw_mt5_EURUSD_1d.csv",
-      "sha256": "cc4b4b05b90b7c60c5dd1454621836041ad431f5fd0cffa7058680e2389ed947",
-      "row_count": 4300,
-      "first_timestamp": "2010.01.04 00:00:00+00:00",
-      "last_timestamp": "2026.07.22 00:00:00+00:00",
+      "csv_path": "engine/data/raw_mt5_EURUSD_1d_v2.csv",
+      "manifest_path": "engine/data/raw_mt5_EURUSD_1d_v2.manifest.json",
+      "sha256": "4c306902c87854a92c279c83a1c50f00ac6a3f3b69994ff02193ba15c49568b2",
+      "row_count": 4297,
+      "first_timestamp": "2010-01-04 00:00:00+00:00",
+      "last_timestamp": "2026-07-17 00:00:00+00:00",
       "boundaries": {
         "development": {
           "start": "2010-01-04T00:00:00+00:00",
@@ -23,21 +24,37 @@
         },
         "test": {
           "start": "2025-01-06T00:00:00+00:00",
-          "end": "2026-07-20T00:00:00+00:00",
-          "rows": 399
+          "end": "2026-07-17T00:00:00+00:00",
+          "rows": 398
         }
       },
-      "broker": "MT5_demo",
-      "timeframe": "D1",
-      "timezone_semantics": "broker_server_UTC_native",
-      "source": "raw_mt5_direct_export"
+      "broker": {
+        "company": "MetaQuotes Ltd.",
+        "server": "MetaQuotes-Demo"
+      },
+      "timeframe": "1d",
+      "timezone_semantics": "BROKER_SERVER_DAILY_BAR_OPEN_TIME",
+      "source": "MetaTrader5 demo history",
+      "exporter_version": null,
+      "acquisition_timestamp": "2026-07-25T16:40:41.810630+00:00",
+      "timestamp_semantics": {
+        "original_exporter_label": "UTC",
+        "observed_broker_time_uncertainty": "high \u2014 MT5 epoch seconds converted to UTC; broker server timezone may differ",
+        "historical_offset_policy": "unresolved",
+        "exact_intraday_session_mapping_not_authorized": true,
+        "price_only_d1_forecasting_authorized": true
+      },
+      "provenance": "direct_mt5_timeframe_d1_export",
+      "not_resampled_from_h1": true,
+      "not_yahoo_finance": true
     },
     "GBPUSD": {
-      "csv_path": "engine/data/raw_mt5_GBPUSD_1d.csv",
-      "sha256": "98e820191abd55c1f7001e083c80ff694ab7c34bde2b2221f1406250e29d78dc",
-      "row_count": 4300,
-      "first_timestamp": "2010.01.04 00:00:00+00:00",
-      "last_timestamp": "2026.07.22 00:00:00+00:00",
+      "csv_path": "engine/data/raw_mt5_GBPUSD_1d_v2.csv",
+      "manifest_path": "engine/data/raw_mt5_GBPUSD_1d_v2.manifest.json",
+      "sha256": "1ff3574beb19ef3adc1f25df526d306729418064b877ae1be65caaf2001440c1",
+      "row_count": 4297,
+      "first_timestamp": "2010-01-04 00:00:00+00:00",
+      "last_timestamp": "2026-07-17 00:00:00+00:00",
       "boundaries": {
         "development": {
           "start": "2010-01-04T00:00:00+00:00",
@@ -51,21 +68,37 @@
         },
         "test": {
           "start": "2025-01-06T00:00:00+00:00",
-          "end": "2026-07-20T00:00:00+00:00",
-          "rows": 399
+          "end": "2026-07-17T00:00:00+00:00",
+          "rows": 398
         }
       },
-      "broker": "MT5_demo",
-      "timeframe": "D1",
-      "timezone_semantics": "broker_server_UTC_native",
-      "source": "raw_mt5_direct_export"
+      "broker": {
+        "company": "MetaQuotes Ltd.",
+        "server": "MetaQuotes-Demo"
+      },
+      "timeframe": "1d",
+      "timezone_semantics": "BROKER_SERVER_DAILY_BAR_OPEN_TIME",
+      "source": "MetaTrader5 demo history",
+      "exporter_version": null,
+      "acquisition_timestamp": "2026-07-25T16:40:45.937018+00:00",
+      "timestamp_semantics": {
+        "original_exporter_label": "UTC",
+        "observed_broker_time_uncertainty": "high \u2014 MT5 epoch seconds converted to UTC; broker server timezone may differ",
+        "historical_offset_policy": "unresolved",
+        "exact_intraday_session_mapping_not_authorized": true,
+        "price_only_d1_forecasting_authorized": true
+      },
+      "provenance": "direct_mt5_timeframe_d1_export",
+      "not_resampled_from_h1": true,
+      "not_yahoo_finance": true
     },
     "USDJPY": {
-      "csv_path": "engine/data/raw_mt5_USDJPY_1d.csv",
-      "sha256": "372f4ec0a1758d7ce50fe9055462a5fc603aac7e0862426d47375cea37742fab",
-      "row_count": 4301,
-      "first_timestamp": "2010.01.04 00:00:00+00:00",
-      "last_timestamp": "2026.07.22 00:00:00+00:00",
+      "csv_path": "engine/data/raw_mt5_USDJPY_1d_v2.csv",
+      "manifest_path": "engine/data/raw_mt5_USDJPY_1d_v2.manifest.json",
+      "sha256": "3e82f1ecf0af0b43fce4b126036f1c109d91fae9b9e351a5e131d17a8b5b30eb",
+      "row_count": 4298,
+      "first_timestamp": "2010-01-04 00:00:00+00:00",
+      "last_timestamp": "2026-07-17 00:00:00+00:00",
       "boundaries": {
         "development": {
           "start": "2010-01-04T00:00:00+00:00",
@@ -79,21 +112,37 @@
         },
         "test": {
           "start": "2025-01-06T00:00:00+00:00",
-          "end": "2026-07-20T00:00:00+00:00",
-          "rows": 399
+          "end": "2026-07-17T00:00:00+00:00",
+          "rows": 398
         }
       },
-      "broker": "MT5_demo",
-      "timeframe": "D1",
-      "timezone_semantics": "broker_server_UTC_native",
-      "source": "raw_mt5_direct_export"
+      "broker": {
+        "company": "MetaQuotes Ltd.",
+        "server": "MetaQuotes-Demo"
+      },
+      "timeframe": "1d",
+      "timezone_semantics": "BROKER_SERVER_DAILY_BAR_OPEN_TIME",
+      "source": "MetaTrader5 demo history",
+      "exporter_version": null,
+      "acquisition_timestamp": "2026-07-25T16:46:28.994714+00:00",
+      "timestamp_semantics": {
+        "original_exporter_label": "UTC",
+        "observed_broker_time_uncertainty": "high \u2014 MT5 epoch seconds converted to UTC; broker server timezone may differ",
+        "historical_offset_policy": "unresolved",
+        "exact_intraday_session_mapping_not_authorized": true,
+        "price_only_d1_forecasting_authorized": true
+      },
+      "provenance": "direct_mt5_timeframe_d1_export",
+      "not_resampled_from_h1": true,
+      "not_yahoo_finance": true
     },
     "AUDUSD": {
-      "csv_path": "engine/data/raw_mt5_AUDUSD_1d.csv",
-      "sha256": "2d530f7f869f9f67602d8ca2732c6b6f8cf2584e941168707dfb6638f2f6b7db",
-      "row_count": 4301,
-      "first_timestamp": "2010.01.04 00:00:00+00:00",
-      "last_timestamp": "2026.07.22 00:00:00+00:00",
+      "csv_path": "engine/data/raw_mt5_AUDUSD_1d_v2.csv",
+      "manifest_path": "engine/data/raw_mt5_AUDUSD_1d_v2.manifest.json",
+      "sha256": "bee5933bd4328925647c4095b52a73c78387caef2682d6e4eac9051cc6aa41c3",
+      "row_count": 4298,
+      "first_timestamp": "2010-01-04 00:00:00+00:00",
+      "last_timestamp": "2026-07-17 00:00:00+00:00",
       "boundaries": {
         "development": {
           "start": "2010-01-04T00:00:00+00:00",
@@ -107,14 +156,31 @@
         },
         "test": {
           "start": "2025-01-06T00:00:00+00:00",
-          "end": "2026-07-20T00:00:00+00:00",
-          "rows": 399
+          "end": "2026-07-17T00:00:00+00:00",
+          "rows": 398
         }
       },
-      "broker": "MT5_demo",
-      "timeframe": "D1",
-      "timezone_semantics": "broker_server_UTC_native",
-      "source": "raw_mt5_direct_export"
+      "broker": {
+        "company": "MetaQuotes Ltd.",
+        "server": "MetaQuotes-Demo"
+      },
+      "timeframe": "1d",
+      "timezone_semantics": "BROKER_SERVER_DAILY_BAR_OPEN_TIME",
+      "source": "MetaTrader5 demo history",
+      "exporter_version": null,
+      "acquisition_timestamp": "2026-07-25T16:46:31.898692+00:00",
+      "timestamp_semantics": {
+        "original_exporter_label": "UTC",
+        "observed_broker_time_uncertainty": "high \u2014 MT5 epoch seconds converted to UTC; broker server timezone may differ",
+        "historical_offset_policy": "unresolved",
+        "exact_intraday_session_mapping_not_authorized": true,
+        "price_only_d1_forecasting_authorized": true
+      },
+      "provenance": "direct_mt5_timeframe_d1_export",
+      "not_resampled_from_h1": true,
+      "not_yahoo_finance": true
     }
-  }
+  },
+  "updated_at": "2026-07-25T16:50:00Z",
+  "updated_commit": null
 }
