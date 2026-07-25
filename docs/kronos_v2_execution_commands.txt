@@ -1,0 +1,18 @@
+Development command:
+  python engine/run_phase1_v2_benchmark.py \
+    --stage development \
+    --origin-manifest engine/docs/manifests/kronos_phase1_v2_origin_manifest.json
+
+Validation command:
+  python engine/run_phase1_v2_benchmark.py \
+    --stage validation \
+    --origin-manifest engine/docs/manifests/kronos_phase1_v2_origin_manifest.json
+
+Notes:
+- Both commands verify all hashes (CSV, manifest, config, code commit) before inference.
+- Development mode refuses validation or sealed-test target rows.
+- Validation mode uses development history as context but refuses sealed-test rows.
+- Sealed-test mode requires explicit --unseal + --expected-config-hash + --expected-code-commit.
+- count-only mode produces the origin manifest (3226 total: 2608 dev + 302 val + 316 test).
+- The origin manifest is tracked at engine/docs/manifests/kronos_phase1_v2_origin_manifest.json.
+- SHA-256 of tracked manifest: b4e93cbb9bcfa440a83c518d439a7eaa676a76259051997c8e3555371556dc3d
