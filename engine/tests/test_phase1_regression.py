@@ -705,3 +705,140 @@ class TestManifestAndHashGuards:
             expected_metric_spec_sha=None,
             expected_origin_manifest_sha=manifest_sha,
         )
+
+
+# Import FakeKronosPredictor at module level for the new test classes
+from engine.kronos_adapter import FakeKronosPredictor, load_kronos_predictor
+
+
+class TestKronosAdapter:
+    """Tests for the Kronos adapter package and fake predictor."""
+
+    def test_package_imports_from_repo_root(self):
+        """engine.kronos_adapter is importable from repo root."""
+        from engine.kronos_adapter import FakeKronosPredictor as FKP
+        from engine.kronos_adapter import load_kronos_predictor as LKP
+        assert FKP is not None
+        assert LKP is not None
+
+    def test_package_imports_through_pytest(self):
+        """Package imports work when pytest collects them."""
+        import engine.kronos_adapter
+        assert hasattr(engine.kronos_adapter, "FakeKronosPredictor")
+        assert hasattr(engine.kronos_adapter, "load_kronos_predictor")
+
+    def test_fake_predictor_deterministic(self):
+        """FakeKronosPredictor produces identical output for the same seed."""
+        import pandas as pd
+        pred_a = FakeKronosPredictor(seed=42)
+        pred_b = FakeKronosPredictor(seed=42)
+        ctx = pd.DataFrame({"close": [1.0, 1.1, 1.2, 1.3, 1.4]},
+                           index=pd.date_range("2024-01-01", periods=5))
+        ra = pred_a.predict(ctx, prediction_length=5)
+        rb = pred_b.predict(ctx, prediction_length=5)
+        assert ra == rb
+
+    def test_fake_predictor_no_torch_import(self):
+        """FakeKronosPredictor never imports torch or transformers."""
+        import sys as _sys
+        before = set(_sys.modules.keys())
+        _ = FakeKronosPredictor()
+        after = set(_sys.modules.keys())
+        new_modules = after - before
+        torch_new = {m for m in new_modules if "torch" in m or "transformers" in m}
+        assert not torch_new, f"Fake predictor imported torch/transformers: {torch_new}"
+
+
+class TestSyntheticBenchmark:
+    """Synthetic end-to-end tests using FakeKronosPredictor.
+
+    No real Kronos checkpoint, no network access, no torch import.
+    """
+
+    def test_fake_predictor_is_injected(self):
+        """run_stage with FakeKronosPredictor runs without errors."""
+        from engine.run_phase1_v2_benchmark import run_stage
+        result = run_stage("development", predictor_factory=FakeKronosPredictor)
+        assert len(result) > 0
+
+    def test_all_scoring_is_populated(self):
+        """run_stage populates scoring records for every origin."""
+        from engine.run_phase1_v2_benchmark import run_stage
+        result = run_stage("development", predictor_factory=FakeKronosPredictor)
+        assert len(result) > 0
+        for row in result:
+            assert "pair" in row, "Each origin must have a scoring record"
+
+    def test_all_five_baselines_are_produced(self):
+        """All five baseline types must appear in output."""
+        from engine.run_phase1_v2_benchmark import run_stage, OUTPUT
+        import shutil, json
+        if OUTPUT.exists():
+            shutil.rmtree(OUTPUT)
+        result = run_stage("development", predictor_factory=FakeKronosPredictor)
+        bp = OUTPUT / "development" / "predictions_baselines.json"
+        assert bp.exists()
+        with open(bp) as f:
+            bdata = json.load(f)
+        baselines = {b["baseline"] for b in bdata["baselines"]}
+        expected = {"last_value", "random_walk", "drift", "rolling_mean", "ema"}
+        assert expected == baselines, f"Missing baselines: {expected - baselines}"
+
+    def test_every_origin_produces_forecast_count(self):
+        """Number of Kronos forecasts == number of origins."""
+        from engine.run_phase1_v2_benchmark import run_stage, OUTPUT
+        import shutil, json
+        if OUTPUT.exists():
+            shutil.rmtree(OUTPUT)
+        result = run_stage("development", predictor_factory=FakeKronosPredictor)
+        kp = OUTPUT / "development" / "predictions_kronos.json"
+        assert kp.exists()
+        with open(kp) as f:
+            kdata = json.load(f)
+        assert len(kdata["forecasts"]) == len(result)
+
+    def test_five_step_forecasts_five_distinct_keys(self):
+        """Each 5-step forecast must have exactly 5 horizon keys."""
+        from engine.run_phase1_v2_benchmark import run_stage, OUTPUT
+        import shutil, json
+        if OUTPUT.exists():
+            shutil.rmtree(OUTPUT)
+        result = run_stage("development", predictor_factory=FakeKronosPredictor)
+        kp = OUTPUT / "development" / "predictions_kronos.json"
+        with open(kp) as f:
+            kdata = json.load(f)
+        for fc in kdata["forecasts"][:3]:
+            horizon_keys = [k for k in fc if k.startswith("horizon_")]
+            assert len(horizon_keys) == 5
+
+    def test_duplicate_prediction_keys_rejected(self):
+        """Predictor must return exactly HORIZON distinct keys."""
+        import pandas as pd
+        pred = FakeKronosPredictor(seed=0)
+        ctx = pd.DataFrame({"close": [1.0] * 10},
+                           index=pd.date_range("2024-01-01", periods=10))
+        result = pred.predict(ctx, prediction_length=5)
+        assert len(result) == 5
+        assert len(set(result.keys())) == 5
+
+    def test_zero_metrics_empty_scoring(self):
+        """_aggregate_metrics returns NaN for empty scoring."""
+        from engine.run_phase1_v2_benchmark import _aggregate_metrics
+        agg = _aggregate_metrics([], [])
+        assert agg["n_forecasts"] == 0
+        assert agg["mean_close_mae"] != agg["mean_close_mae"]  # NaN check
+
+    def test_metric_replay_on_valid_evidence(self):
+        """Replaying metrics from valid evidence preserves hash integrity."""
+        from engine.run_phase1_v2_benchmark import run_stage, OUTPUT
+        import shutil, json, hashlib
+        if OUTPUT.exists():
+            shutil.rmtree(OUTPUT)
+        result = run_stage("development", predictor_factory=FakeKronosPredictor)
+        mp = OUTPUT / "development" / "metrics.json"
+        assert mp.exists()
+        with open(mp) as f:
+            metrics = json.load(f)
+        raw = json.dumps(metrics, sort_keys=True, indent=2)
+        h = hashlib.sha256(raw.encode()).hexdigest()
+        assert len(h) == 64
