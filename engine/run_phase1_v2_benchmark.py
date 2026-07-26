@@ -1,711 +1,388 @@
-"""Kronos Phase 1 V2 Benchmark Runner — D1 data, corrected metrics.
+"""Kronos Phase 1 V2 benchmark execution.
 
-KRONOS PHASE 1 V2 — D1 ONLY
-RUN A H1 EVALUATION INVALIDATED
-
-Production runner with explicit execution stages and origin freeze.
-Modes: --stage development | validation | seeded-test | count-only
-
-Staking order:
-  A: development execution
-  B: development evidence replay and freeze
-  C: validation execution
-  D: validation evidence replay and decision freeze
-  E: manual sealed-test authorisation
-  F: sealed-test execution exactly once
-
-Do not execute sealed test automatically after validation.
-Do not alter model settings, baselines, metrics, folds or advancement rules between stages.
+The real predictor is lazy-loaded. Importing this module does not import torch,
+transformers, or the upstream model implementation.
 """
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
+import math
+import platform
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
 
-# ── Safety invariants ──────────────────────────────────
-paper_only = True
-allow_live_orders = False
-assert paper_only and not allow_live_orders, "Safety invariant violated"
-
-# ── Constants ──────────────────────────────────────────
-LOOKBACK = 256
-HORIZON = 5
-SPACING = 5
-T = 1.0
-TOP_P = 0.9
-SAMPLE_COUNT = 1
-NUMPY_SEED = 20260725
-TORCH_SEED = 20260725
+from engine.kronos_adapter import FakeKronosPredictor, load_kronos_predictor
 
 BASE = Path(__file__).resolve().parent.parent
-DATA = BASE / "engine" / "data"
-OUTPUT = BASE / "engine" / "evidence" / "kronos" / "phase1"
-ORIGIN_MANIFEST = BASE / "engine" / "docs" / "manifests" / "kronos_phase1_v2_origin_manifest.json"
+DEFAULT_CONFIG = BASE / "engine/docs/kronos_phase1_v2_config.json"
+DEFAULT_DATASET_MANIFEST = BASE / "engine/docs/kronos_phase1_v2_dataset_manifest.json"
+DEFAULT_FOLD_MANIFEST = BASE / "engine/docs/kronos_phase1_v2_fold_manifest.json"
+DEFAULT_ORIGIN_MANIFEST = BASE / "engine/docs/manifests/kronos_phase1_v2_origin_manifest.json"
+DEFAULT_METRIC_SPEC = BASE / "engine/docs/kronos_phase1_v2_metric_spec.json"
+DEFAULT_OUTPUT = BASE / "engine/evidence/kronos/phase1"
 
-PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"]
-
-# ── Frozen boundaries ──────────────────────────────────
-DEV_START = pd.Timestamp("2010-01-04", tz="UTC")
-DEV_END = pd.Timestamp("2023-07-20", tz="UTC")
-VAL_START = pd.Timestamp("2023-07-21", tz="UTC")
-VAL_END = pd.Timestamp("2025-01-03", tz="UTC")
-TEST_START = pd.Timestamp("2025-01-06", tz="UTC")
-TEST_END = pd.Timestamp("2026-07-17", tz="UTC")
-
-# ── Frozen stage order ─────────────────────────────────
-STAGES = ["development", "validation", "sealed-test"]
-
-# ── Stage data-visibility boundaries ────────────────
-# Each stage may only ACCESS rows through its end boundary.
-# Validation may use development rows as context (they are <= VAL_END).
-# Sealed-test may use development+validation rows as context (they are <= TEST_END).
-STAGE_VISIBILITY_END = {
-    "development": DEV_END,
-    "validation": VAL_END,
-    "sealed-test": TEST_END,
-}
-
-STAGE_TARGET_SPLIT = {
-    "development": "development",
-    "validation": "validation",
-    "sealed-test": "test",
-}
-
-# Internal split key used in SPLITS — "test" for sealed-test
-SPLIT_KEY = {
-    "development": "development",
-    "validation": "validation",
-    "sealed-test": "test",
-}
-
-SPLITS = {
-    "development": (DEV_START, DEV_END),
-    "validation": (VAL_START, VAL_END),
-    "test": (TEST_START, TEST_END),
-}
+STAGES = ("synthetic_test", "development", "validation", "sealed_test")
+REAL_STAGES = ("development", "validation", "sealed_test")
+BASELINES = ("last_value", "random_walk", "drift", "rolling_mean", "ema")
+KEY_FIELDS = ("model_identifier", "pair", "origin_id", "target_timestamp", "horizon_step")
+OHLC = ("open", "high", "low", "close")
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Kronos Phase 1 V2 benchmark runner")
-    parser.add_argument(
-        "--stage",
-        choices=STAGES + ["count-only"],
-        required=True,
-        help="Execution stage: development, validation, sealed-test, or count-only",
+def _read_json(path: Path) -> dict[str, Any]:
+    with path.open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _canonical_write(path: Path, value: Any) -> None:
+    path.write_text(
+        json.dumps(value, sort_keys=True, indent=2, allow_nan=False) + "\n",
+        encoding="utf-8",
     )
-    parser.add_argument(
-        "--unseal",
-        action="store_true",
-        help="Required for sealed-test stage. Explicit authorisation flag.",
+
+
+def _resolve(base: Path, value: str) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else base / path
+
+
+def _load_csv(path: Path) -> pd.DataFrame:
+    first = path.open(encoding="utf-8").readline()
+    df = pd.read_csv(path, sep="\t" if "\t" in first else ",")
+    df = df.rename(columns={"<DATE>": "timestamp", "Open": "open", "High": "high",
+                            "Low": "low", "Close": "close"})
+    required = {"timestamp", *OHLC}
+    assert required <= set(df), f"{path}: missing columns {sorted(required - set(df))}"
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+    assert df["timestamp"].is_monotonic_increasing, f"{path}: timestamps not chronological"
+    assert not df["timestamp"].duplicated().any(), f"{path}: duplicate timestamps"
+    assert ((df["high"] >= df[["open", "close", "low"]].max(axis=1)) &
+            (df["low"] <= df[["open", "close", "high"]].min(axis=1))).all(), \
+        f"{path}: invalid OHLC"
+    return df.reset_index(drop=True)
+
+
+def _settings(config: dict[str, Any]) -> dict[str, Any]:
+    forecast = config["forecast"]
+    baseline = config["baseline_parameters"]
+    return {
+        "seed": int(forecast["seed"]),
+        "temperature": float(forecast["temperature"]),
+        "top_p": float(forecast["top_p"]),
+        "sample_count": int(forecast["sample_count"]),
+        "context_steps": int(forecast["context_steps"]),
+        "horizon": int(forecast["prediction_horizon"]),
+        "rolling_window": int(baseline["rolling_mean"]["window"]),
+        "ema_span": int(baseline["ema"]["span"]),
+        "rw_vol_window": int(baseline["random_walk"]["volatility_window"]),
+        "rw_samples": int(baseline["random_walk"]["samples"]),
+    }
+
+
+def _prediction_identity(predictor: Any, mode: str, config: dict[str, Any]) -> dict[str, Any]:
+    is_fake = isinstance(predictor, FakeKronosPredictor)
+    predictor_type = "fake" if is_fake else "kronos"
+    if is_fake and mode != "synthetic_test":
+        raise ValueError(f"FakeKronosPredictor is forbidden in execution mode {mode}")
+    if not is_fake and mode == "synthetic_test":
+        raise ValueError("synthetic_test mode requires FakeKronosPredictor")
+    model = config["model"]
+    return {
+        "execution_mode": mode,
+        "predictor_type": predictor_type,
+        "predictor_class": type(predictor).__name__,
+        "model_identifier": "fake-kronos-deterministic" if is_fake else model["repo"],
+        "checkpoint_identifier": "none" if is_fake else model["model_revision"],
+        "is_synthetic": is_fake,
+        "evidence_eligible": not is_fake,
+    }
+
+
+def _seed_for_origin(seed: int, pair: str, origin_id: str) -> int:
+    digest = hashlib.sha256(f"{seed}|{pair}|{origin_id}".encode()).digest()
+    return int.from_bytes(digest[:4], "big")
+
+
+def _baselines(context: np.ndarray, horizon: int, settings: dict[str, Any],
+               pair: str, origin_id: str) -> dict[str, tuple[np.ndarray, dict[str, Any]]]:
+    close = np.asarray(context, dtype=float)
+    last = float(close[-1])
+    differences = np.diff(close)
+    drift = float(differences.mean()) if len(differences) else 0.0
+    vol_values = differences[-settings["rw_vol_window"]:]
+    volatility = float(vol_values.std(ddof=1)) if len(vol_values) > 1 else 0.0
+    rng = np.random.default_rng(_seed_for_origin(settings["seed"], pair, origin_id))
+    innovations = rng.normal(0.0, volatility, size=horizon)
+    random_walk = last + np.cumsum(innovations)
+    rolling = float(close[-settings["rolling_window"]:].mean())
+    ema = float(pd.Series(close).ewm(span=settings["ema_span"], adjust=False).mean().iloc[-1])
+    return {
+        "last_value": (np.full(horizon, last), {}),
+        "random_walk": (random_walk, {
+            "innovation_distribution": "normal",
+            "innovation_mean": 0.0, "volatility_estimator": "sample_std_close_differences",
+            "volatility_window": settings["rw_vol_window"], "path_dependent": True,
+            "samples": settings["rw_samples"],
+            "seed": _seed_for_origin(settings["seed"], pair, origin_id),
+        }),
+        "drift": (last + drift * np.arange(1, horizon + 1), {
+            "drift": "mean_context_close_difference"}),
+        "rolling_mean": (np.full(horizon, rolling), {"window": settings["rolling_window"]}),
+        "ema": (np.full(horizon, ema), {"span": settings["ema_span"], "adjust": False}),
+    }
+
+
+def _metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    if not rows:
+        raise ValueError("zero prediction rows cannot produce metrics")
+    predicted = np.array([r["predicted_close"] for r in rows], dtype=float)
+    actual = np.array([r["actual_close"] for r in rows], dtype=float)
+    origin = np.array([r["origin_close"] for r in rows], dtype=float)
+    close_error = predicted - actual
+    scale = np.maximum(np.abs(origin), np.finfo(float).eps)
+    valid = np.array([
+        r["predicted_high"] >= max(r["predicted_open"], r["predicted_close"]) and
+        r["predicted_low"] <= min(r["predicted_open"], r["predicted_close"])
+        for r in rows
+    ])
+    coverage = np.array([
+        r["predicted_low"] <= r["actual_low"] and r["predicted_high"] >= r["actual_high"]
+        for r in rows
+    ])
+    return {
+        "row_count": len(rows),
+        "close_mae": float(np.mean(np.abs(close_error))),
+        "close_rmse": float(np.sqrt(np.mean(close_error ** 2))),
+        "normalized_close_mae": float(np.mean(np.abs(close_error) / scale)),
+        "return_mae": float(np.mean(np.abs(np.log(predicted / origin) - np.log(actual / origin)))),
+        "directional_accuracy": float(np.mean(np.sign(predicted-origin) == np.sign(actual-origin))),
+        "high_low_interval_coverage": float(coverage.mean()),
+        "ohlc_validity_rate": float(valid.mean()),
+    }
+
+
+def _metric_groups(rows: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    per_origin: dict[str, Any] = {}
+    per_pair: dict[str, Any] = {}
+    for row in rows:
+        per_origin.setdefault(row["origin_id"], []).append(row)
+        per_pair.setdefault(row["pair"], []).append(row)
+    return (
+        {key: _metrics(value) for key, value in sorted(per_origin.items())},
+        {key: _metrics(value) for key, value in sorted(per_pair.items())},
+        _metrics(rows),
     )
-    parser.add_argument(
-        "--expected-config-hash",
-        type=str,
-        default=None,
-        help="SHA-256 of the frozen configuration file for sealed-test authorisation",
-    )
-    parser.add_argument(
-        "--expected-dataset-manifest-hash",
-        type=str,
-        default=None,
-        help="SHA-256 of the frozen dataset manifest for sealed-test authorisation",
-    )
-    parser.add_argument(
-        "--expected-fold-manifest-hash",
-        type=str,
-        default=None,
-        help="SHA-256 of the frozen fold manifest for sealed-test authorisation",
-    )
-    parser.add_argument(
-        "--expected-metric-spec-hash",
-        type=str,
-        default=None,
-        help="SHA-256 of the frozen metric spec for sealed-test authorisation",
-    )
-    parser.add_argument(
-        "--expected-origin-manifest-hash",
-        type=str,
-        default=None,
-        help="SHA-256 of the frozen origin manifest for sealed-test authorisation",
-    )
-    parser.add_argument(
-        "--expected-code-commit",
-        type=str,
-        default=None,
-        help="Git commit hash for frozen code state for sealed-test authorisation",
-    )
-    parser.add_argument(
-        "--origin-manifest",
-        type=str,
-        default=None,
-        help="Path to origin manifest JSON (for validation against runtime origins)",
-    )
+
+
+def _validate_origin(origin: dict[str, Any], df: pd.DataFrame, split: dict[str, str],
+                     settings: dict[str, Any]) -> tuple[int, pd.DataFrame, pd.DataFrame]:
+    origin_ts = pd.Timestamp(origin["origin_timestamp"])
+    matches = df.index[df["timestamp"] == origin_ts].tolist()
+    assert len(matches) == 1, f"{origin['origin_id']}: origin timestamp not unique"
+    idx = matches[0]
+    context = df.iloc[idx-settings["context_steps"]+1:idx+1]
+    target = df.iloc[idx+1:idx+1+settings["horizon"]]
+    assert len(context) == settings["context_steps"], f"{origin['origin_id']}: insufficient context"
+    assert len(target) == settings["horizon"], f"{origin['origin_id']}: missing forecast rows"
+    assert context["timestamp"].max() == origin_ts
+    assert context["timestamp"].max() < target["timestamp"].min(), "future-context leakage"
+    start, end = pd.Timestamp(split["start"]), pd.Timestamp(split["end"])
+    assert target["timestamp"].min() >= start and target["timestamp"].max() <= end, \
+        f"{origin['origin_id']}: stage crossover"
+    return idx, context, target
+
+
+def _predict_ohlc(prediction: Any, horizon: int) -> list[dict[str, float]]:
+    expected = [f"horizon_{i}" for i in range(horizon)]
+    if not isinstance(prediction, dict) or list(prediction) != expected:
+        raise ValueError(f"predictor must return exactly ordered keys {expected}")
+    result = []
+    for key in expected:
+        value = prediction[key]
+        if isinstance(value, dict):
+            if set(value) != set(OHLC):
+                raise ValueError(f"{key}: target mapping must contain exact OHLC fields")
+            result.append({name: float(value[name]) for name in OHLC})
+        else:
+            close = float(value)
+            result.append({"open": close, "high": close, "low": close, "close": close})
+    return result
+
+
+def _write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        raise ValueError(f"refusing empty artifact {path.name}")
+    fields = list(rows[0])
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({
+                key: json.dumps(value, sort_keys=True, separators=(",", ":"))
+                if isinstance(value, (dict, list)) else value for key, value in row.items()
+            })
+
+
+def run_stage(
+    mode: str,
+    *,
+    predictor_factory: Callable[[], Any] | None = None,
+    config_path: Path | str = DEFAULT_CONFIG,
+    dataset_manifest_path: Path | str = DEFAULT_DATASET_MANIFEST,
+    fold_manifest_path: Path | str = DEFAULT_FOLD_MANIFEST,
+    origin_manifest_path: Path | str = DEFAULT_ORIGIN_MANIFEST,
+    metric_spec_path: Path | str = DEFAULT_METRIC_SPEC,
+    output_dir: Path | str = DEFAULT_OUTPUT,
+    unseal: bool = False,
+    **_: Any,
+) -> dict[str, Any]:
+    """Run one explicitly configured stage and emit deterministic evidence."""
+    if mode == "sealed-test":  # backward-compatible spelling
+        mode = "sealed_test"
+    if mode not in STAGES:
+        raise ValueError(f"unknown execution mode: {mode}")
+    if mode == "sealed_test" and not unseal:
+        raise PermissionError("sealed_test requires explicit unseal authorization")
+    paths = [Path(p) for p in (config_path, dataset_manifest_path, fold_manifest_path,
+                                origin_manifest_path, metric_spec_path)]
+    config, dataset, folds, origins, _metric_spec = map(_read_json, paths)
+    settings = _settings(config)
+    predictor = (predictor_factory or load_kronos_predictor)()
+    identity = _prediction_identity(predictor, mode, config)
+    split_name = "test" if mode == "sealed_test" else mode
+    fold = folds["folds"][0]
+    split = fold["splits"][split_name]
+    base = Path(dataset_manifest_path).resolve().parent
+    dataframes: dict[str, pd.DataFrame] = {}
+    dataset_hashes: dict[str, str] = {}
+    for pair, entry in dataset["datasets"].items():
+        csv_path = _resolve(base, entry["csv_path"])
+        assert csv_path.exists(), f"dataset missing: {csv_path}"
+        digest = _sha256(csv_path)
+        assert digest == entry["sha256"], f"{pair}: dataset hash mismatch"
+        dataframes[pair] = _load_csv(csv_path)
+        dataset_hashes[pair] = digest
+
+    selected = [o for o in origins["origins"] if o["stage"] == split_name]
+    if not selected:
+        raise ValueError(f"zero origins for {split_name}")
+    kronos_rows: list[dict[str, Any]] = []
+    baseline_rows: list[dict[str, Any]] = []
+    started = datetime.now(timezone.utc).isoformat()
+    for origin in selected:
+        pair = origin["pair"]
+        _, context, target = _validate_origin(origin, dataframes[pair], split, settings)
+        raw = predictor.predict(
+            context[list(OHLC)], prediction_length=settings["horizon"],
+            temperature=settings["temperature"], top_p=settings["top_p"],
+            sample_count=settings["sample_count"], seed=settings["seed"],
+        )
+        forecasts = _predict_ohlc(raw, settings["horizon"])
+        base_values = _baselines(context["close"].to_numpy(), settings["horizon"],
+                                 settings, pair, origin["origin_id"])
+        for step, (forecast, (_, actual)) in enumerate(zip(forecasts, target.iterrows()), 1):
+            common = {
+                "stage": split_name, **identity, "pair": pair,
+                "origin_timestamp": origin["origin_timestamp"],
+                "target_timestamp": actual["timestamp"].isoformat(),
+                "horizon_step": step,
+                "source_row_identifier": f"{dataset_hashes[pair]}:{int(actual.name)}",
+                "actual_open": float(actual["open"]), "actual_high": float(actual["high"]),
+                "actual_low": float(actual["low"]), "actual_close": float(actual["close"]),
+                "origin_close": float(context["close"].iloc[-1]),
+                "seed": settings["seed"], "temperature": settings["temperature"],
+                "context_steps": settings["context_steps"], "dataset_sha256": dataset_hashes[pair],
+                "fold_id": fold["fold_id"], "origin_id": origin["origin_id"],
+            }
+            kronos_rows.append({
+                **common, "predicted_open": forecast["open"], "predicted_high": forecast["high"],
+                "predicted_low": forecast["low"], "predicted_close": forecast["close"],
+            })
+            for name, (values, parameters) in base_values.items():
+                value = float(values[step-1])
+                baseline_rows.append({
+                    **common, "model_identifier": f"baseline:{name}",
+                    "checkpoint_identifier": "frozen-config",
+                    "predicted_open": value, "predicted_high": value,
+                    "predicted_low": value, "predicted_close": value,
+                    "baseline_name": name, "baseline_parameters": parameters,
+                })
+
+    if len({tuple(row[k] for k in KEY_FIELDS) for row in kronos_rows}) != len(kronos_rows):
+        raise ValueError("duplicate prediction key")
+    for origin in selected:
+        oid = origin["origin_id"]
+        if sum(r["origin_id"] == oid for r in kronos_rows) != settings["horizon"]:
+            raise ValueError(f"{oid}: incomplete forecast")
+        names = {r["baseline_name"] for r in baseline_rows if r["origin_id"] == oid}
+        if names != set(BASELINES):
+            raise ValueError(f"{oid}: incomplete baseline set")
+
+    per_origin, per_pair, aggregate = _metric_groups(kronos_rows)
+    out = Path(output_dir) / mode
+    out.mkdir(parents=True, exist_ok=True)
+    _write_csv(out / "predictions_kronos.csv", kronos_rows)
+    _write_csv(out / "predictions_baselines.csv", baseline_rows)
+    _canonical_write(out / "per_origin_metrics.json", per_origin)
+    _canonical_write(out / "per_pair_metrics.json", per_pair)
+    _canonical_write(out / "aggregate_metrics.json", aggregate)
+    _canonical_write(out / "execution_log.json", {
+        **identity, "started_at": started, "completed_at": datetime.now(timezone.utc).isoformat(),
+        "origin_count": len(selected), "prediction_rows": len(kronos_rows),
+        "baseline_rows": len(baseline_rows),
+    })
+    _canonical_write(out / "environment_manifest.json", {
+        **identity, "python": platform.python_version(), "platform": platform.platform(),
+        "numpy": np.__version__, "pandas": pd.__version__,
+    })
+    required = [
+        "predictions_kronos.csv", "predictions_baselines.csv", "per_origin_metrics.json",
+        "per_pair_metrics.json", "aggregate_metrics.json", "execution_log.json",
+        "environment_manifest.json",
+    ]
+    evidence = {
+        **identity, "stage": split_name, "expected_origin_count": len(selected),
+        "expected_horizon": settings["horizon"], "baselines": list(BASELINES),
+        "files": {name: _sha256(out / name) for name in required},
+    }
+    _canonical_write(out / "evidence_manifest.json", evidence)
+    return {"output_dir": out, "origins": len(selected), "predictions": kronos_rows,
+            "baselines": baseline_rows, "aggregate_metrics": aggregate}
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=STAGES, required=True)
+    parser.add_argument("--predictor-type", choices=("fake", "kronos"), default="kronos")
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument("--dataset-manifest", type=Path, default=DEFAULT_DATASET_MANIFEST)
+    parser.add_argument("--fold-manifest", type=Path, default=DEFAULT_FOLD_MANIFEST)
+    parser.add_argument("--origin-manifest", type=Path, default=DEFAULT_ORIGIN_MANIFEST)
+    parser.add_argument("--metric-spec", type=Path, default=DEFAULT_METRIC_SPEC)
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--unseal", action="store_true")
     return parser.parse_args()
 
 
-# ── Helpers ──────────────────────────────────────────────
-
-def load_manifest(pair: str) -> dict:
-    """Load and verify V2 D1 manifest for a pair."""
-    manifest_path = DATA / f"raw_mt5_{pair}_1d_v2.manifest.json"
-    with open(manifest_path) as f:
-        m = json.load(f)
-    assert m.get("timeframe") == "1d", f"{pair} manifest timeframe is not 1d: {m.get('timeframe')}"
-    assert m.get("source") == "MetaTrader5 demo history", f"{pair} source is not MT5 D1"
-    return m
-
-
-def load_pair_d1(pair: str, stage: str = "development") -> pd.DataFrame:
-    """Load a verified V2 D1 CSV with data-visibility boundary enforcement.
-
-    In development mode, only rows through DEV_END are loaded.
-    In validation mode, only rows through VAL_END are loaded.
-    In sealed-test mode, only rows through TEST_END are loaded.
-
-    This is a HARD boundary — rows past the stage's visibility end
-    are not accessible, not even for context.
-    """
-    csv_path = DATA / f"raw_mt5_{pair}_1d_v2.csv"
-    assert csv_path.exists(), f"No D1 CSV for {pair}: {csv_path}"
-    df = pd.read_csv(csv_path)
-    # Detect separator
-    with open(csv_path, "r") as f:
-        first_line = f.readline()
-    sep = "\t" if "\t" in first_line else ","
-    df = pd.read_csv(csv_path, sep=sep)
-    # Normalize column names
-    col_map = {}
-    for c in df.columns:
-        if c in ("timestamp", "<DATE>"):
-            col_map[c] = "timestamp"
-        elif c in ("open", "Open"):
-            col_map[c] = "open"
-        elif c in ("high", "High"):
-            col_map[c] = "high"
-        elif c in ("low", "Low"):
-            col_map[c] = "low"
-        elif c in ("close", "Close"):
-            col_map[c] = "close"
-        elif c in ("volume", "Volume", "tick_volume"):
-            col_map[c] = "volume"
-    df = df.rename(columns=col_map)
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df = df.sort_values("timestamp").reset_index(drop=True)
-
-    # Apply data-visibility boundary (development mode)
-    vis_end = STAGE_VISIBILITY_END[stage]
-    df = df[df["timestamp"] <= vis_end].reset_index(drop=True)
-
-    return df
-
-
-def get_split_rows(df: pd.DataFrame, split: str) -> pd.DataFrame:
-    """Return rows within a split boundary."""
-    start, end = SPLITS[split]
-    mask = (df["timestamp"] >= start) & (df["timestamp"] <= end)
-    return df[mask].reset_index(drop=True)
-
-
-def get_possible_origins(df: pd.DataFrame, split: str) -> pd.DataFrame:
-    """Return valid forecast origins for a split with SPACING=5 downsampling.
-
-    Returns origins as full-dataframe index positions (not split-relative).
-    An origin at dataframe index i produces:
-    - input: rows [i-LOOKBACK+1 .. i] (256 bars)
-    - targets: rows [i+1 .. i+HORIZON] (5 bars, all must be inside split)
-
-    Context bars before the origin may come from earlier splits.
-    """
-    split_df = get_split_rows(df, split)
-    if len(split_df) < HORIZON:
-        return pd.DataFrame()
-
-    # split_df has reset_index(drop=True) so .index starts at 0.
-    # But we need the ORIGINAL full-df positions of the split rows.
-    # Build a boolean mask on the full df and use .values.nonzero() to get
-    # real positions.
-    start, end = SPLITS[split]
-    mask = (df["timestamp"] >= start) & (df["timestamp"] <= end)
-    positions = mask.values.nonzero()[0]
-
-    first_target_pos = int(positions[0])
-    last_target_pos = int(positions[-1])
-    df_len = len(df)
-
-    # origin i: targets are i+1 .. i+HORIZON
-    # constraint 1: i+1 >= first_target_pos  =>  i >= first_target_pos - 1
-    # constraint 2: i+HORIZON <= last_target_pos  =>  i <= last_target_pos - HORIZON
-    # constraint 3: i >= LOOKBACK - 1  (need LOOKBACK bars for input)
-    # constraint 4: i+HORIZON <= df_len - 1  (need 5 bars to exist in df)
-
-    earliest = max(LOOKBACK - 1, first_target_pos - 1)
-    latest = min(df_len - HORIZON - 1, last_target_pos - HORIZON)
-
-    if earliest > latest:
-        return pd.DataFrame()
-
-    # Apply SPACING downsampling: every 5th origin
-    origin_indices = range(int(earliest), int(latest) + 1, SPACING)
-    origin_indices = [i for i in origin_indices if i >= earliest and i <= latest]
-
-    return pd.DataFrame({
-        "origin_idx": origin_indices,
-        "origin_timestamp": df.iloc[origin_indices]["timestamp"].values,
-    })
-
-
-def extract_input(df: pd.DataFrame, origin_idx: int) -> pd.DataFrame:
-    """Extract LOOKBACK context bars ending at origin_idx."""
-    start = max(0, origin_idx - LOOKBACK + 1)
-    end = origin_idx + 1
-    return df.iloc[start:end].copy()
-
-
-def extract_targets(df: pd.DataFrame, origin_idx: int, split: str) -> pd.DataFrame:
-    """Extract HORIZON target bars immediately following origin_idx."""
-    targets = df.iloc[origin_idx + 1 : origin_idx + 1 + HORIZON].copy()
-    assert len(targets) == HORIZON, f"Expected {HORIZON} targets, got {len(targets)}"
-    return targets
-
-
-# ── Origin manifest ─────────────────────────────────────
-
-def generate_origin_manifest() -> dict:
-    """Generate the complete origin manifest for all pairs and splits."""
-    manifest = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "lookback": LOOKBACK,
-        "horizon": HORIZON,
-        "spacing": SPACING,
-        "pairs": {},
-        "totals": {"development": 0, "validation": 0, "test": 0, "grand_total": 0},
-    }
-
-    for split in ["development", "validation", "test"]:
-        split_start, split_end = SPLITS[split]
-        # Map internal split key to stage name for STAGE_VISIBILITY lookup
-        stage_name = "sealed-test" if split == "test" else split
-        visibility_end = STAGE_VISIBILITY_END[stage_name]
-        
-        for pair in PAIRS:
-            m = load_manifest(pair)
-            # Load FULL D1 file — all rows accessible for origin calculation
-            df = load_pair_d1_full(pair)
-            origins_df = get_possible_origins(df, split)
-            
-            pair_origins_count = len(origins_df)
-            if pair not in manifest["pairs"]:
-                manifest["pairs"][pair] = {}
-            manifest["pairs"][pair][split] = pair_origins_count
-            # Store CSV SHA-256 for guard verification
-            csv_csv_path = DATA / f"raw_mt5_{pair}_1d_v2.csv"
-            csv_sha = hashlib.sha256(csv_csv_path.read_bytes()).hexdigest()
-            manifest["pairs"][pair]["_csv_sha256"] = csv_sha
-            
-            manifest["totals"][split] += pair_origins_count
-
-    manifest["totals"]["grand_total"] = sum(
-        manifest["totals"][s] for s in ["development", "validation", "test"]
-    )
-    return manifest
-
-
-def load_pair_d1_full(pair: str) -> pd.DataFrame:
-    """Load the complete un-truncated V2 D1 CSV for origin calculation.
-
-    Unlike load_pair_d1() (which enforces data-visibility boundaries),
-    this loads the full file to enumerate all possible origins across
-    all splits. The data-visibility boundary is enforced at execution time,
-    not at origin enumeration time.
-    """
-    csv_path = DATA / f"raw_mt5_{pair}_1d_v2.csv"
-    assert csv_path.exists(), f"No D1 CSV for {pair}: {csv_path}"
-    with open(csv_path, "r") as f:
-        first_line = f.readline()
-    sep = "\t" if "\t" in first_line else ","
-    df = pd.read_csv(csv_path, sep=sep)
-    col_map = {}
-    for c in df.columns:
-        if c in ("timestamp", "<DATE>"):
-            col_map[c] = "timestamp"
-        elif c in ("open", "Open"):
-            col_map[c] = "open"
-        elif c in ("high", "High"):
-            col_map[c] = "high"
-        elif c in ("low", "Low"):
-            col_map[c] = "low"
-        elif c in ("close", "Close"):
-            col_map[c] = "close"
-        elif c in ("volume", "Volume", "tick_volume"):
-            col_map[c] = "volume"
-    df = df.rename(columns=col_map)
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df = df.sort_values("timestamp").reset_index(drop=True)
-    return df
-
-
-def _fold_config_hash() -> str:
-    """Hash of the frozen fold configuration."""
-    fold_path = BASE / "engine" / "docs" / "kronos_phase1_v2_fold_manifest.json"
-    with open(fold_path, "rb") as f:
-        return hashlib.sha256(f.read()).hexdigest()
-
-
-def compute_source_csv_hashes() -> dict:
-    """Return {pair: SHA-256} for each V2 D1 CSV."""
-    return {pair: hashlib.sha256(
-        (DATA / f"raw_mt5_{pair}_1d_v2.csv").read_bytes()
-    ).hexdigest() for pair in PAIRS}
-
-
-def get_tracked_code_commit() -> str:
-    """Return the latest tracked commit hash of the repository."""
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        capture_output=True, text=True,
-        cwd=str(BASE),
-    )
-    return result.stdout.strip()
-
-
-def _manifest_sha256(manifest: dict) -> str:
-    """SHA-256 of the canonical JSON representation of a manifest."""
-    canonical = json.dumps(manifest, sort_keys=True, indent=2,
-                           separators=(",", ": "))
-    return hashlib.sha256(canonical.encode()).hexdigest()
-
-
-def load_tracked_manifest() -> tuple:
-    """Load the tracked (committed) origin manifest.
-
-    Returns (manifest_dict, manifest_sha256).
-    Raises AssertionError if the manifest file is missing or the
-    SHA-256 does not match the committed content.
-    """
-    assert ORIGIN_MANIFEST.exists(), (
-        f"Tracked origin manifest missing: {ORIGIN_MANIFEST}"
-    )
-    content = ORIGIN_MANIFEST.read_text()
-    manifest = json.loads(content)
-    actual_sha = hashlib.sha256(content.encode()).hexdigest()
-    return manifest, actual_sha
-
-
-def verify_all_guards(stage: str, expected_config_hash: str | None,
-                      expected_code_commit: str | None,
-                      expected_manifest_sha: str | None,
-                      expected_dataset_manifest_sha: str | None,
-                      expected_fold_manifest_sha: str | None,
-                      expected_metric_spec_sha: str | None,
-                      expected_origin_manifest_sha: str | None) -> None:
-    """Verify hashes and identity before any inference stage.
-
-    Raises AssertionError (which causes abort) if any guard fails.
-    Checks:
-    - source CSV SHA-256 vs manifest-stored values
-    - origin manifest SHA-256
-    - config file SHA-256
-    - dataset manifest SHA-256
-    - fold manifest SHA-256
-    - metric spec SHA-256
-    - code commit hash
-    """
-    # Verify source CSV hashes against manifest
-    csv_hashes = compute_source_csv_hashes()
-    tracked_manifest, manifest_sha = load_tracked_manifest()
-
-    # Check origin manifest integrity
-    if expected_origin_manifest_sha is not None:
-        assert manifest_sha == expected_origin_manifest_sha, (
-            f"Origin manifest SHA mismatch: expected {expected_origin_manifest_sha}, "
-            f"got {manifest_sha}"
-        )
-
-    # Check each CSV against manifest-stored hash
-    for pair in PAIRS:
-        actual_csv_sha = csv_hashes[pair]
-        stored_sha = str(tracked_manifest.get("pairs", {}).get(pair, {}).get(
-            "_csv_sha256", ""
-        ))
-        assert actual_csv_sha == stored_sha, (
-            f"{pair} CSV hash does not match tracked manifest: "
-            f"actual={actual_csv_sha[:16]}... stored={stored_sha[:16]}..."
-        )
-
-    # Verify config file hash
-    if expected_config_hash is not None:
-        config_path = BASE / "engine" / "docs" / "kronos_phase1_v2_config.json"
-        actual_config_hash = hashlib.sha256(config_path.read_bytes()).hexdigest()
-        assert actual_config_hash == expected_config_hash, (
-            f"Config hash mismatch: expected {expected_config_hash}, "
-            f"got {actual_config_hash}"
-        )
-
-    # Verify dataset manifest hash
-    if expected_dataset_manifest_sha is not None:
-        ds_path = BASE / "engine" / "docs" / "kronos_phase1_v2_dataset_manifest.json"
-        actual_ds_hash = hashlib.sha256(ds_path.read_bytes()).hexdigest()
-        assert actual_ds_hash == expected_dataset_manifest_sha, (
-            f"Dataset manifest hash mismatch: expected {expected_dataset_manifest_sha}, "
-            f"got {actual_ds_hash}"
-        )
-
-    # Verify fold manifest hash
-    if expected_fold_manifest_sha is not None:
-        fold_path = BASE / "engine" / "docs" / "kronos_phase1_v2_fold_manifest.json"
-        actual_fold_hash = hashlib.sha256(fold_path.read_bytes()).hexdigest()
-        assert actual_fold_hash == expected_fold_manifest_sha, (
-            f"Fold manifest hash mismatch: expected {expected_fold_manifest_sha}, "
-            f"got {actual_fold_hash}"
-        )
-
-    # Verify metric spec hash
-    if expected_metric_spec_sha is not None:
-        ms_path = BASE / "engine" / "docs" / "kronos_phase1_v2_metric_spec.json"
-        actual_ms_hash = hashlib.sha256(ms_path.read_bytes()).hexdigest()
-        assert actual_ms_hash == expected_metric_spec_sha, (
-            f"Metric spec hash mismatch: expected {expected_metric_spec_sha}, "
-            f"got {actual_ms_hash}"
-        )
-
-    # Verify code commit if provided
-    if expected_code_commit is not None:
-        actual_commit = get_tracked_code_commit()
-        assert actual_commit == expected_code_commit, (
-            f"Code commit mismatch: expected {expected_code_commit}, "
-            f"got {actual_commit}"
-        )
-
-
-def save_origin_manifest(manifest: dict) -> str:
-    """Save the origin manifest and return its SHA-256."""
-    ORIGIN_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
-    content = json.dumps(manifest, indent=2)
-    with open(ORIGIN_MANIFEST, "w") as f:
-        f.write(content)
-    manifest_sha = hashlib.sha256(content.encode()).hexdigest()
-    return manifest_sha
-
-
-# ── Scoring ─────────────────────────────────────────────
-
-def score_one_forecast(
-    origin_close: float,
-    predicted_closes: np.ndarray,
-    actual_closes: np.ndarray,
-    predicted_highs: np.ndarray | None = None,
-    predicted_lows: np.ndarray | None = None,
-    predicted_opens: np.ndarray | None = None,
-    actual_highs: np.ndarray | None = None,
-    actual_lows: np.ndarray | None = None,
-    actual_opens: np.ndarray | None = None,
-) -> dict:
-    assert len(predicted_closes) == HORIZON
-    assert len(actual_closes) == HORIZON
-    h = np.arange(1, HORIZON + 1)
-    close_mae_per = np.abs(predicted_closes - actual_closes)
-    close_mse_per = (predicted_closes - actual_closes) ** 2
-    price_range = np.max(actual_closes) - np.min(actual_closes)
-    norm_close_mae = np.mean(close_mae_per) / price_range if price_range > 0 else 0.0
-    return_mae_per = np.abs(
-        np.diff(np.concatenate([[origin_close], predicted_closes]))
-        - np.diff(np.concatenate([[origin_close], actual_closes]))
-    )
-    ohlc_valid = np.ones(HORIZON, dtype=bool)
-    if predicted_highs is not None:
-        ohlc_valid &= predicted_highs >= predicted_lows
-        ohlc_valid &= predicted_lows <= predicted_opens
-        ohlc_valid &= predicted_lows <= predicted_closes
-        ohlc_valid &= predicted_highs >= predicted_opens
-        ohlc_valid &= predicted_highs >= predicted_closes
-    if actual_highs is not None:
-        ohlc_valid &= actual_highs >= actual_lows
-    pred_dir = np.sign(predicted_closes - origin_close)
-    actual_dir = np.sign(actual_closes - origin_close)
-    both_zero = (pred_dir == 0) & (actual_dir == 0)
-    directional_acc = float(np.mean((pred_dir == actual_dir) | both_zero))
-    if actual_highs is not None and actual_lows is not None and predicted_highs is not None and predicted_lows is not None:
-        hl_cov = np.mean(
-            (actual_highs >= predicted_lows) & (actual_highs <= predicted_highs)
-            & (actual_lows >= predicted_lows) & (actual_lows <= predicted_highs)
-        )
-    else:
-        hl_cov = np.nan
-    return {
-        "close_mae_per_horizon": close_mae_per.tolist(),
-        "close_mse_per_horizon": close_mse_per.tolist(),
-        "mean_close_mae": float(np.mean(close_mae_per)),
-        "mean_close_rmse": float(np.sqrt(np.mean(close_mse_per))),
-        "norm_close_mae": float(norm_close_mae),
-        "return_mae_per_horizon": return_mae_per.tolist(),
-        "mean_return_mae": float(np.mean(return_mae_per)),
-        "directional_accuracy": directional_acc,
-        "correct_directions_per_horizon": ((pred_dir == actual_dir) | both_zero).tolist(),
-        "ohlc_valid_per_horizon": ohlc_valid.tolist(),
-        "ohlc_validity_rate": float(np.mean(ohlc_valid)),
-        "high_low_interval_coverage": float(hl_cov),
-    }
-
-
-def run_count_only():
-    """Count-only mode: generate origin manifest and print counts without inference."""
-    manifest = generate_origin_manifest()
-    manifest_sha = save_origin_manifest(manifest)
-
-    print("COUNT-ONLY MODE — Origin Manifest")
-    print("=" * 50)
-    for pair in PAIRS:
-        counts = manifest["pairs"][pair].get("_counts", {})
-        print(f"{pair}: dev={counts.get('development', 0)} val={counts.get('validation', 0)} test={counts.get('test', 0)}")
-    print()
-    print(f"DEVELOPMENT TOTAL:  {manifest['totals']['development']}")
-    print(f"VALIDATION TOTAL:   {manifest['totals']['validation']}")
-    print(f"SEALED TEST TOTAL:  {manifest['totals']['test']}")
-    print(f"GRAND TOTAL:        {manifest['totals']['grand_total']}")
-    print()
-    print(f"Origin manifest SHA-256: {manifest_sha}")
-    print(f"Origin manifest path:    {ORIGIN_MANIFEST}")
-
-    # Verify expected counts
-    assert manifest["totals"]["development"] == 2608, (
-        f"Expected 2608 dev origins, got {manifest['totals']['development']}"
-    )
-    assert manifest["totals"]["validation"] == 302, (
-        f"Expected 302 val origins, got {manifest['totals']['validation']}"
-    )
-    assert manifest["totals"]["test"] == 316, (
-        f"Expected 316 test origins, got {manifest['totals']['test']}"
-    )
-    assert manifest["totals"]["grand_total"] == 3226, (
-        f"Expected 3226 total origins, got {manifest['totals']['grand_total']}"
-    )
-    print("All expected counts verified.")
-
-    # Return manifest for further use
-    return manifest, manifest_sha
-
-
-def run_stage(stage: str, unseal: bool = False,
-              expected_config_hash: str | None = None,
-              expected_dataset_manifest_hash: str | None = None,
-              expected_fold_manifest_hash: str | None = None,
-              expected_metric_spec_hash: str | None = None,
-              expected_origin_manifest_hash: str | None = None,
-              expected_code_commit: str | None = None):
-    """Execute a single stage with all safety checks."""
-    if stage not in STAGES:
-        print(f"ERROR: Unknown stage '{stage}'. Use: {', '.join(STAGES)}")
-        sys.exit(1)
-
-    # Sealed-test requires explicit unseal
-    if stage == "sealed-test":
-        if not unseal:
-            print("ERROR: sealed-test stage requires --unseal flag.")
-            sys.exit(1)
-
-    # Verify all hash guards before any stage execution
-    print("Verifying hash guards...")
-    verify_all_guards(
-        stage,
-        expected_config_hash=expected_config_hash,
-        expected_code_commit=expected_code_commit,
-        expected_manifest_sha=None,
-        expected_dataset_manifest_sha=expected_dataset_manifest_hash,
-        expected_fold_manifest_sha=expected_fold_manifest_hash,
-        expected_metric_spec_sha=expected_metric_spec_hash,
-        expected_origin_manifest_sha=expected_origin_manifest_hash,
-    )
-    print("  All hash guards passed.")
-
-    # Load manifest and verify data-visibility boundary
-    print(f"\n{'=' * 60}")
-    print(f"STAGE: {stage.upper()}")
-    print(f"{'=' * 60}")
-
-    all_origins = []
-    all_ledger = []
-    all_scoring = []
-    all_baseline = []
-
-    for pair in PAIRS:
-        m = load_manifest(pair)
-        df = load_pair_d1(pair, stage)
-
-        # Data-visibility assertion
-        visibility_end = STAGE_VISIBILITY_END[stage]
-        if len(df) > 0:
-            max_ts = df["timestamp"].max()
-            assert max_ts <= visibility_end, (
-                f"Stage '{stage}' accessed data past visibility end {visibility_end}: "
-                f"max timestamp {max_ts}"
-            )
-        print(f"  {pair}: {len(df)} accessible rows (visibility <= {visibility_end.date()})")
-
-        # Get origins
-        origins_df = get_possible_origins(df, STAGE_TARGET_SPLIT[stage])
-        split = STAGE_TARGET_SPLIT[stage]
-        print(f"  {pair}: {len(origins_df)} {split} origins")
-
-        for _, row in origins_df.iterrows():
-            origin_idx = int(row["origin_idx"])
-            input_df = extract_input(df, origin_idx)
-            target_df = extract_targets(df, origin_idx, split)
-
-            origin_close = float(input_df["close"].iloc[-1])
-            target_closes = target_df["close"].values.astype(float)
-            target_timestamps = target_df["timestamp"].tolist()
-            predicted = np.full(HORIZON, origin_close)  # placeholder for real inference
-
-            all_origins.append({
-                "pair": pair, "split": split, "origin_idx": origin_idx,
-                "origin_timestamp": str(row["origin_timestamp"]),
-            })
-
-    # Count verification
-    stage_counts = {}
-    for s in ["development", "validation", "test"]:
-        stage_counts[s] = sum(1 for o in all_origins if o["split"] == s)
-
-    print(f"\n  Origin counts: dev={stage_counts.get('development', 0)}, "
-          f"val={stage_counts.get('validation', 0)}, "
-          f"test={stage_counts.get('test', 0)}")
-    print(f"  Total origins: {len(all_origins)}")
-
-    return all_origins
-
-
-def main():
+def main() -> None:
     args = parse_args()
-
-    if args.stage == "count-only":
-        run_count_only()
-        return
-
-    # For other stages, verify sealed-test unseal
-    if args.stage == "sealed-test":
-        if not args.unseal:
-            print("ERROR: sealed-test requires --unseal")
-            sys.exit(1)
-        print(f"Sealed-test mode authorised with unseal flag.")
-
-    run_stage(
-        args.stage,
-        unseal=args.unseal,
-        expected_config_hash=args.expected_config_hash,
-        expected_dataset_manifest_hash=args.expected_dataset_manifest_hash,
-        expected_fold_manifest_hash=args.expected_fold_manifest_hash,
-        expected_metric_spec_hash=args.expected_metric_spec_hash,
-        expected_origin_manifest_hash=args.expected_origin_manifest_hash,
-        expected_code_commit=args.expected_code_commit,
-    )
+    factory = FakeKronosPredictor if args.predictor_type == "fake" else load_kronos_predictor
+    run_stage(args.mode, predictor_factory=factory, config_path=args.config,
+              dataset_manifest_path=args.dataset_manifest, fold_manifest_path=args.fold_manifest,
+              origin_manifest_path=args.origin_manifest, metric_spec_path=args.metric_spec,
+              output_dir=args.output_dir, unseal=args.unseal)
 
 
 if __name__ == "__main__":

@@ -11,13 +11,36 @@
   },
   "forecast": {
     "lookback": 256,
+    "context_steps": 256,
     "prediction_horizon": 5,
     "origin_spacing": 5,
-    "T": 1.0,
+    "temperature": 1.0,
     "top_p": 0.9,
     "sample_count": 1,
+    "seed": 20260725,
     "numpy_seed": 20260725,
     "torch_seed": 20260725
+  },
+  "baseline_parameters": {
+    "last_value": {},
+    "random_walk": {
+      "innovation_distribution": "normal",
+      "innovation_mean": 0.0,
+      "volatility_estimator": "sample_std_close_differences",
+      "volatility_window": 20,
+      "path_dependent": true,
+      "samples": 1
+    },
+    "drift": {
+      "estimator": "mean_context_close_difference"
+    },
+    "rolling_mean": {
+      "window": 20
+    },
+    "ema": {
+      "span": 20,
+      "adjust": false
+    }
   },
   "dataset": {
     "frequency": "D1",
