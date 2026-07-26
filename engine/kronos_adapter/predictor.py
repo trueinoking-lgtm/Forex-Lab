@@ -117,16 +117,54 @@ class KronosPredictor:
         # Import the actual Kronos model classes via package-relative path
         # so kronos.py's "from .module import *" works correctly.
         from engine.kronos_adapter.model_src.kronos import KronosTokenizer, Kronos as KronosModel  # type: ignore[import-not-found]
-
-        from transformers import AutoTokenizer  # heavy import — lazy
         from safetensors.torch import load_file
 
-        self._tokenizer = AutoTokenizer.from_pretrained(
-            _tokenizer_repo, revision=_tokenizer_revision
+        # Load tokenizer and model from the verified local checkpoint directory.
+        import json as _json
+        tokenizer_dir = Path(_checkpoint_path).parent / "tokenizer"
+        tokenizer_cfg_path = tokenizer_dir / "config.json"
+        tokenizer_config = _json.loads(tokenizer_cfg_path.read_text())
+        self._tokenizer = KronosTokenizer(
+            d_in=tokenizer_config["d_in"],
+            d_model=tokenizer_config["d_model"],
+            n_heads=tokenizer_config["n_heads"],
+            ff_dim=tokenizer_config["ff_dim"],
+            n_enc_layers=tokenizer_config["n_enc_layers"],
+            n_dec_layers=tokenizer_config["n_dec_layers"],
+            ffn_dropout_p=tokenizer_config["ffn_dropout_p"],
+            attn_dropout_p=tokenizer_config["attn_dropout_p"],
+            resid_dropout_p=tokenizer_config["resid_dropout_p"],
+            s1_bits=tokenizer_config["s1_bits"],
+            s2_bits=tokenizer_config["s2_bits"],
+            beta=tokenizer_config["beta"],
+            gamma0=tokenizer_config["gamma0"],
+            gamma=tokenizer_config["gamma"],
+            zeta=tokenizer_config["zeta"],
+            group_size=tokenizer_config["group_size"],
         )
-        state_dict = load_file(str(_checkpoint_path))
-        self._model = KronosModel()
-        self._model.load_state_dict(state_dict, strict=False)
+        tokenizer_sd = load_file(str(tokenizer_dir / "model.safetensors"))
+        tk_result = self._tokenizer.load_state_dict(tokenizer_sd, strict=True)
+        assert not tk_result.missing_keys, f"tokenizer missing keys: {tk_result.missing_keys}"
+        assert not tk_result.unexpected_keys, f"tokenizer unexpected keys: {tk_result.unexpected_keys}"
+
+        model_cfg = _json.loads(Path(_checkpoint_path).parent.joinpath("config.json").read_text())
+        self._model = KronosModel(
+            s1_bits=model_cfg["s1_bits"],
+            s2_bits=model_cfg["s2_bits"],
+            n_layers=model_cfg["n_layers"],
+            d_model=model_cfg["d_model"],
+            n_heads=model_cfg["n_heads"],
+            ff_dim=model_cfg["ff_dim"],
+            ffn_dropout_p=model_cfg["ffn_dropout_p"],
+            attn_dropout_p=model_cfg["attn_dropout_p"],
+            resid_dropout_p=model_cfg["resid_dropout_p"],
+            token_dropout_p=model_cfg["token_dropout_p"],
+            learn_te=model_cfg["learn_te"],
+        )
+        model_sd = load_file(str(_checkpoint_path))
+        model_result = self._model.load_state_dict(model_sd, strict=True)
+        assert not model_result.missing_keys, f"model missing keys: {model_result.missing_keys}"
+        assert not model_result.unexpected_keys, f"model unexpected keys: {model_result.unexpected_keys}"
         self._model.eval()
         self._loaded = True
 
