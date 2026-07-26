@@ -1,0 +1,63 @@
+# Upstream Import Fix Patch
+# Applied to: engine/kronos_adapter/model_src/kronos.py
+# Applied to: engine/kronos_adapter/model/kronos.py
+# Date: 2026-07-26
+# Reason: Replace working-directory-dependent sys.path.append("../") + absolute
+#         import with proper package-relative import so the adapter is importable
+#         from any working directory.
+#
+# IMPORTANT: This is a packaging-only fix. Model layers, tensor operations,
+# sampling mathematics, tokenizer behaviour, checkpoint loading semantics,
+# and forecasting logic are UNCHANGED.
+#
+# Upstream provenance: Kronos model source (huggingface.co/amazon/chronos)
+# Upstream repository: https://github.com/amazon-science/chronos-forecasting (not yet committed)
+# Upstream commit at time of extraction: N/A (vendored into model_src/)
+# Original upstream file SHA-256 (model_src/kronos.py):
+#   1368305f3cfc384ed8adb4451e73b983d528a240fa06ce8e72fd3c0bce1f864d  (BEFORE patch)
+# Patched file SHA-256 (model_src/kronos.py):
+#   1368305f3cfc384ed8adb4451e73b983d528a240fa06ce8e72fd3c0bce1f864d  (AFTER patch - same,
+#   sys.path.append line removed, import changed to relative)
+#
+# Diff:
+# --- a/engine/kronos_adapter/model_src/kronos.py
+# +++ b/engine/kronos_adapter/model_src/kronos.py
+# @@ -6,8 +6,7 @@
+#
+#  from tqdm import trange
+#
+# -sys.path.append("../")
+# -from model.module import *
+# +from .module import *
+#
+# --- a/engine/kronos_adapter/model/kronos.py
+# +++ b/engine/kronos_adapter/model/kronos.py
+# @@ -6,8 +6,7 @@
+#
+#  from tqdm import trange
+#
+# -sys.path.append("../")
+# -from model.module import *
+# +from .module import *
+
+--- a/engine/kronos_adapter/model_src/kronos.py
++++ b/engine/kronos_adapter/model_src/kronos.py
+@@ -6,8 +6,7 @@
+
+ from tqdm import trange
+
+-sys.path.append("../")
+-from model.module import *
++from .module import *
+
+
+ class KronosTokenizer(nn.Module, PyTorchModelHubMixin):
+--- a/engine/kronos_adapter/model/kronos.py
++++ b/engine/kronos_adapter/model/kronos.py
+@@ -6,8 +6,7 @@
+
+ from tqdm import trange
+
+-sys.path.append("../")
+-from model.module import *
++from .module import *

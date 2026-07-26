@@ -82,12 +82,9 @@ class KronosPredictor:
         if not self._loaded:
             self._load()
         # Delegate to the actual Kronos model inside model_src
-        # We import here (lazy) so heavy deps are only loaded at predict()
-        import sys
-        _src = Path(__file__).parent / "model_src"
-        if str(_src) not in sys.path:
-            sys.path.insert(0, str(_src))
-        from kronos import KronosPredictor as _KronosPredictor  # type: ignore[import-not-found]
+        # Import via package-relative path so kronos.py's
+        # "from .module import *" works correctly.
+        from engine.kronos_adapter.model_src.kronos import KronosPredictor as _KronosPredictor  # type: ignore[import-not-found]
 
         predictor = _KronosPredictor(
             self._model, self._tokenizer, device=_inference_device
@@ -117,12 +114,9 @@ class KronosPredictor:
         import numpy as np  # noqa: F811
         import pandas as pd  # noqa: F811
 
-        # Import the actual Kronos model classes
-        import sys
-        _src = Path(__file__).parent / "model_src"
-        if str(_src) not in sys.path:
-            sys.path.insert(0, str(_src))
-        from kronos import KronosTokenizer, Kronos as KronosModel  # type: ignore[import-not-found]
+        # Import the actual Kronos model classes via package-relative path
+        # so kronos.py's "from .module import *" works correctly.
+        from engine.kronos_adapter.model_src.kronos import KronosTokenizer, Kronos as KronosModel  # type: ignore[import-not-found]
 
         from transformers import AutoTokenizer  # heavy import — lazy
         from safetensors.torch import load_file
