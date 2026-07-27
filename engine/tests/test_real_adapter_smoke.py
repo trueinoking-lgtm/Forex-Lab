@@ -155,39 +155,31 @@ def test_real_adapter_artifact_writing(synthetic_ohlc, tmp_path):
     dataset_manifest_path = tmp_path / "dataset_manifest.json"
     dataset_manifest_path.write_text(json.dumps(synthetic_ohlc["manifest"], indent=2))
 
-    # Build fold manifest
+    # Build fold manifest (runner expects {"folds": [{...}]})
     fold_manifest = {
-        "fold_id": "synthetic-fold-1",
-        "splits": {
-            "development": {
-                "start": "2024-01-01T00:00:00Z",
-                "end": "2024-04-01T00:00:00Z",
-            },
-        },
-    }
-    fold_manifest_path = tmp_path / "fold_manifest.json"
-    fold_manifest_path.write_text(json.dumps(fold_manifest, indent=2))
-
-    fold_manifest = {
-        "fold_id": "synthetic-fold-1",
-        "splits": {
-            "development": {
-                "start": "2024-01-01T00:00:00Z",
-                "end": "2024-04-01T00:00:00Z",
-            },
-        },
+        "folds": [
+            {
+                "fold_id": "synthetic-fold-1",
+                "splits": {
+                    "synthetic_test": {
+                        "start": "2024-01-01T00:00:00Z",
+                        "end": "2024-04-01T00:00:00Z",
+                    },
+                },
+            }
+        ],
     }
     fold_manifest_path = tmp_path / "fold_manifest.json"
     fold_manifest_path.write_text(json.dumps(fold_manifest, indent=2))
 
     # Build origin manifest (using development-only origins for synthetic_test)
-    development_dates = pd.bdate_range("2024-01-22", periods=10, tz="UTC")
+    development_dates = pd.bdate_range("2024-02-13", periods=10, tz="UTC")
     origins = {
         "origins": [
             {
                 "origin_id": f"synthetic-origin-{i}",
                 "pair": "SYN_A",
-                "stage": "development",
+                "stage": "synthetic_test",
                 "origin_timestamp": str(development_dates[i]),
             }
             for i in range(len(development_dates))
@@ -261,13 +253,13 @@ def test_offline_replay_with_real_artifacts(synthetic_ohlc, tmp_path):
     dataset_manifest_path = tmp_path / "dataset_manifest.json"
     dataset_manifest_path.write_text(json.dumps(synthetic_ohlc["manifest"], indent=2))
 
-    development_dates = pd.bdate_range("2024-01-22", periods=3, tz="UTC")
+    development_dates = pd.bdate_range("2024-02-13", periods=3, tz="UTC")
     origins = {
         "origins": [
             {
                 "origin_id": f"synthetic-origin-{i}",
                 "pair": "SYN_A",
-                "stage": "development",
+                "stage": "synthetic_test",
                 "origin_timestamp": str(development_dates[i]),
             }
             for i in range(len(development_dates))
@@ -282,27 +274,32 @@ def test_offline_replay_with_real_artifacts(synthetic_ohlc, tmp_path):
     metric_spec_path.write_text(json.dumps(metric_spec, indent=2))
     output_dir = tmp_path / "output"
 
+    # Write fold manifest before run_stage
+    fold_manifest = {
+        "folds": [{
+            "fold_id": "synthetic-fold-1",
+            "splits": {
+                "synthetic_test": {
+                    "start": "2024-01-01T00:00:00Z",
+                    "end": "2024-04-01T00:00:00Z",
+                }},
+        }],
+    }
+    fold_manifest_path = tmp_path / "fold_manifest.json"
+    fold_manifest_path.write_text(json.dumps(fold_manifest, indent=2))
+
     run_stage(
         "synthetic_test",
         predictor_factory=lambda: FakeKronosPredictor(),
         config_path=config_path,
         dataset_manifest_path=dataset_manifest_path,
-        fold_manifest_path=tmp_path / "fold_manifest.json",
+        fold_manifest_path=fold_manifest_path,
         origin_manifest_path=origin_manifest_path,
         metric_spec_path=metric_spec_path,
         output_dir=output_dir,
     )
 
     # Replay and verify
-    fold_path = tmp_path / "fold_manifest.json"
-    fold_path.write_text(json.dumps({
-        "fold_id": "synthetic-fold-1",
-        "splits": {"development": {
-            "start": "2024-01-01T00:00:00Z",
-            "end": "2024-04-01T00:00:00Z",
-        }},
-    }, indent=2))
-
     replay_result = replay(output_dir / "synthetic_test", real_stage=False)
     assert replay_result is not None
 
@@ -337,13 +334,13 @@ def test_metric_replay_and_synthetic_real_stage_rejection(synthetic_ohlc, tmp_pa
     dataset_manifest_path = tmp_path / "dataset_manifest.json"
     dataset_manifest_path.write_text(json.dumps(synthetic_ohlc["manifest"], indent=2))
 
-    development_dates = pd.bdate_range("2024-01-22", periods=3, tz="UTC")
+    development_dates = pd.bdate_range("2024-02-13", periods=3, tz="UTC")
     origins = {
         "origins": [
             {
                 "origin_id": f"synthetic-origin-{i}",
                 "pair": "SYN_A",
-                "stage": "development",
+                "stage": "synthetic_test",
                 "origin_timestamp": str(development_dates[i]),
             }
             for i in range(len(development_dates))
@@ -358,12 +355,26 @@ def test_metric_replay_and_synthetic_real_stage_rejection(synthetic_ohlc, tmp_pa
     metric_spec_path.write_text(json.dumps(metric_spec, indent=2))
     output_dir = tmp_path / "output"
 
+    # Write fold manifest before run_stage
+    fold_manifest = {
+        "folds": [{
+            "fold_id": "synthetic-fold-1",
+            "splits": {
+                "synthetic_test": {
+                    "start": "2024-01-01T00:00:00Z",
+                    "end": "2024-04-01T00:00:00Z",
+                }},
+        }],
+    }
+    fold_manifest_path = tmp_path / "fold_manifest.json"
+    fold_manifest_path.write_text(json.dumps(fold_manifest, indent=2))
+
     run_stage(
         "synthetic_test",
         predictor_factory=lambda: FakeKronosPredictor(),
         config_path=config_path,
         dataset_manifest_path=dataset_manifest_path,
-        fold_manifest_path=tmp_path / "fold_manifest.json",
+        fold_manifest_path=fold_manifest_path,
         origin_manifest_path=origin_manifest_path,
         metric_spec_path=metric_spec_path,
         output_dir=output_dir,

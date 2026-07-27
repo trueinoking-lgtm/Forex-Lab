@@ -205,6 +205,26 @@ def _validate_origin(origin: dict[str, Any], df: pd.DataFrame, split: dict[str, 
 
 
 def _predict_ohlc(prediction: Any, horizon: int) -> list[dict[str, float]]:
+    """Extract OHLC forecasts from predictor output.
+
+    Supports both the new raw/projected contract and legacy scalar format.
+    """
+    # New format from predictor.py: contains _raw DataFrame
+    if isinstance(prediction, dict) and "_raw" in prediction:
+        raw_df = prediction["_raw"]
+        if not isinstance(raw_df, pd.DataFrame) or raw_df.empty:
+            raise ValueError("predictor._raw must be a non-empty DataFrame")
+        result = []
+        for _, row in raw_df.iterrows():
+            result.append({
+                "open": float(row["open"]),
+                "high": float(row["high"]),
+                "low": float(row["low"]),
+                "close": float(row["close"]),
+            })
+        return result
+
+    # Legacy format: dict with horizon_0..horizon_N keys
     expected = [f"horizon_{i}" for i in range(horizon)]
     if not isinstance(prediction, dict) or list(prediction) != expected:
         raise ValueError(f"predictor must return exactly ordered keys {expected}")
@@ -212,13 +232,11 @@ def _predict_ohlc(prediction: Any, horizon: int) -> list[dict[str, float]]:
     for key in expected:
         value = prediction[key]
         if isinstance(value, dict):
-            # New format: keys may include raw_* fields; extract raw OHLC
-            raw_key = "raw_close" if "raw_close" in value else "close"
             result.append({
-                "open": float(value.get("raw_open" if "raw_open" in value else "open")),
-                "high": float(value.get("raw_high" if "raw_high" in value else "high")),
-                "low": float(value.get("raw_low" if "raw_low" in value else "low")),
-                "close": float(value.get("raw_close" if "raw_close" in value else "close")),
+                "open": float(value.get("open", value.get("raw_open", 0))),
+                "high": float(value.get("high", value.get("raw_high", 0))),
+                "low": float(value.get("low", value.get("raw_low", 0))),
+                "close": float(value.get("close", value.get("raw_close", 0))),
             })
         else:
             close = float(value)
