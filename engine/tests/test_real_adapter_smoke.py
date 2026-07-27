@@ -103,24 +103,25 @@ def test_real_predictor_predict_completes(synthetic_ohlc, tmp_path):
     )
     elapsed = time.time() - start
 
-    assert len(result) >= 5, f"Expected >= 5 horizon keys, got {len(result)}"
-    for i in range(5):
-        key = f"horizon_{i}"
-        assert key in result, f"Missing {key}"
-        ohlc = result[key]
-        if isinstance(ohlc, dict):
-            assert set(ohlc.keys()) >= {"raw_open", "raw_high", "raw_low", "raw_close", "raw_ohlc_valid"}
-
-    # Check _raw and _projected are present
-    assert "_raw" in result, "Missing _raw key"
-    assert "_projected" in result, "Missing _projected key"
-    assert isinstance(result["_raw"], pd.DataFrame)
-    assert isinstance(result["_projected"], pd.DataFrame)
-    assert len(result["_raw"]) == 5
-    assert len(result["_projected"]) == 5
+    # New contract: KronosPredictionResult
+    from engine.kronos_adapter.prediction_result import KronosPredictionResult
+    assert isinstance(result, KronosPredictionResult), (
+        f"Expected KronosPredictionResult, got {type(result).__name__}"
+    )
+    assert len(result.raw_predictions) == 5, (
+        f"Expected 5 raw predictions, got {len(result.raw_predictions)}"
+    )
+    assert len(result.projected_predictions) == 5, (
+        f"Expected 5 projected predictions, got {len(result.projected_predictions)}"
+    )
+    assert not result.raw_predictions.empty
+    assert not result.projected_predictions.empty
+    assert set(result.raw_predictions.columns) >= {"open", "high", "low", "close"}
+    assert set(result.projected_predictions.columns) >= {"open", "high", "low", "close"}
 
     # Evidence labels
-    assert result.get("_raw") is not None
+    assert result.predictor_identity["is_synthetic"] is True
+    assert result.predictor_identity["evidence_eligible"] is False
 
 
 def test_real_adapter_artifact_writing(synthetic_ohlc, tmp_path):
