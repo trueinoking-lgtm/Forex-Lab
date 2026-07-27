@@ -299,9 +299,19 @@ def test_offline_replay_with_real_artifacts(synthetic_ohlc, tmp_path):
         output_dir=output_dir,
     )
 
-    # Replay and verify
-    replay_result = replay(output_dir / "synthetic_test", real_stage=False)
-    assert replay_result is not None
+    # Replay and verify in subprocess (replay must not import torch)
+    import subprocess
+    code = (
+        "import sys, json; "
+        "from engine.replay_phase1_v2_evidence import replay; "
+        f'replay({str(output_dir / "synthetic_test")!r}); '
+        "assert 'torch' not in sys.modules and 'transformers' not in sys.modules; "
+        "print('OFFLINE_REPLAY_OK')"
+    )
+    result = subprocess.run([sys.executable, "-c", code], text=True,
+                            capture_output=True, check=True)
+    assert result.stdout.strip() == "OFFLINE_REPLAY_OK"
+    replay_result = None  # verified in subprocess
 
 
 def test_metric_replay_and_synthetic_real_stage_rejection(synthetic_ohlc, tmp_path):

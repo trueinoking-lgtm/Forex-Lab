@@ -75,7 +75,7 @@ def replay(evidence_dir: Path | str, *, real_stage: bool = False) -> dict[str, A
         raise ValueError("missing evidence_manifest.json")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if real_stage and (manifest.get("is_synthetic") or not manifest.get("evidence_eligible")):
-        raise ValueError("synthetic evidence is not eligible for real-stage verification")
+        raise PermissionError("synthetic evidence is not eligible for real-stage verification")
     for name, digest in manifest["files"].items():
         path = root / name
         if not path.exists() or _sha(path) != digest:
