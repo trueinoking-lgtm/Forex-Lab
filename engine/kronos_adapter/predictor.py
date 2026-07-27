@@ -13,6 +13,9 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
+import numpy as np
+import pandas as pd
+
 # Lazy torch import (performed only when a real predictor is built)
 _TORCH_AVAILABLE = False
 _SAFETENSORS_AVAILABLE = False
@@ -66,48 +69,137 @@ class KronosPredictor:
     def predict(
         self,
         context_df: "pd.DataFrame",
+        x_timestamp: "pd.Series",
+        y_timestamp: "pd.Series",
         prediction_length: int,
         temperature: float = 1.0,
         top_p: float = 0.9,
         sample_count: int = 1,
         seed: int = 0,
     ) -> Dict[str, Any]:
-        """Return a dict of per-horizon predictions.
+        """Return a dict of per-horizon forecasts from the real Kronos model.
+
+        Delegates to the official vendored KronosPredictor.predict(), which
+        handles preprocessing (normalization, volume/amount defaults,
+        timestamp feature construction, batch dimensions) internally.
+
+        Parameters
+        ----------
+        context_df : DataFrame with columns open, high, low, close
+            (optionally volume, amount). Must have at least 2 rows.
+        x_timestamp : 1-D array-like of length len(context_df)
+            Timestamps for the context window.  Must be strictly increasing,
+            no duplicates, and x_timestamp[-1] < y_timestamp[0].
+        y_timestamp : 1-D array-like of length prediction_length
+            Target timestamps for the forecast horizon.
+        prediction_length : int
+            Number of future steps to predict (must equal len(y_timestamp)).
+        temperature : float
+            Sampling temperature passed to the official predictor.
+        top_p : float
+            Nucleus sampling parameter.
+        sample_count : int
+            Number of independent samples; only sample_count=1 is supported
+            by the OHLC output path.
+        seed : int
+            Determinism seed (stored for audit; Kronos uses its own sampler).
 
         Returns
         -------
-        dict with key ``horizon_{i}`` for i in 0..prediction_length-1,
-        each value an ndarray of scalars.
+        dict with keys horizon_0 … horizon_{prediction_length-1}, each
+        value a float scalar, plus an output DataFrame under key
+        ``_df`` whose index is y_timestamp and columns are open/high/low/close
+        (and vol/amt if provided).
         """
         if not self._loaded:
             self._load()
-        # Delegate to the actual Kronos model inside model_src
-        # Import via package-relative path so kronos.py's
-        # "from .module import *" works correctly.
+
+        # ── Input validation (fail-closed) ──
+        import pandas as pd  # noqa: F811
+
+        if not isinstance(context_df, pd.DataFrame):
+            raise TypeError(f"context_df must be a DataFrame, got {type(context_df).__name__}")
+        for col in ("open", "high", "low", "close"):
+            if col not in context_df.columns:
+                raise ValueError(f"context_df missing required column: {col!r}")
+
+        x_timestamp = pd.Series(x_timestamp) if not isinstance(x_timestamp, pd.Series) else x_timestamp
+        y_timestamp = pd.Series(y_timestamp) if not isinstance(y_timestamp, pd.Series) else y_timestamp
+
+        if len(x_timestamp) != len(context_df):
+            raise ValueError(
+                f"x_timestamp length ({len(x_timestamp)}) != len(context_df) "
+                f"({len(context_df)})"
+            )
+        if len(y_timestamp) != prediction_length:
+            raise ValueError(
+                f"y_timestamp length ({len(y_timestamp)}) != prediction_length "
+                f"({prediction_length})"
+            )
+        if x_timestamp.duplicated().any():
+            raise ValueError("x_timestamp contains duplicate values")
+        if y_timestamp.duplicated().any():
+            raise ValueError("y_timestamp contains duplicate values")
+        if not (x_timestamp.sort_values().index == x_timestamp.index).all() and \
+           not x_timestamp.equals(x_timestamp.sort_values()):
+            pass  # order check below uses sorted comparison
+        xts_sorted = x_timestamp.sort_values()
+        yts_sorted = y_timestamp.sort_values()
+        if not (xts_sorted.values[:-1] < xts_sorted.values[1:]).all():
+            raise ValueError("x_timestamp must be strictly increasing")
+        if not (yts_sorted.values[:-1] < yts_sorted.values[1:]).all():
+            raise ValueError("y_timestamp must be strictly increasing")
+        if x_timestamp.iloc[-1] >= y_timestamp.iloc[0]:
+            raise ValueError(
+                f"x_timestamp[-1] ({x_timestamp.iloc[-1]}) must be < "
+                f"y_timestamp[0] ({y_timestamp.iloc[0]})"
+            )
+        if prediction_length <= 0:
+            raise ValueError(f"prediction_length must be > 0, got {prediction_length}")
+        if sample_count <= 0:
+            raise ValueError(f"sample_count must be > 0, got {sample_count}")
+
+        # ── Delegate to the official KronosPredictor.predict() ──
         from engine.kronos_adapter.model_src.kronos import KronosPredictor as _KronosPredictor  # type: ignore[import-not-found]
 
-        predictor = _KronosPredictor(
-            self._model, self._tokenizer, device=_inference_device
-        )
-        x = context_df.to_numpy(dtype="float32")
-        x_stamp = context_df.index  # assume DatetimeIndex or integer index
-        y_stamp = None  # let Kronos autoregressively generate y_stamp
-        raw = predictor.generate(
-            x=x,
-            x_stamp=list(x_stamp),
-            y_stamp=y_stamp,
+        official = _KronosPredictor(self._model, self._tokenizer, device=_inference_device)
+        raw = official.predict(
+            df=context_df,
+            x_timestamp=x_timestamp,
+            y_timestamp=y_timestamp,
             pred_len=prediction_length,
             T=temperature,
-            top_k=0,
             top_p=top_p,
             sample_count=sample_count,
             verbose=False,
         )
-        # raw is a list of arrays (one per sample); we take the first
-        pred = raw[0] if isinstance(raw, list) else raw
+
+        # ── Output validation (fail-closed) ──
+        if not isinstance(raw, pd.DataFrame):
+            raise TypeError(f"Official predictor returned {type(raw).__name__}, expected DataFrame")
+        if len(raw) != prediction_length:
+            raise ValueError(f"Official predictor returned {len(raw)} rows, expected {prediction_length}")
+        if not raw.index.equals(y_timestamp.reset_index(drop=True)):
+            # y_timestamp may carry name/attribute; compare values only
+            if not raw.index.tolist() == y_timestamp.reset_index(drop=True).tolist():
+                raise ValueError("Official predictor index does not match y_timestamp")
+
+        for col in ("open", "high", "low", "close"):
+            if col in raw.columns:
+                if raw[col].isna().any():
+                    raise ValueError(f"Predicted {col!r} contains NaN values")
+                if not np.isfinite(raw[col].values).all():
+                    raise ValueError(f"Predicted {col!r} contains non-finite values")
+
         result: Dict[str, Any] = {}
         for i in range(prediction_length):
-            result[f"horizon_{i}"] = float(pred[int(i)]) if pred.ndim == 1 else float(pred[i])
+            result[f"horizon_{i}"] = {
+                "open": float(raw["open"].iloc[i]),
+                "high": float(raw["high"].iloc[i]),
+                "low": float(raw["low"].iloc[i]),
+                "close": float(raw["close"].iloc[i]),
+            }
+        result["_df"] = raw
         return result
 
     def _load(self) -> None:
