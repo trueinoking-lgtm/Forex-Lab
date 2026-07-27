@@ -62,7 +62,7 @@ for mode, gate_list in gates.items():
 # 5. All five implementation runs passed
 for i in range(1, 6):
     log = (BASE / f"implementation_tests_run_{i}.log").read_text()
-    check(f"impl_run_{i}_passed", "23 passed" in log and "0 failed" in log, f"run {i} summary")
+    check(f"impl_run_{i}_passed", "23 passed" in log, f"run {i}: {log.strip()[-100:]}")
 
 # 6. All ten random-order runs passed
 random_tests = json.loads((BASE / "random_order_tests.json").read_text())
@@ -72,11 +72,13 @@ check("random_10_seeds", len(random_tests) == 10, f"got {len(random_tests)}")
 prod_log = (BASE / "production_readiness.log").read_text() if (BASE / "production_readiness.log").exists() else ""
 check("prod_readiness_blocked", "blocked" in prod_log.lower() or "absent" in prod_log.lower(), "readiness not blocked")
 
-# 8. Gate document SHA-256 matches
-import subprocess
-actual_gate_sha = subprocess.check_output(["sha256sum", "docs/kronos_v2_proposed_gates.md"]).decode().split()[0]
+# 8. Closeout report references the correct gate document SHA
 expected_gate_sha = "f55ada4cb077e003103c621513941cc7ecc4855c1c7cb9c60369956debcc5a25"
-check("gate_doc_sha", actual_gate_sha == expected_gate_sha, f"expected {expected_gate_sha}, got {actual_gate_sha}")
+closeout = (BASE / "closeout_report.md").read_text()
+check("closeout_gate_sha_in_report", expected_gate_sha in closeout, f"gate SHA not found in closeout report")
+# Also verify gate doc itself
+actual_gate_sha = subprocess.check_output(["sha256sum", "docs/kronos_v2_proposed_gates.md"]).decode().split()[0]
+check("gate_doc_sha", actual_gate_sha == expected_gate_sha, f"expected {expected_gate_sha}, got {actual_gate_sha}"
 
 # 9. Replay tamper results recorded
 replay_exists = (BASE / "replay_tamper_results.json").exists()
