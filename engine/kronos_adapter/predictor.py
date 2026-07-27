@@ -4,10 +4,9 @@ Designed so that the benchmark runner imports ONLY this module.
 All heavy imports (torch, transformers, safetensors) happen lazily
 on first ``predict()`` call.
 
-Every prediction returns both RAW model output and a PROJECTED
-deterministic projection that fixes structural OHLC violations
-(high < max(open,close), low > min(open,close)) without modifying
-raw values.
+Every prediction returns a KronosPredictionResult — a frozen,
+explicit dataclass that is the canonical production contract between
+predictor, runner, replay, metrics, and tamper detection.
 """
 from __future__ import annotations
 
@@ -18,6 +17,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
+
+from engine.kronos_adapter.prediction_result import KronosPredictionResult
 
 # Lazy torch import (performed only when a real predictor is built)
 _TORCH_AVAILABLE = False
@@ -275,27 +276,38 @@ class KronosPredictor:
         except ValueError:
             raw_valid = False
 
-        result: Dict[str, Any] = {}
-        for i in range(prediction_length):
-            row = raw_df.iloc[i]
-            result[f"horizon_{i}"] = {
-                "raw_open": float(row["open"]),
-                "raw_high": float(row["high"]),
-                "raw_low": float(row["low"]),
-                "raw_close": float(row["close"]),
-                "raw_volume": float(row.get("volume", np.nan)),
-                "raw_amount": float(row.get("amount", np.nan)),
-                "raw_ohlc_valid": raw_valid,  # True only if ALL rows valid
-            }
-        result["_raw"] = raw_df
-        result["_projected"] = proj["projected_df"]
-        result["_projection_applied"] = proj["projection_applied"]
-        result["_projection_high_adjustments"] = proj["high_adjustments"]
-        result["_projection_low_adjustments"] = proj["low_adjustments"]
-        result["_total_absolute_adjustment"] = proj["total_absolute_adjustment"]
-        result["_relative_adjustment_to_origin_close"] = proj["relative_adjustment_to_origin_close"]
-        result["_projected_ohlc_valid"] = proj["projected_ohlc_valid"]
-        return result
+        # ── Build canonical KronosPredictionResult ──
+        identity = {
+            "predictor_class": type(self).__name__,
+            "model_identifier": _model_repo,
+            "checkpoint_identifier": _model_revision,
+            "is_synthetic": False,
+            "evidence_eligible": True,
+        }
+        meta = {
+            "forecast_length": prediction_length,
+            "context_steps": len(context_df),
+            "seed": seed,
+            "temperature": temperature,
+            "top_p": top_p,
+            "sample_count": sample_count,
+            "context_hash": hashlib.sha256(context_df.to_json().encode()).hexdigest()[:16],
+        }
+        return KronosPredictionResult(
+            raw_predictions=raw_df,
+            projected_predictions=proj["projected_df"],
+            projection_metadata={
+                "projection_applied": proj["projection_applied"],
+                "high_adjustments": proj["high_adjustments"],
+                "low_adjustments": proj["low_adjustments"],
+                "total_absolute_adjustment": proj["total_absolute_adjustment"],
+                "relative_adjustment_to_origin_close": proj["relative_adjustment_to_origin_close"],
+            },
+            raw_validity=pd.Series([raw_valid] * len(raw_df)),
+            projected_validity=pd.Series([proj["projected_ohlc_valid"]] * len(proj["projected_df"])),
+            predictor_identity=identity,
+            evidence_metadata=meta,
+        )
 
     def _load(self) -> None:
         import json as _json  # noqa: F811
@@ -374,7 +386,7 @@ class FakeKronosPredictor:
         top_p: float = 0.9,
         sample_count: int = 1,
         seed: Optional[int] = None,
-    ) -> Dict[str, Any]:
+    ) -> KronosPredictionResult:
         import numpy as np
 
         rng = np.random.RandomState(seed if seed is not None else self._seed)
@@ -404,27 +416,33 @@ class FakeKronosPredictor:
         proj = project_ohlc(raw_df)
         valid = True
 
-        result: Dict[str, Any] = {}
-        for i in range(prediction_length):
-            row = raw_df.iloc[i]
-            result[f"horizon_{i}"] = {
-                "raw_open": float(row["open"]),
-                "raw_high": float(row["high"]),
-                "raw_low": float(row["low"]),
-                "raw_close": float(row["close"]),
-                "raw_volume": float(row.get("volume", np.nan)),
-                "raw_amount": float(row.get("amount", np.nan)),
-                "raw_ohlc_valid": valid,
-            }
-        result["_raw"] = raw_df
-        result["_projected"] = proj["projected_df"]
-        result["_projection_applied"] = proj["projection_applied"]
-        result["_projection_high_adjustments"] = proj["high_adjustments"]
-        result["_projection_low_adjustments"] = proj["low_adjustments"]
-        result["_total_absolute_adjustment"] = proj["total_absolute_adjustment"]
-        result["_relative_adjustment_to_origin_close"] = proj["relative_adjustment_to_origin_close"]
-        result["_projected_ohlc_valid"] = proj["projected_ohlc_valid"]
-        return result
+        identity = {
+            "predictor_class": type(self).__name__,
+            "model_identifier": "fake-kronos-deterministic",
+            "checkpoint_identifier": "none",
+            "is_synthetic": True,
+            "evidence_eligible": False,
+        }
+        meta = {
+            "forecast_length": prediction_length,
+            "context_steps": len(context_df),
+            "seed": seed,
+        }
+        return KronosPredictionResult(
+            raw_predictions=raw_df,
+            projected_predictions=proj["projected_df"],
+            projection_metadata={
+                "projection_applied": proj["projection_applied"],
+                "high_adjustments": proj["high_adjustments"],
+                "low_adjustments": proj["low_adjustments"],
+                "total_absolute_adjustment": proj["total_absolute_adjustment"],
+                "relative_adjustment_to_origin_close": proj["relative_adjustment_to_origin_close"],
+            },
+            raw_validity=pd.Series([valid] * len(raw_df)),
+            projected_validity=pd.Series([True] * len(proj["projected_df"])),
+            predictor_identity=identity,
+            evidence_metadata=meta,
+        )
 
     @property
     def called(self) -> bool:

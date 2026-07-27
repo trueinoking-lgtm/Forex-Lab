@@ -207,13 +207,16 @@ def _validate_origin(origin: dict[str, Any], df: pd.DataFrame, split: dict[str, 
 def _predict_ohlc(prediction: Any, horizon: int) -> list[dict[str, float]]:
     """Extract OHLC forecasts from predictor output.
 
-    Supports both the new raw/projected contract and legacy scalar format.
+    Supports the new KronosPredictionResult contract (preferred)
+    and the legacy scalar format for backward compatibility.
     """
-    # New format from predictor.py: contains _raw DataFrame
-    if isinstance(prediction, dict) and "_raw" in prediction:
-        raw_df = prediction["_raw"]
+    # New contract: KronosPredictionResult with raw_predictions DataFrame
+    from engine.kronos_adapter.prediction_result import KronosPredictionResult
+
+    if isinstance(prediction, KronosPredictionResult):
+        raw_df = prediction.raw_predictions
         if not isinstance(raw_df, pd.DataFrame) or raw_df.empty:
-            raise ValueError("predictor._raw must be a non-empty DataFrame")
+            raise ValueError("predictor.raw_predictions must be a non-empty DataFrame")
         result = []
         for _, row in raw_df.iterrows():
             result.append({
