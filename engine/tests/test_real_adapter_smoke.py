@@ -120,8 +120,8 @@ def test_real_predictor_predict_completes(synthetic_ohlc, tmp_path):
     assert set(result.projected_predictions.columns) >= {"open", "high", "low", "close"}
 
     # Evidence labels
-    assert result.predictor_identity["is_synthetic"] is True
-    assert result.predictor_identity["evidence_eligible"] is False
+    assert result.predictor_identity["is_synthetic"] is False  # real predictor, not synthetic fixture
+    assert result.predictor_identity["evidence_eligible"] is True
 
 
 def test_real_adapter_artifact_writing(synthetic_ohlc, tmp_path):
