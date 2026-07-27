@@ -34,3 +34,5 @@ tsconfig.tsbuildinfo
 
 # Kronos Phase 0: evidence excluded from VCS, kept on disk only
 # engine/evidence/kronos/phase0/ contains hashes and manifests only
+engine/docs/checkpoints/*.safetensors
+engine/docs/checkpoints/tokenizer/
