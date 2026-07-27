@@ -1,0 +1,223 @@
+{
+  "run_id": "run1",
+  "start_timestamp": "2026-07-27T16:20:00Z",
+  "end_timestamp": "2026-07-27T16:32:00Z",
+  "wall_clock_duration_seconds": 15.68,
+  "model_load_duration_seconds": 0.0,
+  "inference_duration_seconds": 15.68,
+  "peak_rss_kb": 623688,
+  "predict_call_count": 200,
+  "contexts_attempted": 200,
+  "contexts_completed": 200,
+  "contexts_failed": 0,
+  "rows_produced": 1000,
+  "raw_valid_rows": 75,
+  "raw_invalid_rows": 925,
+  "raw_validity_rate": 0.075,
+  "projected_valid_rows": 1000,
+  "projected_validity_rate": 1.0,
+  "projection_count": 925,
+  "projection_frequency": 0.925,
+  "mean_absolute_adjustment": 0.01633953857421875,
+  "median_absolute_adjustment": 0.0,
+  "maximum_absolute_adjustment": 0.16559600830078125,
+  "maximum_relative_adjustment": 0.0016555543792216446,
+  "statistics_by_horizon": {
+    "1": {
+      "count": 200,
+      "raw_valid": 15,
+      "projected_valid": 200
+    },
+    "2": {
+      "count": 200,
+      "raw_valid": 15,
+      "projected_valid": 200
+    },
+    "3": {
+      "count": 200,
+      "raw_valid": 15,
+      "projected_valid": 200
+    },
+    "4": {
+      "count": 200,
+      "raw_valid": 15,
+      "projected_valid": 200
+    },
+    "5": {
+      "count": 200,
+      "raw_valid": 15,
+      "projected_valid": 200
+    }
+  },
+  "statistics_by_schema": {
+    "OHLC": {
+      "count": 500,
+      "raw_valid": 25,
+      "projected_valid": 500
+    },
+    "OHLCV+amount": {
+      "count": 500,
+      "raw_valid": 50,
+      "projected_valid": 500
+    }
+  },
+  "ten_largest_adjustments": [
+    {
+      "schema": "OHLCV+amount",
+      "context_id": "OHLCV+amount_0069",
+      "horizon": 2,
+      "raw_open": 100.35929107666016,
+      "raw_high": 100.19369506835938,
+      "raw_low": 100.02202606201172,
+      "raw_close": 100.02732849121094,
+      "projected_high": 100.35929107666016,
+      "projected_low": 100.02202606201172,
+      "high_adjustment": 0.16559600830078125,
+      "low_adjustment": 0.0,
+      "total_absolute_adjustment": 0.16559600830078125,
+      "relative_adjustment": 0.0016555543792216446
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0024",
+      "horizon": 1,
+      "raw_open": 100.1738510131836,
+      "raw_high": 100.09611511230469,
+      "raw_low": 100.0863265991211,
+      "raw_close": 100.00550079345703,
+      "projected_high": 100.1738510131836,
+      "projected_low": 100.00550079345703,
+      "high_adjustment": 0.07773590087890625,
+      "low_adjustment": 0.0808258056640625,
+      "total_absolute_adjustment": 0.15856170654296875,
+      "relative_adjustment": 0.0015855298487075105
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0035",
+      "horizon": 2,
+      "raw_open": 100.22198486328125,
+      "raw_high": 100.11895751953125,
+      "raw_low": 100.0521240234375,
+      "raw_close": 100.000244140625,
+      "projected_high": 100.22198486328125,
+      "projected_low": 100.000244140625,
+      "high_adjustment": 0.10302734375,
+      "low_adjustment": 0.0518798828125,
+      "total_absolute_adjustment": 0.1549072265625,
+      "relative_adjustment": 0.001549046738121381
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0053",
+      "horizon": 1,
+      "raw_open": 100.20769500732422,
+      "raw_high": 100.09009552001953,
+      "raw_low": 100.03985595703125,
+      "raw_close": 100.00821685791016,
+      "projected_high": 100.20769500732422,
+      "projected_low": 100.00821685791016,
+      "high_adjustment": 0.1175994873046875,
+      "low_adjustment": 0.03163909912109375,
+      "total_absolute_adjustment": 0.14923858642578125,
+      "relative_adjustment": 0.0014922632471071522
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0038",
+      "horizon": 3,
+      "raw_open": 100.1373519897461,
+      "raw_high": 100.04193878173828,
+      "raw_low": 100.0482406616211,
+      "raw_close": 99.9990463256836,
+      "projected_high": 100.1373519897461,
+      "projected_low": 99.9990463256836,
+      "high_adjustment": 0.0954132080078125,
+      "low_adjustment": 0.0491943359375,
+      "total_absolute_adjustment": 0.1446075439453125,
+      "relative_adjustment": 0.0014460722399829895
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0023",
+      "horizon": 1,
+      "raw_open": 100.1392593383789,
+      "raw_high": 100.04241943359375,
+      "raw_low": 100.05101013183594,
+      "raw_close": 100.00902557373047,
+      "projected_high": 100.1392593383789,
+      "projected_low": 100.00902557373047,
+      "high_adjustment": 0.09683990478515625,
+      "low_adjustment": 0.04198455810546875,
+      "total_absolute_adjustment": 0.138824462890625,
+      "relative_adjustment": 0.0013881193431714651
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0068",
+      "horizon": 5,
+      "raw_open": 100.23678588867188,
+      "raw_high": 100.15206146240234,
+      "raw_low": 100.08505249023438,
+      "raw_close": 100.03565979003906,
+      "projected_high": 100.23678588867188,
+      "projected_low": 100.03565979003906,
+      "high_adjustment": 0.08472442626953125,
+      "low_adjustment": 0.0493927001953125,
+      "total_absolute_adjustment": 0.13411712646484375,
+      "relative_adjustment": 0.0013407405198418386
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0045",
+      "horizon": 4,
+      "raw_open": 99.7818603515625,
+      "raw_high": 100.06708526611328,
+      "raw_low": 99.91351318359375,
+      "raw_close": 100.01052856445312,
+      "projected_high": 100.06708526611328,
+      "projected_low": 99.7818603515625,
+      "high_adjustment": 0.0,
+      "low_adjustment": 0.13165283203125,
+      "total_absolute_adjustment": 0.13165283203125,
+      "relative_adjustment": 0.00131636090289115
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0024",
+      "horizon": 5,
+      "raw_open": 100.16050720214844,
+      "raw_high": 100.07505798339844,
+      "raw_low": 100.04547119140625,
+      "raw_close": 100.00286865234375,
+      "projected_high": 100.16050720214844,
+      "projected_low": 100.00286865234375,
+      "high_adjustment": 0.08544921875,
+      "low_adjustment": 0.0426025390625,
+      "total_absolute_adjustment": 0.1280517578125,
+      "relative_adjustment": 0.0012804471433723167
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0076",
+      "horizon": 5,
+      "raw_open": 100.12818908691406,
+      "raw_high": 100.05242156982422,
+      "raw_low": 100.061279296875,
+      "raw_close": 100.00902557373047,
+      "projected_high": 100.12818908691406,
+      "projected_low": 100.00902557373047,
+      "high_adjustment": 0.07576751708984375,
+      "low_adjustment": 0.05225372314453125,
+      "total_absolute_adjustment": 0.128021240234375,
+      "relative_adjustment": 0.0012800910069944997
+    }
+  ],
+  "checkpoint_sha256": "a7d5f37e2e9fbd9891f7d7d4f72574512dd1f704fee14223e0a8cd0fbf54197c",
+  "tokenizer_sha256": "0b30a443affb03e05a876a083857de9164f899feb7b4d261da02c485c9a3e3b6",
+  "seed": 20260725,
+  "temperature": 1.0,
+  "top_p": 0.9,
+  "sample_count": 1,
+  "predictor_class": "KronosPredictor"
+}

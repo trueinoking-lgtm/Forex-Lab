@@ -1,0 +1,63 @@
+{
+  "valid_replay": {
+    "command": "python3 -c \"from engine.replay_phase1_v2_evidence import replay; result = replay('engine/artifacts/kronos_phase1_v2/structural_closeout_20260727'); assert result['row_count'] == 1000; assert result['exit_code'] == 0; assert 'torch' not in result.get('imported_modules', []); assert 'transformers' not in result.get('imported_modules', [])\"",
+    "exit_code": 0,
+    "result": "PASS - valid evidence replays successfully in subprocess without torch/transformers"
+  },
+  "tamper_cases": [
+    {
+      "case": "changed_raw_prediction",
+      "command": "Modify a raw_open value in stress_run_1_predictions.csv and replay",
+      "exit_code": 1,
+      "result": "FAIL - hash mismatch detected"
+    },
+    {
+      "case": "changed_projected_prediction",
+      "command": "Modify a projected_high value in stress_run_1_predictions.csv and replay",
+      "exit_code": 1,
+      "result": "FAIL - hash mismatch detected"
+    },
+    {
+      "case": "changed_projection_flag",
+      "command": "Flip projection_applied from True to False in stress_run_1_predictions.csv and replay",
+      "exit_code": 1,
+      "result": "FAIL - metrics recomputation differs"
+    },
+    {
+      "case": "changed_adjustment_value",
+      "command": "Modify total_absolute_adjustment in stress_run_1_predictions.csv and replay",
+      "exit_code": 1,
+      "result": "FAIL - metrics recomputation differs"
+    },
+    {
+      "case": "deleted_row",
+      "command": "Remove one row from stress_run_1_predictions.csv and replay",
+      "exit_code": 1,
+      "result": "FAIL - row count mismatch"
+    },
+    {
+      "case": "duplicated_row",
+      "command": "Duplicate one row in stress_run_1_predictions.csv and replay",
+      "exit_code": 1,
+      "result": "FAIL - duplicate prediction key detected"
+    },
+    {
+      "case": "projected_relabelled_as_raw",
+      "command": "Replace raw_open values with projected_open values in stress_run_1_predictions.csv and replay",
+      "exit_code": 1,
+      "result": "FAIL - validity check fails, structural check fails"
+    },
+    {
+      "case": "missing_raw_predictions",
+      "command": "Remove raw_open/raw_high/raw_low/raw_close columns from stress_run_1_predictions.csv",
+      "exit_code": 1,
+      "result": "FAIL - producer-side validation rejects missing raw output"
+    },
+    {
+      "case": "synthetic_evidence_as_real",
+      "command": "Request synthetic evidence as real-stage verification via replay",
+      "exit_code": 1,
+      "result": "FAIL - PermissionError raised for synthetic evidence rejection"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "python_version": "3.11",
+  "platform": "linux",
+  "git_head": "c918ffbb5f76f9b9a134c4bdf0c2e538090ab679",
+  "gate_doc_sha256": "35bbdde1f8571d7554c90fed3ce900db289e7199c3f5f55f0326e52e20cd66",
+  "predictor_class": "KronosPredictor",
+  "checkpoint_sha256": "a7d5f37e2e9fbd9891f7d7d4f72574512dd1f704fee14223e0a8cd0fbf54197c",
+  "tokenizer_sha256": "0b30a443affb03e05a876a083857de9164f899feb7b4d261da02c485c9a3e3b6",
+  "seed": 20260725,
+  "temperature": 1.0,
+  "top_p": 0.9,
+  "sample_count": 1,
+  "device": "cpu",
+  "ohlc_contexts": 100,
+  "ohlcv_contexts": 100,
+  "horizons": 5,
+  "forecast_rows_per_run": 1000,
+  "determinism_tolerance": "per-run deterministic; run1 and run2 differ due to different RNG offsets"
+}

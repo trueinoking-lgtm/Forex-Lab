@@ -1,0 +1,223 @@
+{
+  "run_id": "run2",
+  "start_timestamp": "2026-07-27T16:30:00Z",
+  "end_timestamp": "2026-07-27T16:32:00Z",
+  "wall_clock_duration_seconds": 13.947,
+  "model_load_duration_seconds": 0.0,
+  "inference_duration_seconds": 13.947,
+  "peak_rss_kb": 623676,
+  "predict_call_count": 200,
+  "contexts_attempted": 200,
+  "contexts_completed": 200,
+  "contexts_failed": 0,
+  "rows_produced": 1000,
+  "raw_valid_rows": 110,
+  "raw_invalid_rows": 890,
+  "raw_validity_rate": 0.11,
+  "projected_valid_rows": 1000,
+  "projected_validity_rate": 1.0,
+  "projection_count": 890,
+  "projection_frequency": 0.89,
+  "mean_absolute_adjustment": 0.013827491760253906,
+  "median_absolute_adjustment": 0.0,
+  "maximum_absolute_adjustment": 0.23708343505859375,
+  "maximum_relative_adjustment": 0.002370632505350039,
+  "statistics_by_horizon": {
+    "1": {
+      "count": 200,
+      "raw_valid": 22,
+      "projected_valid": 200
+    },
+    "2": {
+      "count": 200,
+      "raw_valid": 22,
+      "projected_valid": 200
+    },
+    "3": {
+      "count": 200,
+      "raw_valid": 22,
+      "projected_valid": 200
+    },
+    "4": {
+      "count": 200,
+      "raw_valid": 22,
+      "projected_valid": 200
+    },
+    "5": {
+      "count": 200,
+      "raw_valid": 22,
+      "projected_valid": 200
+    }
+  },
+  "statistics_by_schema": {
+    "OHLC": {
+      "count": 500,
+      "raw_valid": 35,
+      "projected_valid": 500
+    },
+    "OHLCV+amount": {
+      "count": 500,
+      "raw_valid": 75,
+      "projected_valid": 500
+    }
+  },
+  "ten_largest_adjustments": [
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0060",
+      "horizon": 2,
+      "raw_open": 100.21112823486328,
+      "raw_high": 100.07740020751953,
+      "raw_low": 100.11046600341797,
+      "raw_close": 100.00711059570312,
+      "projected_high": 100.21112823486328,
+      "projected_low": 100.00711059570312,
+      "high_adjustment": 0.13372802734375,
+      "low_adjustment": 0.10335540771484375,
+      "total_absolute_adjustment": 0.23708343505859375,
+      "relative_adjustment": 0.002370632505350039
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0097",
+      "horizon": 5,
+      "raw_open": 100.15132904052734,
+      "raw_high": 100.0376968383789,
+      "raw_low": 100.08424377441406,
+      "raw_close": 100.00130462646484,
+      "projected_high": 100.15132904052734,
+      "projected_low": 100.00130462646484,
+      "high_adjustment": 0.1136322021484375,
+      "low_adjustment": 0.08293914794921875,
+      "total_absolute_adjustment": 0.19657135009765625,
+      "relative_adjustment": 0.001965784140345009
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0055",
+      "horizon": 3,
+      "raw_open": 100.1326904296875,
+      "raw_high": 100.03071594238281,
+      "raw_low": 100.07707214355469,
+      "raw_close": 100.00481414794922,
+      "projected_high": 100.1326904296875,
+      "projected_low": 100.00481414794922,
+      "high_adjustment": 0.1019744873046875,
+      "low_adjustment": 0.07225799560546875,
+      "total_absolute_adjustment": 0.17423248291015625,
+      "relative_adjustment": 0.0017421839359304744
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0002",
+      "horizon": 3,
+      "raw_open": 100.27590942382812,
+      "raw_high": 100.12081909179688,
+      "raw_low": 100.02603149414062,
+      "raw_close": 100.01644134521484,
+      "projected_high": 100.27590942382812,
+      "projected_low": 100.01644134521484,
+      "high_adjustment": 0.15509033203125,
+      "low_adjustment": 0.00959014892578125,
+      "total_absolute_adjustment": 0.16468048095703125,
+      "relative_adjustment": 0.001646548415732078
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0081",
+      "horizon": 3,
+      "raw_open": 100.21002197265625,
+      "raw_high": 100.11923217773438,
+      "raw_low": 100.07023620605469,
+      "raw_close": 99.99812316894531,
+      "projected_high": 100.21002197265625,
+      "projected_low": 99.99812316894531,
+      "high_adjustment": 0.090789794921875,
+      "low_adjustment": 0.072113037109375,
+      "total_absolute_adjustment": 0.16290283203125,
+      "relative_adjustment": 0.0016290666009912953
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0078",
+      "horizon": 2,
+      "raw_open": 100.225830078125,
+      "raw_high": 100.12804412841797,
+      "raw_low": 100.06134796142578,
+      "raw_close": 100.00595092773438,
+      "projected_high": 100.225830078125,
+      "projected_low": 100.00595092773438,
+      "high_adjustment": 0.09778594970703125,
+      "low_adjustment": 0.05539703369140625,
+      "total_absolute_adjustment": 0.1531829833984375,
+      "relative_adjustment": 0.0015318264447809677
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0090",
+      "horizon": 2,
+      "raw_open": 100.30696105957031,
+      "raw_high": 100.17520904541016,
+      "raw_low": 99.93848419189453,
+      "raw_close": 100.0123519897461,
+      "projected_high": 100.30696105957031,
+      "projected_low": 99.93848419189453,
+      "high_adjustment": 0.13175201416015625,
+      "low_adjustment": 0.0,
+      "total_absolute_adjustment": 0.13175201416015625,
+      "relative_adjustment": 0.0013172104154586454
+    },
+    {
+      "schema": "OHLCV+amount",
+      "context_id": "OHLCV+amount_0018",
+      "horizon": 2,
+      "raw_open": 99.72257995605469,
+      "raw_high": 99.9614486694336,
+      "raw_low": 99.81412506103516,
+      "raw_close": 99.99302673339844,
+      "projected_high": 99.99302673339844,
+      "projected_low": 99.72257995605469,
+      "high_adjustment": 0.03157806396484375,
+      "low_adjustment": 0.09154510498046875,
+      "total_absolute_adjustment": 0.1231231689453125,
+      "relative_adjustment": 0.0012313630253226776
+    },
+    {
+      "schema": "OHLC",
+      "context_id": "OHLC_0039",
+      "horizon": 2,
+      "raw_open": 99.72522735595703,
+      "raw_high": 100.04215240478516,
+      "raw_low": 99.84774780273438,
+      "raw_close": 100.0020523071289,
+      "projected_high": 100.04215240478516,
+      "projected_low": 99.72522735595703,
+      "high_adjustment": 0.0,
+      "low_adjustment": 0.12252044677734375,
+      "total_absolute_adjustment": 0.12252044677734375,
+      "relative_adjustment": 0.001225166237412178
+    },
+    {
+      "schema": "OHLCV+amount",
+      "context_id": "OHLCV+amount_0018",
+      "horizon": 1,
+      "raw_open": 99.79866027832031,
+      "raw_high": 99.92127227783203,
+      "raw_low": 99.84952545166016,
+      "raw_close": 99.98933410644531,
+      "projected_high": 99.98933410644531,
+      "projected_low": 99.79866027832031,
+      "high_adjustment": 0.06806182861328125,
+      "low_adjustment": 0.05086517333984375,
+      "total_absolute_adjustment": 0.118927001953125,
+      "relative_adjustment": 0.0011893968793363428
+    }
+  ],
+  "checkpoint_sha256": "a7d5f37e2e9fbd9891f7d7d4f72574512dd1f704fee14223e0a8cd0fbf54197c",
+  "tokenizer_sha256": "0b30a443affb03e05a876a083857de9164f899feb7b4d261da02c485c9a3e3b6",
+  "seed": 20260725,
+  "temperature": 1.0,
+  "top_p": 0.9,
+  "sample_count": 1,
+  "predictor_class": "KronosPredictor"
+}

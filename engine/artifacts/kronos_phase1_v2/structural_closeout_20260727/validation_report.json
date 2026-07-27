@@ -1,0 +1,25 @@
+{
+  "validator": "engine/tools/validate_kronos_structural_closeout.py",
+  "exit_code": 0,
+  "result": "KRONOS_STRUCTURAL_CLOSEOUT_VALID",
+  "checks_passed": [
+    "all 19 required artifacts exist",
+    "evidence_manifest SHA-256 matches every file",
+    "stress_run_1 has exactly 200 contexts and 1000 rows",
+    "stress_run_2 has exactly 200 contexts and 1000 rows",
+    "both schemas (OHLC and OHLCV+amount) present",
+    "horizons 1-5 present for every context",
+    "real predictor_identity confirmed (predictor_class=KronosPredictor)",
+    "FakeKronosPredictor absent from all evidence",
+    "raw and projected columns present in predictions",
+    "projected validity is 100%",
+    "reported statistics match recomputation from CSV",
+    "all required numerical gates contain concrete values",
+    "all five implementation runs passed (23/23/0/0)",
+    "all ten random-order runs passed",
+    "every tamper case failed as expected",
+    "production readiness remains blocked (D1 CSVs absent)",
+    "gate-document SHA-256 matches"
+  ],
+  "checks_failed": []
+}
