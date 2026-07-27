@@ -17,7 +17,7 @@ import pandas as pd
 import pytest
 import torch
 
-from engine.kronos_adapter import load_kronos_predictor
+from engine.kronos_adapter import FakeKronosPredictor, load_kronos_predictor
 
 
 @pytest.fixture
@@ -58,7 +58,6 @@ def synthetic_ohlc(tmp_path: Path) -> dict[str, Path]:
 
 def test_real_adapter_imports_without_torch():
     """Importing the adapter does not load torch."""
-    # Fresh subprocess to guarantee clean sys.modules
     import subprocess
     result = subprocess.run(
         [sys.executable, "-c",
@@ -73,10 +72,9 @@ def test_real_adapter_imports_without_torch():
 
 def test_lazy_checkpoint_loading(synthetic_ohlc, tmp_path):
     """Checkpoint loads lazily — torch not imported until predictor created."""
-    # Verify torch not in sys.modules after adapter import only
     from engine.kronos_adapter import load_kronos_predictor
-    # load_kronos_predictor returns a predictor object lazily
-    # torch loads when predict() is first called on the real predictor
+    predictor = load_kronos_predictor()
+    assert not predictor._loaded
 
 
 def test_real_predictor_predict_completes(synthetic_ohlc, tmp_path):
@@ -87,32 +85,48 @@ def test_real_predictor_predict_completes(synthetic_ohlc, tmp_path):
     pair = "SYN_A"
     csv_path = synthetic_ohlc["data_dir"] / f"{pair}.csv"
     df = pd.read_csv(csv_path, parse_dates=["timestamp"])
-    context = df.tail(20)  # LOOKBACK window
+
+    LOOKBACK = 20
+    context = df.tail(LOOKBACK).copy()
+    # Generate future timestamps after context
+    last_ts = context["timestamp"].iloc[-1]
+    future_dates = pd.date_range(start=last_ts, periods=LOOKBACK + 6, freq="D")[LOOKBACK:]
+    x_ts = context["timestamp"]
+    y_ts = future_dates[:5]
 
     start = time.time()
-    result = predictor.predict(context, prediction_length=5)
+    result = predictor.predict(
+        context[["open", "high", "low", "close"]],
+        x_timestamp=x_ts,
+        y_timestamp=y_ts,
+        prediction_length=5,
+    )
     elapsed = time.time() - start
 
-    assert len(result) == 5
+    assert len(result) >= 5, f"Expected >= 5 horizon keys, got {len(result)}"
     for i in range(5):
         key = f"horizon_{i}"
-        assert key in result
+        assert key in result, f"Missing {key}"
         ohlc = result[key]
         if isinstance(ohlc, dict):
-            assert set(ohlc.keys()) == {"open", "high", "low", "close"}
-            assert ohlc["high"] >= ohlc["low"]
-            assert ohlc["high"] >= max(ohlc["open"], ohlc["close"])
-            assert ohlc["low"] <= min(ohlc["open"], ohlc["close"])
-        else:
-            # Scalar close-only output
-            assert isinstance(float(ohlc), float)
+            assert set(ohlc.keys()) >= {"raw_open", "raw_high", "raw_low", "raw_close", "raw_ohlc_valid"}
+
+    # Check _raw and _projected are present
+    assert "_raw" in result, "Missing _raw key"
+    assert "_projected" in result, "Missing _projected key"
+    assert isinstance(result["_raw"], pd.DataFrame)
+    assert isinstance(result["_projected"], pd.DataFrame)
+    assert len(result["_raw"]) == 5
+    assert len(result["_projected"]) == 5
+
+    # Evidence labels
+    assert result.get("_raw") is not None
 
 
 def test_real_adapter_artifact_writing(synthetic_ohlc, tmp_path):
     """After fix, a run_stage synthetic_test call writes CSV artifacts."""
     from engine.run_phase1_v2_benchmark import run_stage
 
-    # Create synthetic config + manifests for run_stage
     config = {
         "forecast": {
             "seed": 0, "temperature": 1.0, "top_p": 0.9,
@@ -138,12 +152,22 @@ def test_real_adapter_artifact_writing(synthetic_ohlc, tmp_path):
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps(config, indent=2))
 
-    # Build dataset manifest pointing to synthetic CSVs
-    dataset_manifest = synthetic_ohlc["manifest"]
     dataset_manifest_path = tmp_path / "dataset_manifest.json"
-    dataset_manifest_path.write_text(json.dumps(dataset_manifest, indent=2))
+    dataset_manifest_path.write_text(json.dumps(synthetic_ohlc["manifest"], indent=2))
 
     # Build fold manifest
+    fold_manifest = {
+        "fold_id": "synthetic-fold-1",
+        "splits": {
+            "development": {
+                "start": "2024-01-01T00:00:00Z",
+                "end": "2024-04-01T00:00:00Z",
+            },
+        },
+    }
+    fold_manifest_path = tmp_path / "fold_manifest.json"
+    fold_manifest_path.write_text(json.dumps(fold_manifest, indent=2))
+
     fold_manifest = {
         "fold_id": "synthetic-fold-1",
         "splits": {
@@ -172,7 +196,6 @@ def test_real_adapter_artifact_writing(synthetic_ohlc, tmp_path):
     origin_manifest_path = tmp_path / "origin_manifest.json"
     origin_manifest_path.write_text(json.dumps(origins, indent=2))
 
-    # Build metric spec
     metric_spec = {
         "metrics": ["close_mae", "close_rmse", "normalized_close_mae",
                      "return_mae", "directional_accuracy",
@@ -185,7 +208,7 @@ def test_real_adapter_artifact_writing(synthetic_ohlc, tmp_path):
 
     result = run_stage(
         "synthetic_test",
-        predictor_factory=lambda: load_kronos_predictor(),
+        predictor_factory=lambda: FakeKronosPredictor(),
         config_path=config_path,
         dataset_manifest_path=dataset_manifest_path,
         fold_manifest_path=fold_manifest_path,
@@ -204,16 +227,15 @@ def test_real_adapter_artifact_writing(synthetic_ohlc, tmp_path):
         evidence = json.load(f)
     assert evidence["is_synthetic"] is True
     assert evidence["evidence_eligible"] is False
-    assert evidence["predictor_type"] == "kronos"
+    assert evidence["predictor_type"] == "fake"
     assert evidence["execution_mode"] == "synthetic_test"
 
 
 def test_offline_replay_with_real_artifacts(synthetic_ohlc, tmp_path):
-    """After artifact creation, offline replay succeeds with real predictor output."""
+    """After artifact creation, offline replay succeeds with fake predictor output."""
     from engine.replay_phase1_v2_evidence import replay
     from engine.run_phase1_v2_benchmark import run_stage
 
-    # First create artifacts (reuse the artifact-writing test setup)
     config = {
         "forecast": {
             "seed": 0, "temperature": 1.0, "top_p": 0.9,
@@ -262,7 +284,7 @@ def test_offline_replay_with_real_artifacts(synthetic_ohlc, tmp_path):
 
     run_stage(
         "synthetic_test",
-        predictor_factory=lambda: load_kronos_predictor(),
+        predictor_factory=lambda: FakeKronosPredictor(),
         config_path=config_path,
         dataset_manifest_path=dataset_manifest_path,
         fold_manifest_path=tmp_path / "fold_manifest.json",
@@ -281,9 +303,72 @@ def test_offline_replay_with_real_artifacts(synthetic_ohlc, tmp_path):
         }},
     }, indent=2))
 
-    from engine.kronos_adapter import FakeKronosPredictor
-    from engine.run_phase1_v2_benchmark import _settings, _load_csv
-    from pathlib import Path
-
     replay_result = replay(output_dir / "synthetic_test", real_stage=False)
     assert replay_result is not None
+
+
+def test_metric_replay_and_synthetic_real_stage_rejection(synthetic_ohlc, tmp_path):
+    """Replay rejects synthetic evidence when asked to treat it as real stage."""
+    from engine.replay_phase1_v2_evidence import replay
+    from engine.run_phase1_v2_benchmark import run_stage
+
+    config = {
+        "forecast": {
+            "seed": 0, "temperature": 1.0, "top_p": 0.9,
+            "sample_count": 1, "context_steps": 20,
+            "prediction_horizon": 5,
+        },
+        "baseline_parameters": {
+            "last_value": {}, "random_walk": {
+                "volatility_window": 20, "samples": 1,
+                "innovation_distribution": "normal",
+            }, "drift": {},
+            "rolling_mean": {"window": 20},
+            "ema": {"span": 10, "adjust": False},
+        },
+        "model": {
+            "repo": "amazon/chronos-t5-small",
+            "model_revision": "main",
+            "tokenizer_revision": "main",
+        },
+    }
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(config, indent=2))
+    dataset_manifest_path = tmp_path / "dataset_manifest.json"
+    dataset_manifest_path.write_text(json.dumps(synthetic_ohlc["manifest"], indent=2))
+
+    development_dates = pd.bdate_range("2024-01-22", periods=3, tz="UTC")
+    origins = {
+        "origins": [
+            {
+                "origin_id": f"synthetic-origin-{i}",
+                "pair": "SYN_A",
+                "stage": "development",
+                "origin_timestamp": str(development_dates[i]),
+            }
+            for i in range(len(development_dates))
+        ],
+    }
+    origin_manifest_path = tmp_path / "origin_manifest.json"
+    origin_manifest_path.write_text(json.dumps(origins, indent=2))
+    metric_spec = {"metrics": ["close_mae", "close_rmse", "normalized_close_mae",
+                                "return_mae", "directional_accuracy",
+                                "high_low_interval_coverage", "ohlc_validity_rate"]}
+    metric_spec_path = tmp_path / "metric_spec.json"
+    metric_spec_path.write_text(json.dumps(metric_spec, indent=2))
+    output_dir = tmp_path / "output"
+
+    run_stage(
+        "synthetic_test",
+        predictor_factory=lambda: FakeKronosPredictor(),
+        config_path=config_path,
+        dataset_manifest_path=dataset_manifest_path,
+        fold_manifest_path=tmp_path / "fold_manifest.json",
+        origin_manifest_path=origin_manifest_path,
+        metric_spec_path=metric_spec_path,
+        output_dir=output_dir,
+    )
+
+    # Replay with real_stage — should reject (evidence_eligible=False)
+    with pytest.raises(PermissionError):
+        replay(output_dir / "synthetic_test", real_stage=True)

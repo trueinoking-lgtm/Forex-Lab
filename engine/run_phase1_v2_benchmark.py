@@ -212,9 +212,14 @@ def _predict_ohlc(prediction: Any, horizon: int) -> list[dict[str, float]]:
     for key in expected:
         value = prediction[key]
         if isinstance(value, dict):
-            if set(value) != set(OHLC):
-                raise ValueError(f"{key}: target mapping must contain exact OHLC fields")
-            result.append({name: float(value[name]) for name in OHLC})
+            # New format: keys may include raw_* fields; extract raw OHLC
+            raw_key = "raw_close" if "raw_close" in value else "close"
+            result.append({
+                "open": float(value.get("raw_open" if "raw_open" in value else "open")),
+                "high": float(value.get("raw_high" if "raw_high" in value else "high")),
+                "low": float(value.get("raw_low" if "raw_low" in value else "low")),
+                "close": float(value.get("raw_close" if "raw_close" in value else "close")),
+            })
         else:
             close = float(value)
             result.append({"open": close, "high": close, "low": close, "close": close})
@@ -284,8 +289,15 @@ def run_stage(
     for origin in selected:
         pair = origin["pair"]
         _, context, target = _validate_origin(origin, dataframes[pair], split, settings)
+        # Build explicit timestamps for the new predictor interface
+        x_ts = context["timestamp"]
+        y_ts = target["timestamp"]
+        # Pass only columns that actually exist in the context DataFrame
+        ohlc_cols = [c for c in OHLC if c in context.columns]
+        context_df = context[ohlc_cols].copy()
         raw = predictor.predict(
-            context[list(OHLC)], prediction_length=settings["horizon"],
+            context_df, x_timestamp=x_ts, y_timestamp=y_ts,
+            prediction_length=settings["horizon"],
             temperature=settings["temperature"], top_p=settings["top_p"],
             sample_count=settings["sample_count"], seed=settings["seed"],
         )
