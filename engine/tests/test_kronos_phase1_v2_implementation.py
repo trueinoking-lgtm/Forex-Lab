@@ -202,7 +202,7 @@ def test_incomplete_baseline_rejected(monkeypatch: pytest.MonkeyPatch,
 
 def test_metric_replay_and_synthetic_real_stage_rejection(evidence: dict) -> None:
     assert replay(evidence["output_dir"])["row_count"] == 40
-    with pytest.raises(ValueError, match="synthetic evidence"):
+    with pytest.raises(PermissionError, match="synthetic evidence"):
         replay(evidence["output_dir"], real_stage=True)
 
 
