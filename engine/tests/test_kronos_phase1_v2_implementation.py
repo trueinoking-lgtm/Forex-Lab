@@ -201,9 +201,24 @@ def test_incomplete_baseline_rejected(monkeypatch: pytest.MonkeyPatch,
 
 
 def test_metric_replay_and_synthetic_real_stage_rejection(evidence: dict) -> None:
-    assert replay(evidence["output_dir"])["row_count"] == 40
-    with pytest.raises(PermissionError, match="synthetic evidence"):
-        replay(evidence["output_dir"], real_stage=True)
+    import subprocess
+    import sys
+
+    code = (
+        "import sys\n"
+        "from engine.replay_phase1_v2_evidence import replay\n"
+        f"result = replay({str(evidence['output_dir'])!r})\n"
+        "assert result['row_count'] == 40\n"
+        "try:\n"
+        f"    replay({str(evidence['output_dir'])!r}, real_stage=True)\n"
+        "    sys.exit(1)\n"
+        "except PermissionError as e:\n"
+        "    assert 'synthetic' in str(e)\n"
+        "print('METRIC_REPLAY_OK')\n"
+    )
+    result = subprocess.run([sys.executable, "-c", code], text=True,
+                            capture_output=True, check=True)
+    assert result.stdout.strip() == "METRIC_REPLAY_OK"
 
 
 def test_prediction_tamper_detection(evidence: dict) -> None:
