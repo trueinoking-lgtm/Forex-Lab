@@ -5,7 +5,7 @@ Classification: KRONOS STRUCTURAL CLOSEOUT EVIDENCE VALIDATED — GATES READY FO
 
 ## 1. Gate Document Identity
 - Path: docs/kronos_v2_proposed_gates.md
-- SHA-256: 35bbdde1f8571d7554c90fed3ce900db289e7199c3f5f55f0326e52e20cd66
+- SHA-256: f55ada4cb077e003103c621513941cc7ecc4855c1c7cb9c60369956debcc5a25
 - Updated commit: c918ffbb5f76f9b9a134c4bdf0c2e538090ab679
 - Defines 4 modes: CLOSE_ONLY_RAW, FULL_OHLC_RAW, FULL_OHLC_PROJECTED, BASELINE_SUPERIORITY
 - All gates have exact numerical thresholds, zero placeholders

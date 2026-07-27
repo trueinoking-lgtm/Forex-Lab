@@ -75,7 +75,7 @@ check("prod_readiness_blocked", "blocked" in prod_log.lower() or "absent" in pro
 # 8. Gate document SHA-256 matches
 import subprocess
 actual_gate_sha = subprocess.check_output(["sha256sum", "docs/kronos_v2_proposed_gates.md"]).decode().split()[0]
-expected_gate_sha = "35bbdde1f8571d7554c90fed3ce900db289e7199c3f5f55f0326e52e20cd66"
+expected_gate_sha = "f55ada4cb077e003103c621513941cc7ecc4855c1c7cb9c60369956debcc5a25"
 check("gate_doc_sha", actual_gate_sha == expected_gate_sha, f"expected {expected_gate_sha}, got {actual_gate_sha}")
 
 # 9. Replay tamper results recorded
