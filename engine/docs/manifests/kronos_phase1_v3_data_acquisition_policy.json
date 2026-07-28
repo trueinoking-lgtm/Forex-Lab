@@ -1,0 +1,51 @@
+{
+  "$schema": "kronos-phase1-v3-data-acquisition-policy",
+  "version": "3.0.0",
+  "active": false,
+  "source": {
+    "type": "mt5_direct_export",
+    "broker_company": "MetaQuotes Ltd.",
+    "broker_server": "MetaQuotes-Demo",
+    "symbol_mappings": {
+      "EURUSD": "EURUSD",
+      "GBPUSD": "GBPUSD",
+      "USDJPY": "USDJPY",
+      "AUDUSD": "AUDUSD"
+    },
+    "timeframe": "D1",
+    "timestamp_semantics": "BROKER_NATIVE_D1_BAR_OPEN_TIMESTAMP_WITH_EXPLICIT_TIMEZONE",
+    "bar_close_rule": "BAR_IS_COMPLETE_ONLY_AFTER_NEXT_BROKER_NATIVE_D1_BAR_OPENS",
+    "acquisition_delay_after_bar_close": "24h"
+  },
+  "data_quality_rules": [
+    "strictly_increasing_unique_timestamps",
+    "numeric_finite_ohlc",
+    "high_greater_than_or_equal_to_max_open_close",
+    "low_less_than_or_equal_to_min_open_close",
+    "no_resampling_from_intraday",
+    "no_cross_source_filling",
+    "common_calendar_recorded_not_fabricated"
+  ],
+  "raw_file_serialization": "UTF-8 CSV, RFC4180 quoting, LF newlines, fixed header timestamp,open,high,low,close, timestamp ISO8601 with offset, decimal round-trip representation; no fabricated volume or amount columns",
+  "batch_frequency": "one immutable append-only batch after each newly complete broker-native D1 bar, acquired no sooner than the frozen delay",
+  "hashing_method": "SHA-256 over exact raw file bytes; manifest SHA-256 over UTF-8 JSON with recursively sorted keys, separators comma/colon, no insignificant whitespace, excluding current_manifest_sha256",
+  "overwrite_existing_raw_batches": false,
+  "historical_and_prospective_storage_separate": true,
+  "prospective_pre_authorisation_prohibitions": [
+    "Kronos inference",
+    "baseline scoring",
+    "directional statistics",
+    "test-period summaries",
+    "opening prospective raw data from development or validation"
+  ],
+  "batch_manifest_required_fields": [
+    "acquisition_timestamp",
+    "first_bar_timestamp",
+    "last_bar_timestamp",
+    "row_count",
+    "source_identity",
+    "file_sha256",
+    "previous_manifest_sha256",
+    "current_manifest_sha256"
+  ]
+}

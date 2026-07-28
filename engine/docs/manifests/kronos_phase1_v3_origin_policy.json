@@ -1,0 +1,16 @@
+{
+  "$schema": "kronos-phase1-v3-origin-policy",
+  "version": "3.0.0",
+  "context_steps": 256,
+  "prediction_horizon": 5,
+  "origin_spacing": 5,
+  "target_windows_overlap": false,
+  "context_from_prior_split_allowed": true,
+  "all_context_timestamps_must_precede_first_target": true,
+  "all_target_timestamps_must_be_inside_split": true,
+  "final_first_target_rule": "FIRST_COMPLETE_BROKER_NATIVE_D1_BAR_STRICTLY_AFTER_PROTOCOL_FREEZE_TIMESTAMP",
+  "final_first_target_may_move_backward": false,
+  "minimum_complete_origins_per_pair": 100,
+  "pairs": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"],
+  "final_origin_manifest_exists": false
+}

@@ -1,0 +1,84 @@
+{
+  "$schema": "kronos-phase1-v3",
+  "version": "3.0.0",
+  "study_id": "kronos-phase1-v3-prospective-replication",
+  "classification": "PROSPECTIVELY FROZEN REPLICATION INFORMED BY DISCLOSED EXPLORATORY PRIOR RESULTS",
+  "engineering_integration_commit": "76f46719d17b79c541136d8d4ade42ea6205413e",
+  "engineering_commit_is_performance_evidence": false,
+  "protocol_freeze_commit": "SELF",
+  "protocol_freeze_timestamp": "COMMITTER_TIMESTAMP",
+  "external_timestamp_reference": "GIT_COMMIT_OBJECT; replace only by an approved remote push receipt or immutable hash-chained freeze record before acquisition",
+  "first_authorised_test_target": "FIRST_COMPLETE_BROKER_NATIVE_D1_BAR_STRICTLY_AFTER_PROTOCOL_FREEZE_TIMESTAMP",
+  "last_authorised_test_target": "TARGET_BAR_OF_100TH_NON_OVERLAPPING_FIVE_BAR_ORIGIN_ON_VERIFIED_COMMON_CALENDAR",
+  "safety": {
+    "paper_only": true,
+    "ALLOW_LIVE_ORDERS": false,
+    "order_placement": false,
+    "watcher_activation": false,
+    "signal_forcing": false,
+    "gate_lowering": false
+  },
+  "model": {
+    "repo": "NeoQuasar/Kronos-mini",
+    "tokenizer_repo": "NeoQuasar/Kronos-Tokenizer-2k",
+    "model_revision": "f4e68697d9d5aed55cef5c96aabc3376bcad9f81",
+    "tokenizer_revision": "26966d0035065a0cae0ebad7af8ece35bc1fb51c",
+    "device": "cpu"
+  },
+  "forecast": {
+    "context_steps": 256,
+    "prediction_horizon": 5,
+    "origin_spacing": 5,
+    "temperature": 1.0,
+    "top_p": 0.9,
+    "sample_count": 1,
+    "seed": 20260725
+  },
+  "point_baselines": [
+    "last_value",
+    "drift",
+    "rolling_mean_20",
+    "ema_20"
+  ],
+  "point_baseline_lexical_tie_order": [
+    "last_value",
+    "drift",
+    "rolling_mean_20",
+    "ema_20"
+  ],
+  "random_walk": {
+    "point_baseline_eligible": false,
+    "diagnostic_only": true,
+    "metric": "CRPS",
+    "monte_carlo_samples": 10000,
+    "seed": 20260725
+  },
+  "dataset": {
+    "source": "mt5_direct_export",
+    "broker_company": "MetaQuotes Ltd.",
+    "broker_server": "MetaQuotes-Demo",
+    "symbol_mappings": {
+      "EURUSD": "EURUSD",
+      "GBPUSD": "GBPUSD",
+      "USDJPY": "USDJPY",
+      "AUDUSD": "AUDUSD"
+    },
+    "pairs": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD"],
+    "timeframe": "D1",
+    "timestamp_semantics": "BROKER_NATIVE_D1_BAR_OPEN_TIMESTAMP_WITH_EXPLICIT_TIMEZONE",
+    "bar_close_rule": "BAR_IS_COMPLETE_ONLY_AFTER_NEXT_BROKER_NATIVE_D1_BAR_OPENS",
+    "acquisition_delay_after_bar_close": "24h",
+    "minimum_test_origins_per_pair": 100
+  },
+  "evidence_roots": {
+    "exploratory": "engine/evidence/kronos/v3/exploratory",
+    "prospective": "engine/evidence/kronos/v3/prospective"
+  },
+  "execution_authorisation": {
+    "data_acquisition": false,
+    "development": false,
+    "validation": false,
+    "final_test": false,
+    "final_execution_counter_active": false
+  }
+}

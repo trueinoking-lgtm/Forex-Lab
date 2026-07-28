@@ -1,0 +1,27 @@
+{
+  "$schema": "kronos-phase1-v3-fold-policy",
+  "version": "3.0.0",
+  "final_fold_manifest_exists": false,
+  "fabricated_or_declared_dataset_hashes_forbidden": true,
+  "development": {
+    "classification": "historical_exploratory",
+    "target_end_before_validation": true,
+    "prospective_data_access": false
+  },
+  "validation": {
+    "classification": "historical_exploratory",
+    "target_end_before_protocol_freeze": true,
+    "prospective_data_access": false
+  },
+  "final_test": {
+    "classification": "prospective",
+    "first_target_rule": "first complete broker-native D1 bar strictly after protocol freeze timestamp",
+    "first_target_must_be_after_freeze": true,
+    "start_may_never_move_backward": true,
+    "prediction_horizon": 5,
+    "origin_spacing": 5,
+    "minimum_complete_origins_per_pair": 100,
+    "one_time_execution": true
+  },
+  "generation_rule": "Generate final dataset, fold, and origin manifests only after approved source files exist and pass verification."
+}

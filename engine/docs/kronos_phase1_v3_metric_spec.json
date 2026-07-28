@@ -1,0 +1,41 @@
+{
+  "$schema": "kronos-phase1-v3-metric-spec",
+  "version": "3.0.0",
+  "primary_loss": {
+    "identifier": "origin_close_normalized_absolute_error",
+    "row_equation": "L(m,p,o,h)=abs(predicted_close(m,p,o,h)-actual_close(p,o,h))/abs(origin_close(p,o))",
+    "denominator_information_time": "forecast_origin",
+    "invalid_denominator_policy": "FAIL_IF_ZERO_NONFINITE_OR_NONPOSITIVE",
+    "horizon_aggregation": "mean_within_origin_across_five_horizons",
+    "origin_aggregation": "mean_across_complete_nonoverlapping_origins",
+    "pair_aggregation": "equal_weight_mean_across_four_pairs"
+  },
+  "primary_effect": {
+    "equation": "Delta=mean_equal_pair(L_Kronos-L_frozen_baseline)",
+    "point_threshold": "Delta < 0",
+    "uncertainty_threshold": "paired_moving_block_bootstrap_95pct_upper_bound < 0"
+  },
+  "directional_advancement": {
+    "classification": "MANDATORY FOR ADVANCEMENT INTO TRADING-SIGNAL RESEARCH",
+    "equation": "DA=mean(sign(predicted_close_h-origin_close)==sign(actual_close_h-origin_close))",
+    "zero_movement_policy": "correct_only_if_predicted_and_actual_movements_are_both_exactly_zero",
+    "point_threshold": "DA > 0.5",
+    "uncertainty_threshold": "paired_moving_block_bootstrap_95pct_lower_bound(DA-0.5) > 0",
+    "does_not_rewrite_forecast_superiority": true
+  },
+  "uncertainty": {
+    "method": "synchronised_paired_moving_block_bootstrap",
+    "sampling_unit": "origin_vector_retaining_all_five_horizons",
+    "block_size_rule": "max(10,ceil(cuberoot(n_complete_origins_per_pair)))",
+    "resamples": 10000,
+    "seed": 20260725,
+    "confidence_level": 0.95,
+    "iid_intervals_forbidden": true
+  },
+  "minimum_sample": {
+    "complete_origins_per_pair": 100,
+    "target_rows_per_pair": 500,
+    "pairs": 4
+  },
+  "missing_forecast_policy": "FAIL_CLOSED_NO_IMPUTATION_NO_ROW_DELETION_NO_RETRY_SUBSTITUTION"
+}

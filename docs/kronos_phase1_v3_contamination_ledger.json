@@ -1,0 +1,85 @@
+{
+  "$schema": "kronos-phase1-v3-contamination-ledger",
+  "classification": "disclosed exploratory prior evidence",
+  "real_forex_runs": [
+    {
+      "run_id": "phase1-20260725T152651Z",
+      "evidence_commit": "92c55649ef6e0c88c549610c243169597db83c30",
+      "evidence_root": "engine/evidence/kronos/phase1",
+      "created_at": "2026-07-25T15:28:57.279985+00:00",
+      "model": "NeoQuasar/Kronos-mini",
+      "model_checkpoint_sha256": "a7d5f37e2e9fbd9891f7d7d4f72574512dd1f704fee14223e0a8cd0fbf54197c",
+      "source": "direct MT5 export",
+      "broker_company": "MetaQuotes Ltd.",
+      "broker_server": "MetaQuotes-Demo",
+      "timeframe": "H1",
+      "forecast_horizon": 5,
+      "metrics_viewed": [
+        "close_mae",
+        "normalized_close_mae",
+        "return_mae",
+        "directional_accuracy",
+        "high_low_coverage",
+        "ohlc_validity"
+      ],
+      "baseline_results_viewed": ["last_value MAE", "last_value normalized MAE", "relative improvement"],
+      "mode_validity_results_viewed": ["raw OHLC validity", "gate pass/fail outcomes"],
+      "evaluator_defects": [
+        "wrong H1 frequency instead of D1",
+        "last forecast row replicated across all five horizons",
+        "wrong directional-accuracy equation",
+        "invalid validation and test context restriction",
+        "inaccurate manifest counts",
+        "OHLC denominator and reporting defects"
+      ],
+      "documents_influenced": [
+        "engine/docs/checkpoints/kronos_phase1_run_a_invalidation.md",
+        "docs/kronos_v2_proposed_gates.md",
+        "V2 regression, leakage, shape, replay, and completeness requirements"
+      ],
+      "pairs": {
+        "EURUSD": {
+          "first_context_timestamp": "2010-01-04T00:00:00+00:00",
+          "last_context_timestamp": "2010-02-01T15:00:00+00:00",
+          "first_target_timestamp": "2010-01-18T19:00:00+00:00",
+          "last_target_timestamp": "2010-02-01T20:00:00+00:00"
+        },
+        "GBPUSD": {
+          "first_context_timestamp": "2010-01-04T00:00:00+00:00",
+          "last_context_timestamp": "2010-02-01T15:00:00+00:00",
+          "first_target_timestamp": "2010-01-18T19:00:00+00:00",
+          "last_target_timestamp": "2010-02-01T20:00:00+00:00"
+        },
+        "AUDUSD": {
+          "first_context_timestamp": "2010-01-04T00:00:00+00:00",
+          "last_context_timestamp": "2010-02-01T15:00:00+00:00",
+          "first_target_timestamp": "2010-01-18T19:00:00+00:00",
+          "last_target_timestamp": "2010-02-01T20:00:00+00:00"
+        },
+        "USDJPY": {
+          "first_context_timestamp": "2010-01-04T00:00:00+00:00",
+          "last_context_timestamp": "2010-02-01T16:00:00+00:00",
+          "first_target_timestamp": "2010-01-18T20:00:00+00:00",
+          "last_target_timestamp": "2010-02-01T21:00:00+00:00"
+        }
+      }
+    }
+  ],
+  "result_responsive_non_forex_events": [
+    {
+      "evidence_commit": "3cc138414b55e21b3591f99f4084d31267ab9379",
+      "type": "real model on synthetic structural fixtures",
+      "results_viewed": "raw validity 7.5% and 11.0%; projection frequency 92.5% and 89.0%",
+      "influenced_commit": "3d7c7cef20f97b565fa0212c6e2fd5da882a85ac",
+      "influence": "raw OHLC rejection, projected mode demotion, close-only policy"
+    }
+  ],
+  "final_contamination_cutoffs": {
+    "EURUSD": "2010-02-01T20:00:00+00:00",
+    "GBPUSD": "2010-02-01T20:00:00+00:00",
+    "AUDUSD": "2010-02-01T20:00:00+00:00",
+    "USDJPY": "2010-02-01T21:00:00+00:00"
+  },
+  "v2_evidence_eligible_for_v3": false,
+  "synthetic_evidence_eligible_for_v3": false
+}
