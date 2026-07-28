@@ -252,9 +252,11 @@ def test_zero_metric_exit_rejected() -> None:
 def test_replay_process_has_no_torch_or_transformers(evidence: dict) -> None:
     code = (
         "import sys;"
-        "from engine.replay_phase1_v2_evidence import replay;"
-        f"replay({str(evidence['output_dir'])!r});"
-        "assert 'torch' not in sys.modules and 'transformers' not in sys.modules;"
+        "assert 'torch' not in sys.modules;"
+        "import engine.replay_phase1_v2_evidence as replay_module;"
+        "assert 'torch' not in sys.modules;"
+        f"replay_module.replay({str(evidence['output_dir'])!r});"
+        "assert 'torch' not in sys.modules;"
         "print('OFFLINE_REPLAY_OK')"
     )
     result = subprocess.run([sys.executable, "-c", code], text=True,

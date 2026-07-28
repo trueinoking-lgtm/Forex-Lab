@@ -96,8 +96,7 @@ def _prediction_identity(predictor: Any, mode: str, config: dict[str, Any]) -> d
     predictor_type = "fake" if is_fake else "kronos"
     if is_fake and mode != "synthetic_test":
         raise ValueError(f"FakeKronosPredictor is forbidden in execution mode {mode}")
-    if not is_fake and mode == "synthetic_test":
-        raise ValueError("synthetic_test mode requires FakeKronosPredictor")
+    is_synthetic = mode == "synthetic_test"
     model = config["model"]
     return {
         "execution_mode": mode,
@@ -105,8 +104,8 @@ def _prediction_identity(predictor: Any, mode: str, config: dict[str, Any]) -> d
         "predictor_class": type(predictor).__name__,
         "model_identifier": "fake-kronos-deterministic" if is_fake else model["repo"],
         "checkpoint_identifier": "none" if is_fake else model["model_revision"],
-        "is_synthetic": is_fake,
-        "evidence_eligible": not is_fake,
+        "is_synthetic": is_synthetic,
+        "evidence_eligible": not is_synthetic and not is_fake,
     }
 
 

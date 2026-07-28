@@ -1,0 +1,41 @@
+{
+  "execution_mode": "synthetic_test",
+  "predictor_type": "kronos",
+  "is_synthetic": true,
+  "evidence_eligible": false,
+  "case": "ohlc_only",
+  "input_dataframe_shape": [
+    50,
+    4
+  ],
+  "x_timestamp_shape": [
+    50
+  ],
+  "y_timestamp_shape": [
+    5
+  ],
+  "output_shape": [
+    5,
+    6
+  ],
+  "output_columns": [
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "amount"
+  ],
+  "output_index": [
+    "2025-02-20T00:00:00+00:00",
+    "2025-02-21T00:00:00+00:00",
+    "2025-02-22T00:00:00+00:00",
+    "2025-02-23T00:00:00+00:00",
+    "2025-02-24T00:00:00+00:00"
+  ],
+  "inference_time_seconds": 1.7833605509949848,
+  "peak_rss_kib": 618924,
+  "nan_inf_check": true,
+  "ohlc_validity": true,
+  "exit_code": 0
+}

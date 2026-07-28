@@ -1,0 +1,23 @@
+{
+  "classification": "KRONOS PREDICTION BOUNDARY ROOT CAUSE CONFIRMED — REPAIR IMPLEMENTED",
+  "production_d1_readiness": "blocked",
+  "production_d1_block_reason": "verified Forex D1 files do not exist",
+  "performance_gates_approved": false,
+  "performance_gates_frozen": false,
+  "test_groups": {
+    "adapter_unit_tests": "9 passed, 0 failed, 0 skipped",
+    "fake_predictor_synthetic_benchmark_tests": "17 passed, 0 failed, 0 skipped",
+    "real_kronos_ohlc_only_smoke": "1 passed, 0 failed, 0 skipped",
+    "real_kronos_ohlcv_smoke": "1 passed, 0 failed, 0 skipped",
+    "replay_subprocess_isolation": "1 passed, 0 failed, 0 skipped",
+    "evidence_tamper_tests": "3 passed, 0 failed, 0 skipped",
+    "combined_accepted_suite": "28 passed, 0 failed, 0 skipped"
+  },
+  "model_asset_git_audit": {
+    "command": "git ls-files | grep -Ei 'Kronos.*safetensors|tokenizer.*safetensors|model\\.safetensors'",
+    "literal_output": "",
+    "tracked_model_assets": false,
+    "local_model_sha256": "a7d5f37e2e9fbd9891f7d7d4f72574512dd1f704fee14223e0a8cd0fbf54197c",
+    "local_tokenizer_sha256": "b97ec46b3b72160509e289183eaf7bdf5f0dac5bb9b49522f6d46638a99a8717"
+  }
+}

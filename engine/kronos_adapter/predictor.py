@@ -65,6 +65,9 @@ _model_revision = "f4e68697d9d5aed55cef5c96aabc3376bcad9f81"
 _tokenizer_revision = "26966d0035065a0cae0ebad7af8ece35bc1fb51c"
 
 _inference_device = "cpu"
+MIN_CONTEXT_ROWS = 2
+_REQUIRED_PRICE_COLUMNS = ("open", "high", "low", "close")
+_OPTIONAL_COLUMNS = ("volume", "amount")
 
 
 # ── Deterministic projection ────────────────────────────────────────
@@ -140,6 +143,106 @@ def _validate_ohlc(df: pd.DataFrame, label: str = "output") -> None:
         )
 
 
+def _validate_prediction_request(
+    context_df: pd.DataFrame,
+    x_timestamp: Sequence[Any],
+    y_timestamp: Sequence[Any],
+    prediction_length: int,
+    sample_count: int,
+) -> Tuple[pd.Series, pd.Series]:
+    """Validate the public adapter boundary without changing model inputs."""
+    if not isinstance(context_df, pd.DataFrame):
+        raise TypeError(
+            f"context_df must be a pandas DataFrame, got {type(context_df).__name__}"
+        )
+    missing = [column for column in _REQUIRED_PRICE_COLUMNS if column not in context_df]
+    if missing:
+        raise ValueError(f"context_df missing required columns: {missing}")
+    optional_present = [column in context_df for column in _OPTIONAL_COLUMNS]
+    if any(optional_present) and not all(optional_present):
+        raise ValueError("context_df must provide volume and amount together")
+    if len(context_df) < MIN_CONTEXT_ROWS:
+        raise ValueError(
+            f"context_df requires at least {MIN_CONTEXT_ROWS} rows, got {len(context_df)}"
+        )
+    if prediction_length <= 0:
+        raise ValueError(f"prediction_length must be > 0, got {prediction_length}")
+    if sample_count <= 0:
+        raise ValueError(f"sample_count must be > 0, got {sample_count}")
+
+    checked_columns = list(_REQUIRED_PRICE_COLUMNS)
+    checked_columns.extend(column for column in _OPTIONAL_COLUMNS if column in context_df)
+    for column in checked_columns:
+        if not pd.api.types.is_numeric_dtype(context_df[column]):
+            raise TypeError(f"context_df column {column!r} must be numeric")
+        if not np.isfinite(np.asarray(context_df[column].array, dtype=float)).all():
+            raise ValueError(f"context_df column {column!r} contains NaN or infinity")
+    _validate_ohlc(context_df, label="context_df")
+
+    try:
+        x_series = pd.Series(x_timestamp, copy=False)
+        y_series = pd.Series(y_timestamp, copy=False)
+    except TypeError as exc:
+        raise TypeError("x_timestamp and y_timestamp must be one-dimensional sequences") from exc
+    if len(x_series) != len(context_df):
+        raise ValueError(
+            f"x_timestamp length ({len(x_series)}) != len(context_df) ({len(context_df)})"
+        )
+    if len(y_series) != prediction_length:
+        raise ValueError(
+            f"y_timestamp length ({len(y_series)}) != prediction_length ({prediction_length})"
+        )
+    if x_series.isna().any() or y_series.isna().any():
+        raise ValueError("timestamps must not contain missing values")
+    if x_series.duplicated().any():
+        raise ValueError("x_timestamp contains duplicate values")
+    if y_series.duplicated().any():
+        raise ValueError("y_timestamp contains duplicate values")
+    if not x_series.is_monotonic_increasing:
+        raise ValueError("x_timestamp must be strictly increasing")
+    if not y_series.is_monotonic_increasing:
+        raise ValueError("y_timestamp must be strictly increasing")
+    if x_series.iloc[-1] >= y_series.iloc[0]:
+        raise ValueError(
+            "x_timestamp[-1] must be earlier than y_timestamp[0] "
+            f"(got {x_series.iloc[-1]} >= {y_series.iloc[0]})"
+        )
+    return x_series, y_series
+
+
+def _validate_prediction_output(
+    prediction_df: Any,
+    y_timestamp: pd.Series,
+    prediction_length: int,
+) -> pd.DataFrame:
+    """Fail closed unless official output exactly satisfies the adapter contract."""
+    if not isinstance(prediction_df, pd.DataFrame):
+        raise TypeError(
+            f"Official predictor returned {type(prediction_df).__name__}, expected DataFrame"
+        )
+    if len(prediction_df) != prediction_length:
+        raise ValueError(
+            f"Official predictor returned {len(prediction_df)} rows, expected {prediction_length}"
+        )
+    expected_index = pd.Index(y_timestamp)
+    if not prediction_df.index.equals(expected_index):
+        raise ValueError("Official predictor index does not exactly match y_timestamp")
+    if prediction_df.index.has_duplicates:
+        raise ValueError("Official predictor returned duplicate target timestamps")
+    missing = [column for column in _REQUIRED_PRICE_COLUMNS if column not in prediction_df]
+    if missing:
+        raise ValueError(f"Official predictor missing required columns: {missing}")
+    checked_columns = list(_REQUIRED_PRICE_COLUMNS)
+    checked_columns.extend(column for column in _OPTIONAL_COLUMNS if column in prediction_df)
+    for column in checked_columns:
+        if not pd.api.types.is_numeric_dtype(prediction_df[column]):
+            raise TypeError(f"Predicted column {column!r} must be numeric")
+        if not np.isfinite(np.asarray(prediction_df[column].array, dtype=float)).all():
+            raise ValueError(f"Predicted column {column!r} contains NaN or infinity")
+    _validate_ohlc(prediction_df, label="official prediction output")
+    return prediction_df
+
+
 class KronosPredictor:
     """Real Kronos predictor.  Loads checkpoint lazily on first ``predict()``.
 
@@ -175,10 +278,10 @@ class KronosPredictor:
         x_timestamp: pd.Series,
         y_timestamp: pd.Series,
         prediction_length: int,
+        seed: int = 0,
         temperature: float = 1.0,
         top_p: float = 0.9,
         sample_count: int = 1,
-        seed: int = 0,
     ) -> Dict[str, Any]:
         """Return a dict of per-horizon forecasts from the real Kronos model.
 
@@ -189,45 +292,11 @@ class KronosPredictor:
         The raw model output is NEVER modified. A deterministic projection
         is computed separately for structural quality measurement.
         """
+        x_timestamp, y_timestamp = _validate_prediction_request(
+            context_df, x_timestamp, y_timestamp, prediction_length, sample_count
+        )
         if not self._loaded:
             self._load()
-
-        # ── Input validation (fail-closed) ──
-        if not isinstance(context_df, pd.DataFrame):
-            raise TypeError(f"context_df must be a DataFrame, got {type(context_df).__name__}")
-        for col in ("open", "high", "low", "close"):
-            if col not in context_df.columns:
-                raise ValueError(f"context_df missing required column: {col!r}")
-
-        x_timestamp = pd.Series(x_timestamp) if not isinstance(x_timestamp, pd.Series) else x_timestamp
-        y_timestamp = pd.Series(y_timestamp) if not isinstance(y_timestamp, pd.Series) else y_timestamp
-
-        if len(x_timestamp) != len(context_df):
-            raise ValueError(
-                f"x_timestamp length ({len(x_timestamp)}) != len(context_df) ({len(context_df)})"
-            )
-        if len(y_timestamp) != prediction_length:
-            raise ValueError(
-                f"y_timestamp length ({len(y_timestamp)}) != prediction_length ({prediction_length})"
-            )
-        if prediction_length <= 0:
-            raise ValueError(f"prediction_length must be > 0, got {prediction_length}")
-        if sample_count <= 0:
-            raise ValueError(f"sample_count must be > 0, got {sample_count}")
-        if x_timestamp.duplicated().any():
-            raise ValueError("x_timestamp contains duplicate values")
-        if y_timestamp.duplicated().any():
-            raise ValueError("y_timestamp contains duplicate values")
-        xts_sorted = x_timestamp.sort_values()
-        yts_sorted = y_timestamp.sort_values()
-        if not (xts_sorted.values[:-1] < xts_sorted.values[1:]).all():
-            raise ValueError("x_timestamp must be strictly increasing")
-        if not (yts_sorted.values[:-1] < yts_sorted.values[1:]).all():
-            raise ValueError("y_timestamp must be strictly increasing")
-        if x_timestamp.iloc[-1] >= y_timestamp.iloc[0]:
-            raise ValueError(
-                f"x_timestamp[-1] must be < y_timestamp[0] (got {x_timestamp.iloc[-1]} >= {y_timestamp.iloc[0]})"
-            )
 
         # ── Delegate to the official KronosPredictor.predict() ──
         from engine.kronos_adapter.model_src.kronos import KronosPredictor as _KronosPredictor  # type: ignore[import-not-found]
@@ -244,37 +313,13 @@ class KronosPredictor:
             verbose=False,
         )
 
-        # ── Output validation (fail-closed) ──
-        if not isinstance(raw_df, pd.DataFrame):
-            raise TypeError(f"Official predictor returned {type(raw_df).__name__}, expected DataFrame")
-        if len(raw_df) != prediction_length:
-            raise ValueError(f"Official predictor returned {len(raw_df)} rows, expected {prediction_length}")
-        if not raw_df.index.equals(pd.DatetimeIndex(y_timestamp)):
-            if not raw_df.index.tolist() == pd.DatetimeIndex(y_timestamp).tolist():
-                raise ValueError("Official predictor index does not match y_timestamp")
-
-        required_cols = {"open", "high", "low", "close"}
-        present = set(raw_df.columns) & required_cols
-        if required_cols - present:
-            raise ValueError(f"Official predictor missing columns: {required_cols - present}")
-
-        for col in required_cols:
-            if raw_df[col].isna().any():
-                raise ValueError(f"Predicted {col!r} contains NaN values")
-            if not np.isfinite(raw_df[col].values).all():
-                raise ValueError(f"Predicted {col!r} contains non-finite values")
+        raw_df = _validate_prediction_output(raw_df, y_timestamp, prediction_length)
 
         # ── Compute projection & raw validity ──
         proj = project_ohlc(raw_df)
 
-        # Try structural validation of raw output; if raw invalid, preserve it
-        # but flag it — do NOT silently repair
-        raw_valid = False
-        try:
-            _validate_ohlc(raw_df, label="raw model output")
-            raw_valid = True
-        except ValueError:
-            raw_valid = False
+        # Structural validation already passed; projection is therefore a no-op.
+        raw_valid = True
 
         # ── Build canonical KronosPredictionResult ──
         identity = {
@@ -382,13 +427,16 @@ class FakeKronosPredictor:
         x_timestamp: pd.Series,
         y_timestamp: pd.Series,
         prediction_length: int,
+        seed: Optional[int] = None,
         temperature: float = 1.0,
         top_p: float = 0.9,
         sample_count: int = 1,
-        seed: Optional[int] = None,
     ) -> KronosPredictionResult:
         import numpy as np
 
+        x_timestamp, y_timestamp = _validate_prediction_request(
+            context_df, x_timestamp, y_timestamp, prediction_length, sample_count
+        )
         rng = np.random.RandomState(seed if seed is not None else self._seed)
         close_col = context_df["close"].values.astype("float64")
         if len(close_col) < 2:
@@ -407,12 +455,13 @@ class FakeKronosPredictor:
         raw_rows = []
         for i in range(prediction_length):
             c = last_close + drift * (i + 1)
-            h = c + abs(rng.randn()) * 0.01
-            l = c - abs(rng.randn()) * 0.01
             o = c + rng.randn() * 0.005
+            h = max(o, c) + abs(rng.randn()) * 0.01
+            l = min(o, c) - abs(rng.randn()) * 0.01
             raw_rows.append({"open": o, "high": h, "low": l, "close": c, "volume": 0.0, "amount": 0.0})
 
-        raw_df = pd.DataFrame(raw_rows, index=pd.DatetimeIndex(y_timestamp))
+        raw_df = pd.DataFrame(raw_rows, index=pd.Index(y_timestamp))
+        _validate_prediction_output(raw_df, y_timestamp, prediction_length)
         proj = project_ohlc(raw_df)
         valid = True
 
