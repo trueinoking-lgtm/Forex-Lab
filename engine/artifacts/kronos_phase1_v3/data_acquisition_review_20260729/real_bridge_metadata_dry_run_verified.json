@@ -1,0 +1,169 @@
+{
+  "$schema": "kronos-phase1-v3-real-bridge-metadata-dry-run",
+  "baseline_calculated": false,
+  "bridge_contact_attempted": true,
+  "bridge_version": "2026.07.29-d1-metadata.1",
+  "broker_mode": "demo",
+  "common_calendar_audit": {
+    "all_four_pairs_same_d1_boundary": true,
+    "first_possible_target_strictly_after_conservative_start": "2026-07-30T00:00:00+00:00",
+    "latest_common_calendar": true,
+    "mixed_pair_calendars": false,
+    "proposed_first_eligible_target": null
+  },
+  "d1_boundary_audit": {
+    "AUDUSD": {
+      "broker_server_offsets_inferred_minutes": [
+        0
+      ],
+      "first_bar_eligible_after_acquisition_delay": null,
+      "first_bar_strictly_after_protocol_freeze": null,
+      "first_complete_bar_timestamp": "2026-06-16T00:00:00+00:00",
+      "first_possible_target_is_observed": false,
+      "first_possible_target_strictly_after_conservative_start": "2026-07-30T00:00:00+00:00",
+      "latest_available_d1_bar_timestamp": "2026-07-29T00:00:00+00:00",
+      "latest_available_d1_bar_timestamp_original": "2026-07-29T00:00:00+00:00",
+      "latest_bar_is_still_forming": true,
+      "latest_bar_status_basis": "No subsequent broker-native D1 opening timestamp exists in the retrieved sequence, so the latest opening cannot be completeness proof.",
+      "metadata_only": true,
+      "offsets_vary_across_retrieved_history": false,
+      "previous_bar_is_complete": true,
+      "previous_bar_next_open_completeness_proof": "2026-07-29T00:00:00+00:00",
+      "previous_bar_next_open_completeness_proof_original": "2026-07-29T00:00:00+00:00",
+      "previous_d1_bar_timestamp": "2026-07-28T00:00:00+00:00",
+      "previous_d1_bar_timestamp_original": "2026-07-28T00:00:00+00:00",
+      "proposed_first_eligible_target": null,
+      "symbol": "AUDUSD",
+      "timestamp_utc_offsets_seconds": [
+        0
+      ]
+    },
+    "EURUSD": {
+      "broker_server_offsets_inferred_minutes": [
+        0
+      ],
+      "first_bar_eligible_after_acquisition_delay": null,
+      "first_bar_strictly_after_protocol_freeze": null,
+      "first_complete_bar_timestamp": "2026-06-16T00:00:00+00:00",
+      "first_possible_target_is_observed": false,
+      "first_possible_target_strictly_after_conservative_start": "2026-07-30T00:00:00+00:00",
+      "latest_available_d1_bar_timestamp": "2026-07-29T00:00:00+00:00",
+      "latest_available_d1_bar_timestamp_original": "2026-07-29T00:00:00+00:00",
+      "latest_bar_is_still_forming": true,
+      "latest_bar_status_basis": "No subsequent broker-native D1 opening timestamp exists in the retrieved sequence, so the latest opening cannot be completeness proof.",
+      "metadata_only": true,
+      "offsets_vary_across_retrieved_history": false,
+      "previous_bar_is_complete": true,
+      "previous_bar_next_open_completeness_proof": "2026-07-29T00:00:00+00:00",
+      "previous_bar_next_open_completeness_proof_original": "2026-07-29T00:00:00+00:00",
+      "previous_d1_bar_timestamp": "2026-07-28T00:00:00+00:00",
+      "previous_d1_bar_timestamp_original": "2026-07-28T00:00:00+00:00",
+      "proposed_first_eligible_target": null,
+      "symbol": "EURUSD",
+      "timestamp_utc_offsets_seconds": [
+        0
+      ]
+    },
+    "GBPUSD": {
+      "broker_server_offsets_inferred_minutes": [
+        0
+      ],
+      "first_bar_eligible_after_acquisition_delay": null,
+      "first_bar_strictly_after_protocol_freeze": null,
+      "first_complete_bar_timestamp": "2026-06-16T00:00:00+00:00",
+      "first_possible_target_is_observed": false,
+      "first_possible_target_strictly_after_conservative_start": "2026-07-30T00:00:00+00:00",
+      "latest_available_d1_bar_timestamp": "2026-07-29T00:00:00+00:00",
+      "latest_available_d1_bar_timestamp_original": "2026-07-29T00:00:00+00:00",
+      "latest_bar_is_still_forming": true,
+      "latest_bar_status_basis": "No subsequent broker-native D1 opening timestamp exists in the retrieved sequence, so the latest opening cannot be completeness proof.",
+      "metadata_only": true,
+      "offsets_vary_across_retrieved_history": false,
+      "previous_bar_is_complete": true,
+      "previous_bar_next_open_completeness_proof": "2026-07-29T00:00:00+00:00",
+      "previous_bar_next_open_completeness_proof_original": "2026-07-29T00:00:00+00:00",
+      "previous_d1_bar_timestamp": "2026-07-28T00:00:00+00:00",
+      "previous_d1_bar_timestamp_original": "2026-07-28T00:00:00+00:00",
+      "proposed_first_eligible_target": null,
+      "symbol": "GBPUSD",
+      "timestamp_utc_offsets_seconds": [
+        0
+      ]
+    },
+    "USDJPY": {
+      "broker_server_offsets_inferred_minutes": [
+        0
+      ],
+      "first_bar_eligible_after_acquisition_delay": null,
+      "first_bar_strictly_after_protocol_freeze": null,
+      "first_complete_bar_timestamp": "2026-06-16T00:00:00+00:00",
+      "first_possible_target_is_observed": false,
+      "first_possible_target_strictly_after_conservative_start": "2026-07-30T00:00:00+00:00",
+      "latest_available_d1_bar_timestamp": "2026-07-29T00:00:00+00:00",
+      "latest_available_d1_bar_timestamp_original": "2026-07-29T00:00:00+00:00",
+      "latest_bar_is_still_forming": true,
+      "latest_bar_status_basis": "No subsequent broker-native D1 opening timestamp exists in the retrieved sequence, so the latest opening cannot be completeness proof.",
+      "metadata_only": true,
+      "offsets_vary_across_retrieved_history": false,
+      "previous_bar_is_complete": true,
+      "previous_bar_next_open_completeness_proof": "2026-07-29T00:00:00+00:00",
+      "previous_bar_next_open_completeness_proof_original": "2026-07-29T00:00:00+00:00",
+      "previous_d1_bar_timestamp": "2026-07-28T00:00:00+00:00",
+      "previous_d1_bar_timestamp_original": "2026-07-28T00:00:00+00:00",
+      "proposed_first_eligible_target": null,
+      "symbol": "USDJPY",
+      "timestamp_utc_offsets_seconds": [
+        0
+      ]
+    }
+  },
+  "data_acquisition_active": false,
+  "executed_at": "2026-07-29T10:15:42+00:00",
+  "execution_mode": "read_only_metadata_dry_run",
+  "failure_stage": null,
+  "final_test_counter_active": false,
+  "health_http_status": 200,
+  "health_response_received": true,
+  "inference_executed": false,
+  "metrics_calculated": false,
+  "orders_placed_or_simulated": false,
+  "proposed_manifest_root": "engine/evidence/kronos/v3/prospective/manifests/<symbol>/",
+  "proposed_raw_root": "engine/evidence/kronos/v3/prospective/raw/<symbol>/",
+  "prospective_batch_written": false,
+  "real_ohlc_persisted": false,
+  "result": "METADATA_BOUNDARY_VERIFIED_NO_TARGET_ELIGIBLE",
+  "source_identities": {
+    "AUDUSD": {
+      "broker_mode": "demo",
+      "company": "MetaQuotes Ltd.",
+      "provider_symbol": "AUDUSD",
+      "server": "MetaQuotes-Demo",
+      "symbol": "AUDUSD",
+      "timeframe": "D1"
+    },
+    "EURUSD": {
+      "broker_mode": "demo",
+      "company": "MetaQuotes Ltd.",
+      "provider_symbol": "EURUSD",
+      "server": "MetaQuotes-Demo",
+      "symbol": "EURUSD",
+      "timeframe": "D1"
+    },
+    "GBPUSD": {
+      "broker_mode": "demo",
+      "company": "MetaQuotes Ltd.",
+      "provider_symbol": "GBPUSD",
+      "server": "MetaQuotes-Demo",
+      "symbol": "GBPUSD",
+      "timeframe": "D1"
+    },
+    "USDJPY": {
+      "broker_mode": "demo",
+      "company": "MetaQuotes Ltd.",
+      "provider_symbol": "USDJPY",
+      "server": "MetaQuotes-Demo",
+      "symbol": "USDJPY",
+      "timeframe": "D1"
+    }
+  }
+}
