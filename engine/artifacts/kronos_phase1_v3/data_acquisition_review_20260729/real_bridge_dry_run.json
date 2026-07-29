@@ -1,0 +1,16 @@
+{
+  "$schema": "kronos-phase1-v3-real-bridge-metadata-dry-run",
+  "baseline_calculated": false,
+  "bridge_url_sha256": null,
+  "data_acquisition_active": false,
+  "error": "bridge URL/token are not configured",
+  "executed_at": "2026-07-29T08:49:31+00:00",
+  "execution_mode": "read_only_metadata_dry_run",
+  "final_test_counter_active": false,
+  "inference_executed": false,
+  "metrics_calculated": false,
+  "orders_placed_or_simulated": false,
+  "prospective_batch_written": false,
+  "real_ohlc_persisted": false,
+  "result": "D1_TARGET_BOUNDARY_UNRESOLVED"
+}
