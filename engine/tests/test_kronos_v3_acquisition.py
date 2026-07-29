@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import hashlib
-import importlib
 import json
-import os
 import subprocess
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -14,9 +12,13 @@ import pytest
 
 from engine.kronos_v3_acquisition.collector import (
     AcquisitionError,
+    APPROVED_PAIRS,
+    CONSERVATIVE_PROSPECTIVE_START,
     D1Bar,
     FrozenAcquisitionPolicy,
     ImmutableBatchStore,
+    PairObservation,
+    SignedAcquisitionAuthorization,
     SourceIdentity,
     audit_common_calendar,
     audit_symbol,
@@ -63,8 +65,9 @@ def test_exact_source_identity_passes():
     result = audit_symbol(
         source(), metadata_bars(), "2026-08-02T22:00:00+00:00"
     )
-    assert result["proposed_first_eligible_target"] == "2026-07-28T21:00:00+00:00"
+    assert result["proposed_first_eligible_target"] == "2026-07-29T21:00:00+00:00"
     assert result["latest_bar_is_still_forming"] is True
+    assert "No subsequent" in result["latest_bar_status_basis"]
 
 
 @pytest.mark.parametrize(
@@ -115,9 +118,24 @@ def test_acquisition_delay_violation_is_rejected():
 
 def test_valid_post_freeze_complete_bar_passes():
     result = audit_symbol(
-        source(), metadata_bars(), "2026-07-30T21:00:00+00:00"
+        source(), metadata_bars(), "2026-07-31T21:00:00+00:00"
     )
-    assert result["proposed_first_eligible_target"] == "2026-07-28T21:00:00+00:00"
+    assert result["proposed_first_eligible_target"] == "2026-07-29T21:00:00+00:00"
+
+
+def test_audit_preserves_original_offset_and_normalizes_utc():
+    bars = [
+        D1Bar.metadata("2026-07-30T00:00:00+03:00"),
+        D1Bar.metadata("2026-07-31T00:00:00+03:00"),
+        D1Bar.metadata("2026-08-01T00:00:00+03:00"),
+    ]
+    result = audit_symbol(source(), bars, "2026-08-03T00:00:00+00:00")
+    assert result["previous_d1_bar_timestamp_original"].endswith("+03:00")
+    assert result["previous_d1_bar_timestamp"].endswith("+00:00")
+    assert result["broker_server_offsets_inferred_minutes"] == [180]
+    assert result["previous_bar_next_open_completeness_proof_original"].endswith(
+        "+03:00"
+    )
 
 
 def test_mixed_pair_calendars_are_recorded_honestly():
@@ -136,33 +154,151 @@ def test_mixed_pair_calendars_are_recorded_honestly():
     assert result["latest_common_calendar"] is False
 
 
-def test_acquisition_inactive_refuses_all_writes(tmp_path):
-    store = ImmutableBatchStore(tmp_path, FrozenAcquisitionPolicy(active=False))
-    with pytest.raises(AcquisitionError, match="inactive"):
-        store.write(
-            source(),
-            [real_bar("2026-07-29T21:00:00+00:00"),
-             real_bar("2026-07-30T21:00:00+00:00")],
-            "2026-08-02T22:00:00+00:00",
-            RECEIPT_SHA,
-            "a" * 40,
+def authorisation(signature="synthetic-valid-signature"):
+    return SignedAcquisitionAuthorization(
+        study_id="kronos-phase1-v3-prospective-replication",
+        conservative_start="2026-07-29T09:00:00+00:00",
+        authorised_at="2026-08-01T00:00:00+00:00",
+        signer="synthetic-test-signer",
+        signature=signature,
+    )
+
+
+def observations(timestamp="2026-07-29T21:00:00+00:00",
+                 next_open="2026-07-30T21:00:00+00:00"):
+    return {
+        pair: PairObservation(
+            source(pair),
+            real_bar(timestamp, close=str(Decimal("1.1") + Decimal(index) / 100)),
+            datetime.fromisoformat(next_open),
         )
+        for index, pair in enumerate(APPROVED_PAIRS)
+    }
+
+
+def active_store(tmp_path, verifier=lambda payload, signature, signer: True):
+    return ImmutableBatchStore(
+        tmp_path, FrozenAcquisitionPolicy(active=True), verifier
+    )
+
+
+def write_valid(store, **changes):
+    values = {
+        "observations": observations(),
+        "acquired_at": "2026-08-01T21:00:00+00:00",
+        "receipt_sha256": RECEIPT_SHA,
+        "collector_commit": "a" * 40,
+        "authorization": authorisation(),
+    }
+    values.update(changes)
+    return store.write_common_batch(**values)
+
+
+def test_single_pair_write_path_cannot_bypass_common_boundary(tmp_path):
+    store = active_store(tmp_path)
+    with pytest.raises(AcquisitionError, match="single-pair write is prohibited"):
+        store.write(source(), [real_bar("2026-07-30T21:00:00+00:00")],
+                    "2026-08-01T21:00:00+00:00", RECEIPT_SHA, "a" * 40)
+
+
+def test_acquisition_inactive_refuses_all_writes(tmp_path):
+    store = ImmutableBatchStore(
+        tmp_path, FrozenAcquisitionPolicy(active=False),
+        lambda payload, signature, signer: True,
+    )
+    with pytest.raises(AcquisitionError, match="inactive"):
+        write_valid(store)
     assert list(tmp_path.rglob("*")) == []
 
 
-def test_duplicate_batch_and_overwrite_are_rejected(tmp_path):
-    store = ImmutableBatchStore(tmp_path, FrozenAcquisitionPolicy(active=True))
-    args = (
-        source(),
-        [real_bar("2026-07-29T21:00:00+00:00"),
-         real_bar("2026-07-30T21:00:00+00:00")],
-        "2026-08-02T22:00:00+00:00",
-        RECEIPT_SHA,
-        "a" * 40,
+def test_separate_signed_authorisation_is_mandatory(tmp_path):
+    store = active_store(tmp_path, verifier=lambda payload, signature, signer: False)
+    with pytest.raises(AcquisitionError, match="authorisation is invalid"):
+        write_valid(store)
+
+
+def test_target_must_be_strictly_after_conservative_start(tmp_path):
+    store = active_store(tmp_path)
+    with pytest.raises(AcquisitionError, match="strictly after"):
+        write_valid(store, observations=observations(
+            "2026-07-29T09:00:00+00:00", "2026-07-30T09:00:00+00:00"
+        ))
+
+
+def test_next_open_and_delay_are_enforced_at_write_boundary(tmp_path):
+    store = active_store(tmp_path)
+    with pytest.raises(AcquisitionError, match="next-open"):
+        write_valid(store, observations=observations(
+            next_open="2026-07-29T20:00:00+00:00"
+        ))
+    with pytest.raises(AcquisitionError, match="24-hour"):
+        write_valid(
+            store,
+            acquired_at="2026-07-31T20:59:59+00:00",
+        )
+
+
+def test_exactly_four_common_timestamp_observations_are_required(tmp_path):
+    store = active_store(tmp_path)
+    missing = observations()
+    missing.pop("AUDUSD")
+    with pytest.raises(AcquisitionError, match="all four"):
+        write_valid(store, observations=missing)
+    mixed = observations()
+    mixed["AUDUSD"] = PairObservation(
+        source("AUDUSD"),
+        real_bar("2026-07-30T21:00:00+00:00"),
+        datetime.fromisoformat("2026-07-31T21:00:00+00:00"),
     )
-    store.write(*args)
-    with pytest.raises(AcquisitionError, match="duplicate batch|overwrite"):
-        store.write(*args)
+    with pytest.raises(AcquisitionError, match="share one target"):
+        write_valid(store, observations=mixed)
+
+
+def test_all_four_sources_are_validated_at_write_boundary(tmp_path):
+    store = active_store(tmp_path)
+    bad = observations()
+    bad["USDJPY"] = PairObservation(
+        source("USDJPY", provider_symbol="USDJPYm"),
+        bad["USDJPY"].target,
+        bad["USDJPY"].next_open,
+    )
+    with pytest.raises(AcquisitionError, match="source identity mismatch"):
+        write_valid(store, observations=bad)
+
+
+def test_common_batch_is_atomic_hash_linked_and_non_overwriting(tmp_path):
+    store = active_store(tmp_path)
+    batch, manifest = write_valid(store)
+    assert sorted(path.name for path in batch.iterdir()) == [
+        "AUDUSD.csv", "EURUSD.csv", "GBPUSD.csv", "USDJPY.csv",
+        "common_batch.manifest.json",
+    ]
+    payload = json.loads(manifest.read_text())
+    assert set(payload["raw_files"]) == set(APPROVED_PAIRS)
+    for pair, identity in payload["raw_files"].items():
+        data = (batch / identity["relative_path"]).read_bytes()
+        assert hashlib.sha256(data).hexdigest() == identity["sha256"]
+    with pytest.raises(AcquisitionError, match="previously recorded|overwrite"):
+        write_valid(store)
+
+
+def test_no_partial_success_when_one_file_write_fails(tmp_path, monkeypatch):
+    store = active_store(tmp_path)
+    original = store._exclusive_write
+    calls = 0
+
+    def fail_third(path, data):
+        nonlocal calls
+        calls += 1
+        if calls == 3:
+            raise OSError("synthetic write failure")
+        original(path, data)
+
+    monkeypatch.setattr(store, "_exclusive_write", fail_third)
+    with pytest.raises(OSError, match="synthetic"):
+        write_valid(store)
+    assert not any(path.name.startswith("2026") for path in tmp_path.iterdir())
+    assert not any(path.name.startswith(".") for path in tmp_path.iterdir())
 
 
 def test_broken_previous_manifest_hash_fails(tmp_path):
@@ -171,45 +307,15 @@ def test_broken_previous_manifest_hash_fails(tmp_path):
         "previous_manifest_sha256": None,
         "current_manifest_sha256": "0" * 64,
     }))
-    store = ImmutableBatchStore(tmp_path / "batches", FrozenAcquisitionPolicy(active=True))
+    store = active_store(tmp_path / "batches")
     with pytest.raises(AcquisitionError, match="broken previous"):
-        store.write(
-            source(),
-            [real_bar("2026-07-29T21:00:00+00:00"),
-             real_bar("2026-07-30T21:00:00+00:00")],
-            "2026-08-02T22:00:00+00:00",
-            RECEIPT_SHA,
-            "a" * 40,
-            previous,
-        )
-
-
-def test_altered_raw_csv_fails_manifest_verification(tmp_path):
-    store = ImmutableBatchStore(tmp_path, FrozenAcquisitionPolicy(active=True))
-    raw, manifest = store.write(
-        source(),
-        [real_bar("2026-07-29T21:00:00+00:00"),
-         real_bar("2026-07-30T21:00:00+00:00")],
-        "2026-08-02T22:00:00+00:00",
-        RECEIPT_SHA,
-        "a" * 40,
-    )
-    payload = json.loads(manifest.read_text())
-    raw.chmod(0o644)
-    raw.write_bytes(raw.read_bytes() + b"altered")
-    assert hashlib.sha256(raw.read_bytes()).hexdigest() != payload["raw_file_sha256"]
+        write_valid(store, previous_manifest=previous)
 
 
 def test_serialization_is_frozen_and_has_no_volume(tmp_path):
-    store = ImmutableBatchStore(tmp_path, FrozenAcquisitionPolicy(active=True))
-    raw, _ = store.write(
-        source(),
-        [real_bar("2026-07-29T21:00:00+00:00") ,
-         real_bar("2026-07-30T21:00:00+00:00")],
-        "2026-08-02T22:00:00+00:00",
-        RECEIPT_SHA,
-        "a" * 40,
-    )
+    store = active_store(tmp_path)
+    batch, _ = write_valid(store)
+    raw = batch / "EURUSD.csv"
     data = raw.read_bytes()
     assert data.startswith(b"timestamp,open,high,low,close\n")
     assert b"\r\n" not in data

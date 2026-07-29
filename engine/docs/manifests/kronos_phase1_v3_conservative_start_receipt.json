@@ -1,0 +1,16 @@
+{
+  "$schema": "kronos-phase1-v3-conservative-start-receipt",
+  "version": "1.0.0",
+  "study_id": "kronos-phase1-v3-prospective-replication",
+  "remote_repository": "trueinoking-lgtm/Forex-Lab",
+  "protocol_commit": "4815c1b16eb18746d1ddfc717dcaa0e7f3fdf370",
+  "annotated_tag": "kronos-v3-protocol-freeze-20260728",
+  "tag_object": "479236f70ddb8827585a9633e86bee758475ac21",
+  "peeled_tag_target": "4815c1b16eb18746d1ddfc717dcaa0e7f3fdf370",
+  "remote_verification_date": "2026-07-29",
+  "external_timestamp_limitation": "An immutable Git commit and annotated tag were verified on the remote repository. A separate GitHub server-generated publication timestamp was not captured.",
+  "conservative_prospective_start": "2026-07-29T09:00:00Z",
+  "first_authorised_target_rule": "First complete broker-native D1 bar whose opening timestamp is strictly after the conservative prospective start.",
+  "monotonicity_rule": "The prospective start may move forward but never backward.",
+  "modifies_frozen_protocol_or_gates": false
+}
