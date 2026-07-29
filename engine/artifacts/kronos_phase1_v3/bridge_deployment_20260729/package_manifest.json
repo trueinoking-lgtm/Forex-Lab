@@ -1,0 +1,25 @@
+{
+  "$schema": "kronos-v3-windows-bridge-deployment-package",
+  "bridge_version": "2026.07.29-d1-metadata.1",
+  "deployment_status": "NOT_DEPLOYED_AWAITING_KADE_CONFIRMATION",
+  "package": {
+    "path": "engine/artifacts/kronos_phase1_v3/bridge_deployment_20260729/kronos_v3_bridge_2026.07.29-d1-metadata.1.zip",
+    "sha256": "727c372a8d40595e9e45d93cc781402e04779831f47841c118c1b8e9fb46cbc9"
+  },
+  "files": {
+    "server.py": "77525ca38e849d6b2134b739a71a798ec328b4a33227d81e6307677540693bc5",
+    "bridge_validation.py": "b1da2345a00416bee3c9f95102a113fee4265dd36bf7d3650d68d17d752b433e",
+    "requirements.txt": "76ede23e2249ffa13a487357737ccac20905466a43850504c00c941cf2ee1282",
+    "BRIDGE_VERSION.txt": "c22cc6bf5c73f5a37bc114a83260e40aa0ff26bc460874ee24ddb30ba9dc6ecc"
+  },
+  "safety": {
+    "contains_environment_file": false,
+    "contains_credentials": false,
+    "contains_prospective_market_data": false,
+    "acquisition_active": false,
+    "inference_executed": false,
+    "baselines_or_metrics_calculated": false,
+    "final_test_counter_active": false,
+    "orders_placed_or_simulated": false
+  }
+}
