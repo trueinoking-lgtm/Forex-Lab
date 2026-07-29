@@ -66,6 +66,9 @@ def test_exact_source_identity_passes():
         source(), metadata_bars(), "2026-08-02T22:00:00+00:00"
     )
     assert result["proposed_first_eligible_target"] == "2026-07-29T21:00:00+00:00"
+    assert result["first_possible_target_strictly_after_conservative_start"] == (
+        "2026-07-29T21:00:00+00:00"
+    )
     assert result["latest_bar_is_still_forming"] is True
     assert "No subsequent" in result["latest_bar_status_basis"]
 
@@ -136,6 +139,20 @@ def test_audit_preserves_original_offset_and_normalizes_utc():
     assert result["previous_bar_next_open_completeness_proof_original"].endswith(
         "+03:00"
     )
+
+
+def test_midnight_boundary_first_possible_target_is_not_yet_eligible():
+    bars = [
+        D1Bar.metadata("2026-07-27T00:00:00+00:00"),
+        D1Bar.metadata("2026-07-28T00:00:00+00:00"),
+        D1Bar.metadata("2026-07-29T00:00:00+00:00"),
+    ]
+    result = audit_symbol(source(), bars, "2026-07-29T09:30:00+00:00")
+    assert result["first_possible_target_strictly_after_conservative_start"] == (
+        "2026-07-30T00:00:00+00:00"
+    )
+    assert result["first_possible_target_is_observed"] is False
+    assert result["proposed_first_eligible_target"] is None
 
 
 def test_mixed_pair_calendars_are_recorded_honestly():

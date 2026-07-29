@@ -164,6 +164,21 @@ def _validate_timestamps(bars: Sequence[D1Bar]) -> None:
         raise AcquisitionError("D1 timestamps must be strictly increasing and unique")
 
 
+def _first_possible_open_after_start(boundary_minutes: Sequence[int]) -> datetime | None:
+    """Infer only the next possible weekday opening, never completeness."""
+    if len(boundary_minutes) != 1:
+        return None
+    minute = boundary_minutes[0]
+    candidate = CONSERVATIVE_PROSPECTIVE_START.replace(
+        hour=minute // 60, minute=minute % 60, second=0, microsecond=0
+    )
+    if candidate <= CONSERVATIVE_PROSPECTIVE_START:
+        candidate += timedelta(days=1)
+    while candidate.weekday() >= 5:
+        candidate += timedelta(days=1)
+    return candidate
+
+
 def audit_symbol(
     source: SourceIdentity,
     bars: Sequence[D1Bar],
@@ -197,6 +212,7 @@ def audit_symbol(
     server_offsets = sorted({
         ((24 * 60 - minute) % (24 * 60)) for minute in boundary_minutes
     })
+    first_possible = _first_possible_open_after_start(boundary_minutes)
     return {
         "symbol": source.symbol,
         "latest_available_d1_bar_timestamp": _iso(latest),
@@ -229,6 +245,13 @@ def audit_symbol(
         "first_bar_eligible_after_acquisition_delay": (
             _iso(eligible[0]) if eligible else None
         ),
+        "first_possible_target_strictly_after_conservative_start": (
+            _iso(first_possible) if first_possible else None
+        ),
+        "first_possible_target_is_observed": (
+            first_possible in [_utc(bar.timestamp) for bar in bars]
+            if first_possible else False
+        ),
         "proposed_first_eligible_target": _iso(eligible[0]) if eligible else None,
         "metadata_only": all(
             bar.open is None and bar.high is None and bar.low is None and bar.close is None
@@ -243,6 +266,10 @@ def audit_common_calendar(audits: Mapping[str, Mapping[str, object]]) -> dict[st
     latest = {item["latest_available_d1_bar_timestamp"] for item in audits.values()}
     previous = {item["previous_d1_bar_timestamp"] for item in audits.values()}
     targets = {item["proposed_first_eligible_target"] for item in audits.values()}
+    possible_targets = {
+        item["first_possible_target_strictly_after_conservative_start"]
+        for item in audits.values()
+    }
     boundaries = {
         tuple(item["broker_server_offsets_inferred_minutes"])
         for item in audits.values()
@@ -252,6 +279,9 @@ def audit_common_calendar(audits: Mapping[str, Mapping[str, object]]) -> dict[st
         "latest_common_calendar": len(latest) == 1 and len(previous) == 1,
         "proposed_first_eligible_target": (
             next(iter(targets)) if len(targets) == 1 else None
+        ),
+        "first_possible_target_strictly_after_conservative_start": (
+            next(iter(possible_targets)) if len(possible_targets) == 1 else None
         ),
         "mixed_pair_calendars": len(latest) != 1 or len(previous) != 1,
     }
