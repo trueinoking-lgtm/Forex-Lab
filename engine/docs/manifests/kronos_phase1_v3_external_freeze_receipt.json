@@ -1,0 +1,35 @@
+{
+  "$schema": "kronos-phase1-v3-external-freeze-receipt",
+  "version": "1.0.0",
+  "study_id": "kronos-phase1-v3-prospective-replication",
+  "repository": "https://github.com/trueinoking-lgtm/Forex-Lab.git",
+  "branch": "master",
+  "protocol_freeze_commit": "4815c1b16eb18746d1ddfc717dcaa0e7f3fdf370",
+  "protocol_freeze_local_committer_timestamp": "2026-07-28T17:13:20Z",
+  "annotated_tag": "kronos-v3-protocol-freeze-20260728",
+  "annotated_tag_object": "479236f70ddb8827585a9633e86bee758475ac21",
+  "annotated_tag_local_tagger_timestamp": "2026-07-28T17:22:52Z",
+  "peeled_tag_target": "4815c1b16eb18746d1ddfc717dcaa0e7f3fdf370",
+  "remote_refs_observed": {
+    "refs/heads/master": "4815c1b16eb18746d1ddfc717dcaa0e7f3fdf370",
+    "refs/tags/kronos-v3-protocol-freeze-20260728": "479236f70ddb8827585a9633e86bee758475ac21",
+    "refs/tags/kronos-v3-protocol-freeze-20260728^{}": "4815c1b16eb18746d1ddfc717dcaa0e7f3fdf370"
+  },
+  "remote_verification_source": "operator-supplied literal remote verification",
+  "server_visible_push_or_tag_timestamp": null,
+  "server_visible_timestamp_status": "UNAVAILABLE: the public GitHub API returns 404 for this private repository and no authenticated API token is available in this environment",
+  "receipt_acquired_at": "2026-07-29T08:43:24Z",
+  "verification_commands": [
+    "git ls-remote https://github.com/trueinoking-lgtm/Forex-Lab.git refs/heads/master refs/tags/kronos-v3-protocol-freeze-20260728 refs/tags/kronos-v3-protocol-freeze-20260728^{}",
+    "git rev-parse kronos-v3-protocol-freeze-20260728",
+    "git rev-parse kronos-v3-protocol-freeze-20260728^{}",
+    "git cat-file -p 479236f70ddb8827585a9633e86bee758475ac21"
+  ],
+  "sanitization": {
+    "credentials_included": false,
+    "github_token_included": false,
+    "bridge_token_included": false,
+    "mt5_login_or_account_number_included": false
+  },
+  "statement": "The remote master branch and annotated freeze tag both resolve to the frozen protocol commit. This receipt records identities only and does not modify frozen protocol semantics."
+}
