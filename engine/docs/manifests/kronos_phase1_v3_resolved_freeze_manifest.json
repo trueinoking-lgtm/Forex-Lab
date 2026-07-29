@@ -1,0 +1,115 @@
+{
+  "$schema": "kronos-phase1-v3-resolved-freeze-manifest",
+  "version": "1.0.0",
+  "study_id": "kronos-phase1-v3-prospective-replication",
+  "protocol_freeze_commit": "4815c1b16eb18746d1ddfc717dcaa0e7f3fdf370",
+  "protocol_freeze_timestamp": "2026-07-28T17:13:20Z",
+  "engineering_integration_commit": "76f46719d17b79c541136d8d4ade42ea6205413e",
+  "external_freeze_receipt": {
+    "path": "engine/docs/manifests/kronos_phase1_v3_external_freeze_receipt.json",
+    "commit": "b900e81b428927aa5a1b67127e6cb00f2896da10",
+    "byte_size": 2059,
+    "sha256": "57a1345050d71ee66b1be63378feccd05bed52ad2a3fae6b4be3e9be067ea114"
+  },
+  "frozen_files": [
+    {
+      "role": "protocol_document",
+      "path": "docs/kronos_phase1_v3_protocol.md",
+      "byte_size": 4770,
+      "git_blob": "eab503f1e94e9a162fdd1ce997cd4d8b2301f4c1",
+      "sha256": "a7629746f18eb38f3be53d96852d1949bcfc2d77e04a86f620637aa109deabcf"
+    },
+    {
+      "role": "gate_document",
+      "path": "docs/kronos_phase1_v3_gates.md",
+      "byte_size": 5200,
+      "git_blob": "4cf5bc9fcc0ee1a341e12ea5dcd64a692b9e2829",
+      "sha256": "5a2384a69ffbd177df760a347bcd69ebe27ada7608d5e73eda694345c48b598d"
+    },
+    {
+      "role": "v3_config",
+      "path": "engine/docs/kronos_phase1_v3_config.json",
+      "byte_size": 2804,
+      "git_blob": "ec20d0951085b5ad1abc3ac345d05e5bc828eda7",
+      "sha256": "5aa4fd1c049a2ea05a4a4205784be4a81b61cb27d71c6d83d12a7cba0bd31da5"
+    },
+    {
+      "role": "metric_specification",
+      "path": "engine/docs/kronos_phase1_v3_metric_spec.json",
+      "byte_size": 1854,
+      "git_blob": "5763854f5065ac5b26f133a90ef8c6d436898527",
+      "sha256": "2a49d6cb5ad15069320717eb7b3d0f9dea310451804b161c81a3bf53f02e8949"
+    },
+    {
+      "role": "fold_policy",
+      "path": "engine/docs/kronos_phase1_v3_fold_policy.json",
+      "byte_size": 997,
+      "git_blob": "8fa1bbb0f5c7b76699c398c52c7f0ac4cfcc5652",
+      "sha256": "f96f416d2c5ca70722f817d03d8facbd770423268d0389d6395897a43f4daaa3"
+    },
+    {
+      "role": "origin_policy",
+      "path": "engine/docs/manifests/kronos_phase1_v3_origin_policy.json",
+      "byte_size": 635,
+      "git_blob": "b2aa32161dbbc030fc7659a9fcb7fc7b042fbe44",
+      "sha256": "048b5099005d979965c1f84f617770473dfeec3acd29f73ac272b29abe1277f5"
+    },
+    {
+      "role": "data_acquisition_policy",
+      "path": "engine/docs/manifests/kronos_phase1_v3_data_acquisition_policy.json",
+      "byte_size": 2073,
+      "git_blob": "c005face587945ff4625c93e83b8f471a43b5799",
+      "sha256": "0b0a50faf34d92c0c8e7a18cd9896feb0ef6a1c16ca981ee02ee48f1a805bed9"
+    },
+    {
+      "role": "contamination_ledger",
+      "path": "docs/kronos_phase1_v3_contamination_ledger.json",
+      "byte_size": 3581,
+      "git_blob": "9a199c1a736a85e89ae2ef193d8f35949907a69f",
+      "sha256": "ed9d97838b58375ca6ec2830178cd78c130d9608068ed44effad13b76c50fa52"
+    },
+    {
+      "role": "provenance_implementation",
+      "path": "engine/kronos_v3_provenance.py",
+      "byte_size": 6424,
+      "git_blob": "e2863675e9a960779f3af7558f7f0e6a3df3fb15",
+      "sha256": "11915ee3cb5944826b6980cab95fbbb6914cfa81fd85160fea10c83d7918ab4b"
+    },
+    {
+      "role": "provenance_tests",
+      "path": "engine/tests/test_kronos_phase1_v3_provenance.py",
+      "byte_size": 7063,
+      "git_blob": "d816bd3fb4e9fe8a448c503e0c4cadb9031e2afd",
+      "sha256": "eaf74b0b48c6e3811ecde06135d2d15f4c26108cf9102b98e8d8aca8e5adc77f"
+    },
+    {
+      "role": "environment_lock",
+      "path": "engine/requirements.txt",
+      "byte_size": 62,
+      "git_blob": "a578cb44d0b6cd7bc179bd1e8cbe20c76ae9d910",
+      "sha256": "3bd30228a452a74b90c6dd58917391c3b5bde6a75c9e66acb1c38306a4166508"
+    }
+  ],
+  "checkpoint_identities": {
+    "model": {
+      "repository": "NeoQuasar/Kronos-mini",
+      "revision": "f4e68697d9d5aed55cef5c96aabc3376bcad9f81",
+      "local_path": "engine/docs/checkpoints/Kronos-mini.model.safetensors",
+      "byte_size": 16440776,
+      "sha256": "a7d5f37e2e9fbd9891f7d7d4f72574512dd1f704fee14223e0a8cd0fbf54197c"
+    },
+    "tokenizer": {
+      "repository": "NeoQuasar/Kronos-Tokenizer-2k",
+      "revision": "26966d0035065a0cae0ebad7af8ece35bc1fb51c",
+      "local_path": "engine/docs/checkpoints/tokenizer/model.safetensors",
+      "byte_size": 15842376,
+      "sha256": "b97ec46b3b72160509e289183eaf7bdf5f0dac5bb9b49522f6d46638a99a8717"
+    }
+  },
+  "unresolved_data_identities": {
+    "dataset_manifest_sha256": null,
+    "fold_manifest_sha256": null,
+    "origin_manifest_sha256": null,
+    "reason": "Prospective source files do not yet exist; invented identities are prohibited."
+  }
+}
