@@ -240,6 +240,43 @@ def symbols(_=Depends(_require_auth)):
     return {"symbol_map": _symbol_map()}
 
 
+@app.get("/d1-metadata")
+def d1_metadata(symbol: str, count: int = 32, _=Depends(_require_auth)):
+    """Return timestamps only for a sanitized, read-only D1 boundary audit."""
+    if count < 2 or count > 400:
+        raise HTTPException(status_code=400, detail="count must be between 2 and 400")
+    mt5 = _mt5()
+    _ensure_demo_account(mt5)
+    mapping = _symbol_map()
+    if symbol not in mapping:
+        raise HTTPException(status_code=400, detail=f"symbol {symbol!r} is not mapped")
+    provider_symbol = mapping[symbol]
+    if provider_symbol != symbol:
+        raise HTTPException(
+            status_code=400,
+            detail="V3 requires exact symbol identity; prefixes/suffixes are refused",
+        )
+    rates = mt5.copy_rates_from_pos(provider_symbol, mt5.TIMEFRAME_D1, 0, count)
+    if rates is None or len(rates) < 2:
+        raise HTTPException(status_code=404, detail="insufficient D1 metadata")
+    info = mt5.account_info()
+    timestamps = [
+        datetime.fromtimestamp(int(row["time"]), tz=timezone.utc).isoformat()
+        for row in rates
+    ]
+    return {
+        "broker_mode": "demo",
+        "company": str(getattr(info, "company", "") or ""),
+        "server": str(getattr(info, "server", "") or ""),
+        "symbol": symbol,
+        "provider_symbol": provider_symbol,
+        "timeframe": "D1",
+        "bar_open_timestamps": timestamps,
+        "ohlc_included": False,
+        "account_identity_included": False,
+    }
+
+
 @app.get("/quote")
 def quote(symbol: str, _=Depends(_require_auth)):
     mt5 = _mt5()
