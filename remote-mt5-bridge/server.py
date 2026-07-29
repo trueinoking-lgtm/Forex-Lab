@@ -48,7 +48,13 @@ from bridge_validation import (  # noqa: E402
     execute_demo_order,
 )
 
-app = FastAPI(title="Aether Forex Lab — Remote MT5 Bridge (DEMO ONLY)")
+BRIDGE_VERSION = "2026.07.29-d1-metadata.1"
+V3_D1_SYMBOLS = ("EURUSD", "GBPUSD", "USDJPY", "AUDUSD")
+
+app = FastAPI(
+    title="Aether Forex Lab — Remote MT5 Bridge (DEMO ONLY)",
+    version=BRIDGE_VERSION,
+)
 
 
 # ---------- auth + config ----------
@@ -211,6 +217,7 @@ def health():
         "dry_run": _dry_run(),
         "demo_autotrade_enabled": _autotrade(),
         "token_configured": bool(_token()),
+        "bridge_version": BRIDGE_VERSION,
     }
 
 
@@ -248,8 +255,10 @@ def d1_metadata(symbol: str, count: int = 32, _=Depends(_require_auth)):
     mt5 = _mt5()
     _ensure_demo_account(mt5)
     mapping = _symbol_map()
-    if symbol not in mapping:
-        raise HTTPException(status_code=400, detail=f"symbol {symbol!r} is not mapped")
+    if symbol not in V3_D1_SYMBOLS or symbol not in mapping:
+        raise HTTPException(
+            status_code=400, detail=f"symbol {symbol!r} is not in frozen V3 mapping"
+        )
     provider_symbol = mapping[symbol]
     if provider_symbol != symbol:
         raise HTTPException(
@@ -260,10 +269,12 @@ def d1_metadata(symbol: str, count: int = 32, _=Depends(_require_auth)):
     if rates is None or len(rates) < 2:
         raise HTTPException(status_code=404, detail="insufficient D1 metadata")
     info = mt5.account_info()
-    timestamps = [
+    timestamps = sorted([
         datetime.fromtimestamp(int(row["time"]), tz=timezone.utc).isoformat()
         for row in rates
-    ]
+    ])
+    if len(timestamps) != len(set(timestamps)):
+        raise HTTPException(status_code=502, detail="duplicate D1 timestamps returned")
     return {
         "broker_mode": "demo",
         "company": str(getattr(info, "company", "") or ""),
@@ -274,6 +285,7 @@ def d1_metadata(symbol: str, count: int = 32, _=Depends(_require_auth)):
         "bar_open_timestamps": timestamps,
         "ohlc_included": False,
         "account_identity_included": False,
+        "bridge_version": BRIDGE_VERSION,
     }
 
 
